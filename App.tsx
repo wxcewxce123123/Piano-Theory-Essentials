@@ -124,7 +124,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     useEffect(() => {
         if (isOpen) {
             setRenderModal(true);
-            requestAnimationFrame(() => setIsVisible(true));
+            // Increased delay slightly to ensure DOM insertion happens before class transition
+            const timer = setTimeout(() => setIsVisible(true), 50);
+            return () => clearTimeout(timer);
         } else {
             setIsVisible(false);
             const timer = setTimeout(() => setRenderModal(false), 300);
@@ -227,7 +229,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
         <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
             <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={handleClose}></div>
             
-            <div className={`bg-white w-full max-w-md rounded-[2rem] p-8 relative z-10 shadow-2xl transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) transform ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-8'}`}>
+            <div className={`bg-white w-full max-w-md rounded-[2rem] p-8 relative z-10 shadow-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) transform ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-12 opacity-0'}`}>
                 <button onClick={handleClose} className="absolute top-4 right-4 p-2 text-stone-400 hover:bg-stone-100 rounded-full transition-colors"><X size={20}/></button>
                 
                 <div className="text-center mb-6">
@@ -379,6 +381,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
 };
 
 // --- Subscription Modal Component (Animated Success) ---
+// ... (No changes needed for SubscriptionModal but need to keep file valid)
 interface SubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -550,7 +553,7 @@ enum LessonTopic {
   IMPRESSIONISM = 'impressionism', TWELVE_TONE = 'twelve_tone', PITCH_CLASS_SETS = 'pitch_class_sets', MICROTONALITY = 'microtonality', SPECTRALISM = 'spectralism', MINIMALISM = 'minimalism', BITONALITY = 'bitonality', ALEATORIC = 'aleatoric', NEGATIVE_HARMONY = 'negative_harmony', NEO_RIEMANNIAN = 'neo_riemannian', QUARTAL_HARMONY = 'quartal_harmony', OVERTONE_SERIES = 'overtone_series',
 }
 
-// --- Background Particles Component ---
+// ... (BackgroundParticles, useAmbience, etc. remain the same)
 const BackgroundParticles: React.FC = () => {
   const particles = useMemo(() => Array.from({ length: 15 }).map((_, i) => ({
     id: i,
@@ -687,6 +690,7 @@ const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) =>
 
 
 const App: React.FC = () => {
+  // ... (Rest of App.tsx logic remains the same)
   const [showSplash, setShowSplash] = useState(true); 
   const [isAppVisible, setIsAppVisible] = useState(false); 
   const [activeTab, setActiveTab] = useState<Tab>(Tab.LESSON);
@@ -906,7 +910,7 @@ const App: React.FC = () => {
     }
   ];
 
-  // --- Dynamic Styling based on Theme ---
+  // ... (getThemeClass, etc. remain the same)
   const getThemeClass = (type: 'text' | 'bg' | 'border' | 'gradient' | 'hoverBg' | 'activeBg' | 'sidebarBg') => {
       const { themeColor, customColor } = userSettings;
       
@@ -955,6 +959,7 @@ const App: React.FC = () => {
   };
 
   const renderLessonContent = () => {
+    // ... (renderLessonContent logic remains the same)
     // Pass user settings to StartPage
     if (activeLesson === LessonTopic.HOME) {
         return <StartPage 

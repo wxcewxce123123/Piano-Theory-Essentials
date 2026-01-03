@@ -220,7 +220,9 @@ const AccountSettingsModal: React.FC<{
     useEffect(() => {
         if (isOpen) {
             setRenderModal(true);
-            requestAnimationFrame(() => setIsVisible(true));
+            // Increased delay slightly to ensure DOM insertion happens before class transition
+            const timer = setTimeout(() => setIsVisible(true), 50);
+            return () => clearTimeout(timer);
         } else {
             setIsVisible(false);
             const timer = setTimeout(() => setRenderModal(false), 300);
@@ -307,11 +309,10 @@ const AccountSettingsModal: React.FC<{
     if (!renderModal) return null;
 
     return (
-        // Corrected: Removed md:pl-80 to properly center the modal relative to the viewport/container
         <div className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-300 ease-out px-4 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
             <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" onClick={onClose}></div>
             
-            <div className={`bg-white w-full max-w-2xl rounded-[2.5rem] relative z-10 shadow-2xl transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) transform overflow-hidden flex flex-col max-h-[90vh] ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-8'}`}>
+            <div className={`bg-white w-full max-w-2xl rounded-[2.5rem] relative z-10 shadow-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) transform overflow-hidden flex flex-col max-h-[90vh] ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-12 opacity-0'}`}>
                 
                 {/* Header */}
                 <div className="bg-stone-50 p-6 md:p-8 pb-4 border-b border-stone-200">
@@ -500,9 +501,6 @@ const AccountSettingsModal: React.FC<{
         </div>
     );
 };
-
-// ... ProfileSettings and StartPage components remain same as previously defined, but are included in the file ...
-// (I will output the rest of the file content below to ensure validity)
 
 // --- Profile Settings Component (Updated) ---
 const ProfileSettings: React.FC<{ 
