@@ -1,8 +1,6 @@
 
-
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BookOpen, Music, MessageCircle, Clock, Activity, Volume2, Ruler, LayoutGrid, Sparkles, Menu, X, ChevronRight, Hash, PauseCircle, Gauge, AlignCenterVertical, Disc, RefreshCw, Waves, Zap, Flower2, Wind, Hourglass, StopCircle, Layers, MoveRight, ChevronDown, Palette, MousePointerClick, ArrowUp, Music3, ArrowLeftRight, GitMerge, Calculator, SplitSquareHorizontal, Infinity, CloudFog, Ear, Route, Crown, Check, Lock, CreditCard, Ticket, Star, Zap as ZapIcon, Dices, FlipHorizontal, AudioWaveform, AlignVerticalSpaceAround, Network, Divide, Radar, Radio, Clock as ClockIcon, Eye, Grid, ListMusic, Mic2, Piano, Layout, Headphones, Coffee, User as UserIcon, LogIn, Upload, Camera, Trophy, Image as ImageIcon, ZoomIn, RotateCw, Move } from 'lucide-react';
+import { BookOpen, Music, MessageCircle, Clock, Activity, Volume2, Ruler, LayoutGrid, Sparkles, Menu, X, ChevronRight, Hash, PauseCircle, Gauge, AlignCenterVertical, Disc, RefreshCw, Waves, Zap, Flower2, Wind, Hourglass, StopCircle, Layers, MoveRight, ChevronDown, Palette, MousePointerClick, ArrowUp, Music3, ArrowLeftRight, GitMerge, Calculator, SplitSquareHorizontal, Infinity, CloudFog, Ear, Route, Crown, Check, Lock, CreditCard, Ticket, Star, Zap as ZapIcon, Dices, FlipHorizontal, AudioWaveform, AlignVerticalSpaceAround, Network, Divide, Radar, Radio, Clock as ClockIcon, Eye, Grid, ListMusic, Mic2, Piano, Layout, Headphones, Coffee, User as UserIcon, LogIn, Upload, Camera, Trophy, Image as ImageIcon, ZoomIn, RotateCw, Move, Mail, Save } from 'lucide-react';
 import Explanation from './components/Explanation';
 import SlurVsTie from './components/SlurVsTie';
 import TimeSignatureLesson from './components/TimeSignatureLesson';
@@ -57,7 +55,7 @@ import StartPage, { UserSettings, UserProfile, Achievement } from './components/
 // --- Constants ---
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
     { id: 'first_lesson', title: '初入琴房', desc: '完成你的第 1 个课程', icon: '🎵', unlocked: false, progress: 0, maxProgress: 1 },
-    // Removed Scholar Achievement
+    // Removed Scholar
     { id: 'pro_member', title: '尊贵会员', desc: '成为 Pro 用户', icon: '👑', unlocked: false, progress: 0, maxProgress: 1 },
     { id: 'night_owl', title: '夜猫子', desc: '在晚上 10 点后学习', icon: '🌙', unlocked: false, progress: 0, maxProgress: 1 },
     { id: 'master', title: '理论大师', desc: '解锁所有高级课程', icon: '🎓', unlocked: false, progress: 0, maxProgress: 10 },
@@ -95,7 +93,7 @@ const AchievementToast: React.FC<{ achievement: Achievement | null, onClose: () 
     )
 }
 
-// --- Auth Modal with Advanced Image Editor ---
+// --- Auth Modal (Enhanced Image Editor) ---
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -114,11 +112,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
     
+    // Animation States
     const [renderModal, setRenderModal] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     
+    // Handle Opening/Closing Animation
     useEffect(() => {
         if (isOpen) {
             setRenderModal(true);
@@ -130,6 +131,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
         }
     }, [isOpen]);
 
+    // Drag Logic
     const handleMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
@@ -172,6 +174,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
             ctx.scale(zoom, zoom);
             
             // Draw image centered
+            // We assume basic aspect ratio handling for square crop preview
+            const size = Math.min(img.width, img.height);
+            // Draw full image centered at origin
             ctx.drawImage(img, -100, -100, 200, 200); 
             
             return canvas.toDataURL('image/jpeg');
@@ -230,6 +235,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                 </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* 1. Name Input */}
                     <div>
                         <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">昵称 (Nickname)</label>
                         <div className="relative">
@@ -245,14 +251,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                         </div>
                     </div>
 
+                    {/* 2. Avatar Selection */}
                     <div>
                         <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 text-center">头像设置</label>
                         
+                        {/* Custom Image Preview & Editor */}
                         {customAvatar ? (
                             <div className="flex flex-col items-center mb-4 animate-fadeIn">
                                 {/* Editor Stage */}
                                 <div 
-                                    className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-4 cursor-move bg-stone-100"
+                                    className="relative w-40 h-40 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-4 cursor-move bg-stone-100"
                                     onMouseDown={handleMouseDown}
                                     onMouseMove={handleMouseMove}
                                     onMouseUp={handleMouseUp}
@@ -272,6 +280,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                                 
                                 {/* Controls */}
                                 <div className="w-full space-y-3 bg-stone-50 p-4 rounded-xl border border-stone-100">
+                                    {/* Zoom */}
                                     <div className="flex items-center gap-3">
                                         <ZoomIn size={14} className="text-stone-400 shrink-0"/>
                                         <input 
@@ -282,6 +291,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                                             className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800"
                                         />
                                     </div>
+                                    {/* Rotate */}
                                     <div className="flex items-center gap-3">
                                         <RotateCw size={14} className="text-stone-400 shrink-0"/>
                                         <input 
@@ -317,6 +327,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                             </div>
                         )}
                         
+                        {/* Upload Button */}
                         {!customAvatar && (
                             <div className="flex justify-center">
                                 <input 
@@ -351,7 +362,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     )
 };
 
-// --- Subscription Modal (Enhanced Animation) ---
+// --- Subscription Modal Component (Animated Success) ---
 interface SubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -941,7 +952,6 @@ const App: React.FC = () => {
             achievements={achievements}
             onLogout={handleLogout}
             onUpdateProfile={handleUpdateProfile} // Pass updater
-            completedLessons={completedLessons}
         />;
     }
 
