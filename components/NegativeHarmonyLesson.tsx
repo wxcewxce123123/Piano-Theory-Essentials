@@ -93,7 +93,7 @@ const NegativeHarmonyLesson: React.FC = () => {
       </header>
 
       {/* Main Interactive Stage */}
-      <div className="bg-[#0f172a] rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden animate-slideUp stagger-1 flex flex-col md:flex-row items-center gap-12 border border-slate-800">
+      <div className="bg-[#0f172a] rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden animate-slideUp stagger-1 flex flex-col md:flex-row items-center gap-12 border border-slate-800 max-w-4xl mx-auto">
           
           {/* Background Stars */}
           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>

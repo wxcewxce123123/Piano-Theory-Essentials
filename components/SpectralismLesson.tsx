@@ -216,7 +216,7 @@ const SpectralismLesson: React.FC = () => {
       </header>
 
       {/* Main Interactive Stage */}
-      <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-stone-200 relative overflow-hidden animate-slideUp stagger-1 flex flex-col gap-10">
+      <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-stone-200 relative overflow-hidden animate-slideUp stagger-1 flex flex-col gap-10 max-w-4xl mx-auto">
           
           {/* Spectrogram Display */}
           <div className="relative w-full h-80 bg-stone-900 rounded-3xl border-4 border-stone-200 overflow-hidden shadow-inner group">

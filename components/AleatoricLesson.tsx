@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Dices, RefreshCw, Sparkles, Play, Pause } from 'lucide-react';
 
@@ -99,7 +100,7 @@ const AleatoricLesson: React.FC = () => {
         </p>
       </header>
 
-      <div className="bg-white rounded-[2.5rem] shadow-2xl border border-stone-200 p-8 md:p-12 animate-slideUp stagger-1 relative overflow-hidden min-h-[500px] flex flex-col">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl border border-stone-200 p-8 md:p-12 animate-slideUp stagger-1 relative overflow-hidden min-h-[500px] flex flex-col max-w-4xl mx-auto">
           
           {/* Graphic Score Canvas */}
           <div className="flex-1 w-full bg-stone-50 rounded-3xl border border-stone-200 relative mb-8 overflow-hidden cursor-crosshair" onClick={generateMusic}>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BookOpen, Music, MessageCircle, Clock, Activity, Volume2, Ruler, LayoutGrid, Sparkles, Menu, X, ChevronRight, Hash, PauseCircle, Gauge, AlignCenterVertical, Disc, RefreshCw, Waves, Zap, Flower2, Wind, Hourglass, StopCircle, Layers, MoveRight, ChevronDown, Palette, MousePointerClick, ArrowUp, Music3, ArrowLeftRight, GitMerge, Calculator, SplitSquareHorizontal, Infinity, CloudFog, Ear, Route, Crown, Check, Lock, CreditCard, Ticket, Star, Zap as ZapIcon, Dices, FlipHorizontal, AudioWaveform, AlignVerticalSpaceAround, Network, Divide,  Radar, Radio, Clock as ClockIcon } from 'lucide-react';
+import { BookOpen, Music, MessageCircle, Clock, Activity, Volume2, Ruler, LayoutGrid, Sparkles, Menu, X, ChevronRight, Hash, PauseCircle, Gauge, AlignCenterVertical, Disc, RefreshCw, Waves, Zap, Flower2, Wind, Hourglass, StopCircle, Layers, MoveRight, ChevronDown, Palette, MousePointerClick, ArrowUp, Music3, ArrowLeftRight, GitMerge, Calculator, SplitSquareHorizontal, Infinity, CloudFog, Ear, Route, Crown, Check, Lock, CreditCard, Ticket, Star, Zap as ZapIcon, Dices, FlipHorizontal, AudioWaveform, AlignVerticalSpaceAround, Network, Divide, Radar, Radio, Clock as ClockIcon, Eye, Grid, ListMusic, Mic2, Piano, Layout, Headphones, Coffee, User as UserIcon, LogIn, Upload, Camera, Trophy, Image as ImageIcon, ZoomIn } from 'lucide-react';
 import Explanation from './components/Explanation';
 import SlurVsTie from './components/SlurVsTie';
 import TimeSignatureLesson from './components/TimeSignatureLesson';
@@ -42,7 +42,403 @@ import NeoRiemannianLesson from './components/NeoRiemannianLesson';
 import MicrotonalityLesson from './components/MicrotonalityLesson';
 import SpectralismLesson from './components/SpectralismLesson';
 import PitchClassSetLesson from './components/PitchClassSetLesson';
+import FormBinaryTernaryLesson from './components/FormBinaryTernaryLesson';
+import FormSonataLesson from './components/FormSonataLesson';
+import FormRondoLesson from './components/FormRondoLesson';
+import JazzBasicsLesson from './components/JazzBasicsLesson';
+import PopStylesLesson from './components/PopStylesLesson';
 import AITutor from './components/AITutor';
+import GenericLesson from './components/GenericLesson';
+import SplashScreen from './components/SplashScreen';
+import StartPage, { UserSettings, UserProfile, Achievement } from './components/StartPage'; 
+
+// --- Constants ---
+const INITIAL_ACHIEVEMENTS: Achievement[] = [
+    { id: 'first_lesson', title: '初入琴房', desc: '完成你的第 1 个课程', icon: '🎵', unlocked: false, progress: 0, maxProgress: 1 },
+    { id: 'scholar', title: '乐理学徒', desc: '完成 5 个课程', icon: '📚', unlocked: false, progress: 0, maxProgress: 5 },
+    { id: 'pro_member', title: '尊贵会员', desc: '成为 Pro 用户', icon: '👑', unlocked: false, progress: 0, maxProgress: 1 },
+    { id: 'night_owl', title: '夜猫子', desc: '在晚上 10 点后学习', icon: '🌙', unlocked: false, progress: 0, maxProgress: 1 },
+    { id: 'master', title: '理论大师', desc: '解锁所有高级课程', icon: '🎓', unlocked: false, progress: 0, maxProgress: 10 },
+];
+
+// --- Achievement Toast Component ---
+const AchievementToast: React.FC<{ achievement: Achievement | null, onClose: () => void }> = ({ achievement, onClose }) => {
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        if (achievement) {
+            setVisible(true);
+            const timer = setTimeout(() => {
+                setVisible(false);
+                setTimeout(onClose, 500);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [achievement, onClose]);
+
+    if (!achievement) return null;
+
+    return (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 transform ${visible ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0'}`}>
+            <div className="bg-stone-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-stone-700 min-w-[300px]">
+                <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-2xl animate-bounce">
+                    {achievement.icon}
+                </div>
+                <div>
+                    <div className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-1">Achievement Unlocked</div>
+                    <div className="font-bold text-lg leading-none">{achievement.title}</div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// --- Auth Modal ---
+interface AuthModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onLogin: (profile: UserProfile) => void;
+}
+
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
+    const [name, setName] = useState('');
+    const [selectedAvatar, setSelectedAvatar] = useState('🎹');
+    const [customAvatar, setCustomAvatar] = useState<string | null>(null);
+    const [imageZoom, setImageZoom] = useState(1);
+    
+    // Animation States
+    const [renderModal, setRenderModal] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
+    
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // Handle Opening/Closing Animation
+    useEffect(() => {
+        if (isOpen) {
+            setRenderModal(true);
+            // Small delay to allow render before opacity transition
+            requestAnimationFrame(() => setIsVisible(true));
+        } else {
+            setIsVisible(false);
+            const timer = setTimeout(() => setRenderModal(false), 300); // Wait for transition
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
+
+    if (!renderModal) return null;
+
+    const defaultAvatars = ['🎹', '🎵', '🎼', '🎻', '🎷', '🎸', '🎺', '🥁'];
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!name.trim()) return;
+        
+        // Trigger exit animation first
+        setIsVisible(false);
+        
+        // Then perform login after animation
+        setTimeout(() => {
+            onLogin({
+                name: name,
+                avatar: customAvatar || selectedAvatar,
+                level: 'Level 1',
+                isGuest: false,
+                isCustomAvatar: !!customAvatar
+            });
+            onClose(); // Tell parent to close
+        }, 300);
+    };
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 300);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setCustomAvatar(reader.result as string);
+                setImageZoom(1); // Reset zoom
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={handleClose}></div>
+            
+            <div className={`bg-white w-full max-w-md rounded-[2rem] p-8 relative z-10 shadow-2xl transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) transform ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-8'}`}>
+                <button onClick={handleClose} className="absolute top-4 right-4 p-2 text-stone-400 hover:bg-stone-100 rounded-full transition-colors"><X size={20}/></button>
+                
+                <div className="text-center mb-6">
+                    <h2 className="text-2xl font-serif font-bold text-stone-900">欢迎加入</h2>
+                    <p className="text-stone-500 text-sm mt-1">创建您的音乐档案</p>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* 1. Name Input - moved to top for better flow */}
+                    <div>
+                        <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">昵称 (Nickname)</label>
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                placeholder="例如: Chopin Lover"
+                                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all"
+                                autoFocus
+                            />
+                            <UserIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                        </div>
+                    </div>
+
+                    {/* 2. Avatar Selection */}
+                    <div>
+                        <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 text-center">选择头像</label>
+                        
+                        {/* Custom Image Preview & Crop Simulation */}
+                        {customAvatar ? (
+                            <div className="flex flex-col items-center mb-4 animate-fadeIn">
+                                <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-3 group bg-stone-100">
+                                    <img 
+                                        src={customAvatar} 
+                                        alt="Avatar Preview" 
+                                        className="w-full h-full object-cover transition-transform duration-100 origin-center" 
+                                        style={{ transform: `scale(${imageZoom})` }}
+                                    />
+                                    {/* Overlay to change */}
+                                    <button 
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-bold"
+                                    >
+                                        更换图片
+                                    </button>
+                                </div>
+                                
+                                {/* Zoom Control */}
+                                <div className="flex items-center gap-2 w-2/3">
+                                    <ImageIcon size={12} className="text-stone-400"/>
+                                    <input 
+                                        type="range" 
+                                        min="1" max="2.5" step="0.1" 
+                                        value={imageZoom}
+                                        onChange={(e) => setImageZoom(parseFloat(e.target.value))}
+                                        className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800"
+                                    />
+                                    <ZoomIn size={12} className="text-stone-400"/>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex justify-center gap-3 flex-wrap mb-4">
+                                {defaultAvatars.map(emoji => (
+                                    <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={() => setSelectedAvatar(emoji)}
+                                        className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${selectedAvatar === emoji ? 'bg-stone-900 text-white shadow-md scale-110' : 'bg-stone-50 hover:bg-stone-100 text-stone-600'}`}
+                                    >
+                                        {emoji}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        
+                        {/* Upload Button */}
+                        {!customAvatar && (
+                            <div className="flex justify-center">
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    className="hidden" 
+                                    accept="image/*"
+                                    onChange={handleFileChange} 
+                                />
+                                <button 
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-stone-300 text-stone-500 hover:border-stone-400 hover:text-stone-800 hover:bg-stone-50 transition-all"
+                                >
+                                    <Camera size={14} />
+                                    <span>上传自定义图片</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        disabled={!name.trim()}
+                        className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-stone-800 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        <LogIn size={18} /> 进入
+                    </button>
+                </form>
+            </div>
+        </div>
+    )
+};
+
+// --- Subscription Modal Component (Updated High Contrast) ---
+interface SubscriptionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  themeColor: string;
+  customColor?: string; 
+}
+
+const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, onSuccess, themeColor, customColor }) => {
+  const [inviteCode, setInviteCode] = useState('');
+  const [error, setError] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const [isVisible, setIsVisible] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+      setInviteCode('');
+      setError('');
+      setIsSuccess(false);
+      setTimeout(() => setIsAnimating(true), 10);
+    } else {
+      setIsAnimating(false);
+      const timer = setTimeout(() => setIsVisible(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  if (!isVisible) return null;
+
+  const handleVerify = () => {
+    if (inviteCode === '8888') {
+      setIsSuccess(true);
+      setTimeout(() => { onSuccess(); }, 1000);
+    } else {
+      setError('无效的邀请码。请重试。');
+    }
+  };
+
+  const handlePurchase = () => {
+      setIsSuccess(true);
+      setTimeout(() => { onSuccess(); }, 1000);
+  }
+
+  const modalBg = 'bg-stone-900 text-white';
+
+  return (
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ${isAnimating ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-sm" onClick={onClose}></div>
+
+      <div className={`bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative overflow-hidden transform transition-all duration-300 border border-stone-200 flex flex-col md:flex-row ${isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
+        {/* Left Side: Premium Branding */}
+        <div className={`md:w-5/12 p-8 flex flex-col relative overflow-hidden ${modalBg}`}>
+           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+           
+           <div className="relative z-10 flex-1">
+               <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/10 bg-white/10`}>
+                   <Crown size={24} className="text-amber-400" fill="currentColor" />
+               </div>
+               <h2 className="text-3xl font-bold font-serif mb-2">Piano Theory <span className="text-amber-400">Pro</span></h2>
+               <p className="text-white/60 text-sm mb-8">解锁大师级特权，定义你的音乐人格。</p>
+                
+               <ul className="space-y-4">
+                   <li className="flex items-start gap-3">
+                       <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
+                       <span className="text-sm font-medium">解锁 <strong>Level 5-7 大师课程</strong></span>
+                   </li>
+                   <li className="flex items-start gap-3">
+                       <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
+                       <span className="text-sm font-medium">无限次 <strong>AI 助教</strong> 对话</span>
+                   </li>
+                   <li className="flex items-start gap-3">
+                       <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
+                       <span className="text-sm font-medium"><strong>自定义</strong> 主题色彩</span>
+                   </li>
+               </ul>
+           </div>
+        </div>
+
+        {/* Right Side: Action */}
+        <div className="md:w-7/12 bg-white p-8 flex flex-col overflow-y-auto max-h-[80vh] custom-scrollbar relative">
+           <button onClick={onClose} className="absolute top-4 right-4 bg-stone-100 hover:bg-stone-200 text-stone-500 p-2 rounded-full transition-colors z-20"><X size={20} /></button>
+
+           {!isSuccess ? (
+             <>
+               <h3 className="text-lg font-bold text-stone-900 mb-6">选择订阅计划</h3>
+               <div className="grid gap-4 mb-8">
+                   <button 
+                      onClick={() => setSelectedPlan('yearly')}
+                      className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'yearly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}
+                   >
+                       <div className={`absolute -top-3 left-4 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm bg-stone-900`}>BEST VALUE</div>
+                       <div><div className="font-bold text-stone-900">年度会员</div><div className="text-xs text-stone-500">¥19.00 / 月</div></div>
+                       <div className="text-right"><div className="text-2xl font-bold text-stone-900">¥228</div><div className="text-[10px] text-stone-400 line-through">¥348</div></div>
+                   </button>
+
+                   <button 
+                      onClick={() => setSelectedPlan('monthly')}
+                      className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'monthly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}
+                   >
+                       <div><div className="font-bold text-stone-900">月度会员</div><div className="text-xs text-stone-500">灵活订阅</div></div>
+                       <div className="text-right"><div className="text-2xl font-bold text-stone-900">¥29</div></div>
+                   </button>
+               </div>
+               
+               {/* HIGH CONTRAST BUTTON FIX: Black background with White text */}
+               <button onClick={handlePurchase} className={`w-full bg-black text-white py-4 rounded-xl font-bold shadow-xl hover:bg-stone-800 transition-all mb-6 flex items-center justify-center gap-2 active:scale-95`}>
+                   <CreditCard size={18} /> 立即订阅
+               </button>
+               
+               <div className="border-t border-stone-100 pt-6">
+                  <div className="flex gap-2">
+                    <input id="invite-input" type="text" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value); setError(''); }} placeholder="输入兑换代码" className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2 text-stone-900 focus:outline-none focus:ring-2 text-sm font-mono tracking-wider uppercase" />
+                    <button onClick={handleVerify} disabled={!inviteCode} className="bg-white border border-stone-200 text-stone-600 px-4 rounded-xl font-bold hover:bg-stone-50 transition-colors text-sm">兑换</button>
+                  </div>
+                  {error && <p className="text-red-500 text-xs mt-2 font-medium animate-pulse">{error}</p>}
+               </div>
+             </>
+           ) : (
+             <div className="flex-1 flex flex-col items-center justify-center text-center py-8 relative z-10">
+                 <div className="relative mb-8 z-10">
+                     <div className="w-32 h-32 rounded-full flex items-center justify-center shadow-2xl animate-scale-in relative z-20 bg-stone-900">
+                        <Crown size={64} className="text-amber-400 drop-shadow-md" strokeWidth={2.5} />
+                        <Sparkles className="absolute -top-4 -right-4 text-amber-500 animate-spin-slow" size={32} />
+                     </div>
+                 </div>
+                 <h2 className="text-4xl font-serif font-bold text-stone-900 mb-3 animate-slide-up-fade" style={{ animationDelay: '0.4s' }}>Welcome to Pro</h2>
+                 <button onClick={onClose} className="bg-stone-900 text-white px-10 py-4 rounded-2xl font-bold shadow-xl hover:scale-105 active:scale-95 transition-all animate-slide-up-fade flex items-center gap-2 mx-auto group mt-8">
+                     <span>开始探索</span> <ChevronRight size={18} />
+                 </button>
+             </div>
+           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+enum Tab {
+  LESSON = 'lesson',
+  TUTOR = 'tutor'
+}
+
+enum LessonTopic {
+  HOME = 'home', 
+  CLEFS = 'clefs', ACCIDENTALS = 'accidentals', RESTS = 'rests', RHYTHM = 'rhythm', TRIPLETS = 'triplets', SYNCOPATION = 'syncopation', POLYRHYTHMS = 'polyrhythms', SIGHT_READING = 'sight_reading', 
+  INTERVALS = 'intervals', CONSONANCE = 'consonance', SCALES = 'scales', KEY_SIGNATURES = 'key_signatures', ENHARMONICS = 'enharmonics', MODES = 'modes', EAR_TRAINING = 'ear_training', 
+  TEMPO = 'tempo', DYNAMICS = 'dynamics', SLUR = 'slur', ARTICULATIONS = 'articulations', PEDALING = 'pedaling', RUBATO = 'rubato', ORNAMENTATION = 'ornamentation',
+  CHORDS = 'chords', INVERSIONS = 'inversions', ARPEGGIOS = 'arpeggios', SEVENTH_CHORDS = 'seventh_chords', VOICE_LEADING = 'voice_leading', CADENCES = 'cadences', COUNTERPOINT = 'counterpoint',
+  FORM_BINARY_TERNARY = 'form_binary_ternary', FORM_SONATA = 'form_sonata', FORM_RONDO = 'form_rondo',
+  STYLE_JAZZ_BASIC = 'style_jazz_basic', STYLE_POP = 'style_pop', JAZZ_EXTENSIONS = 'jazz_extensions',
+  IMPRESSIONISM = 'impressionism', TWELVE_TONE = 'twelve_tone', PITCH_CLASS_SETS = 'pitch_class_sets', MICROTONALITY = 'microtonality', SPECTRALISM = 'spectralism', MINIMALISM = 'minimalism', BITONALITY = 'bitonality', ALEATORIC = 'aleatoric', NEGATIVE_HARMONY = 'negative_harmony', NEO_RIEMANNIAN = 'neo_riemannian', QUARTAL_HARMONY = 'quartal_harmony', OVERTONE_SERIES = 'overtone_series',
+}
 
 // --- Background Particles Component ---
 const BackgroundParticles: React.FC = () => {
@@ -85,356 +481,208 @@ const BackgroundParticles: React.FC = () => {
   );
 };
 
-// --- Subscription Modal Component ---
-interface SubscriptionModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-}
+// --- Procedural Ambience Hook ---
+const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) => {
+    const audioCtxRef = useRef<AudioContext | null>(null);
+    const nodesRef = useRef<any[]>([]);
+    
+    useEffect(() => {
+        if (type === 'off' || volume === 0) {
+            stopAmbience();
+            return;
+        }
 
-const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [inviteCode, setInviteCode] = useState('');
-  const [error, setError] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+        const init = async () => {
+            if (!audioCtxRef.current) {
+                audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            }
+            const ctx = audioCtxRef.current;
+            if (ctx?.state === 'suspended') await ctx.resume();
+            
+            stopAmbience(); 
 
-  useEffect(() => {
-    if (isOpen) {
-      setInviteCode('');
-      setError('');
-      setIsSuccess(false);
-    }
-  }, [isOpen]);
+            const gainNode = ctx!.createGain();
+            gainNode.gain.value = volume * 0.1; 
+            gainNode.connect(ctx!.destination);
 
-  if (!isOpen) return null;
+            if (type === 'white' || type === 'rain') {
+                const bufferSize = 2 * ctx!.sampleRate;
+                const buffer = ctx!.createBuffer(1, bufferSize, ctx!.sampleRate);
+                const output = buffer.getChannelData(0);
+                let lastOut = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    output[i] = (lastOut + (0.02 * white)) / 1.02; 
+                    lastOut = output[i];
+                    output[i] *= 3.5; 
+                }
+                const noise = ctx!.createBufferSource();
+                noise.buffer = buffer;
+                noise.loop = true;
+                
+                const filter = ctx!.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = type === 'rain' ? 400 : 1000;
+                
+                noise.connect(filter);
+                filter.connect(gainNode);
+                noise.start();
+                nodesRef.current.push(noise);
+            } 
+            else if (type === 'cafe') {
+                const bufferSize = 2 * ctx!.sampleRate;
+                const buffer = ctx!.createBuffer(1, bufferSize, ctx!.sampleRate);
+                const output = buffer.getChannelData(0);
+                let lastOut = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    output[i] = (lastOut + (0.02 * white)) / 1.02;
+                    lastOut = output[i];
+                    output[i] *= 3.5; 
+                }
+                const noise = ctx!.createBufferSource();
+                noise.buffer = buffer;
+                noise.loop = true;
+                
+                const filter = ctx!.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 150; 
+                
+                noise.connect(filter);
+                filter.connect(gainNode);
+                noise.start();
+                nodesRef.current.push(noise);
+            }
+            
+            nodesRef.current.push(gainNode);
+        };
 
-  const handleVerify = () => {
-    if (inviteCode === '8888') {
-      setIsSuccess(true);
-      setTimeout(() => {
-        onSuccess();
-        // Don't close immediately, let user see animation
-        // onClose(); 
-      }, 1000);
-    } else {
-      setError('无效的邀请码。请重试。');
-    }
-  };
+        init();
 
-  const handlePurchase = () => {
-      // Mock purchase
-      setIsSuccess(true);
-      setTimeout(() => {
-        onSuccess();
-        // onClose();
-      }, 1000);
-  }
+        return () => {
+            stopAmbience();
+        };
+    }, [type, volume]); 
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm transition-opacity" 
-        onClick={onClose}
-      ></div>
-
-      {/* Modal Card */}
-      <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative overflow-hidden animate-fadeIn transform transition-all scale-100 border border-stone-200 flex flex-col md:flex-row">
-        
-        {/* Left: Benefits & Header */}
-        <div className="md:w-5/12 bg-stone-900 text-white p-8 flex flex-col relative overflow-hidden">
-           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#f59e0b 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-           <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/20 rounded-full blur-[60px] -mr-20 -mt-20"></div>
-           
-           <div className="relative z-10 flex-1">
-               <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/10">
-                   <Crown size={24} className="text-amber-400" fill="currentColor" />
-               </div>
-               <h2 className="text-3xl font-bold font-serif mb-2">Piano Theory <span className="text-amber-400">Pro</span></h2>
-               <p className="text-stone-400 text-sm mb-8">解锁所有高级课程，掌握音乐的深层逻辑。</p>
-
-               <ul className="space-y-4">
-                   <li className="flex items-start gap-3">
-                       <div className="mt-0.5 bg-amber-500/20 p-1 rounded-full"><Check size={12} className="text-amber-400" /></div>
-                       <span className="text-sm text-stone-300"><strong>Level 5 大师课程</strong> (对位法、十二音等)</span>
-                   </li>
-                   <li className="flex items-start gap-3">
-                       <div className="mt-0.5 bg-amber-500/20 p-1 rounded-full"><Check size={12} className="text-amber-400" /></div>
-                       <span className="text-sm text-stone-300"><strong>无限 AI 助教</strong> 对话与测验</span>
-                   </li>
-                   <li className="flex items-start gap-3">
-                       <div className="mt-0.5 bg-amber-500/20 p-1 rounded-full"><Check size={12} className="text-amber-400" /></div>
-                       <span className="text-sm text-stone-300"><strong>深度互动图谱</strong> Tonnetz 网络与频谱分析</span>
-                   </li>
-               </ul>
-           </div>
-           
-           <div className="relative z-10 mt-8 pt-6 border-t border-white/10 text-center">
-               <p className="text-[10px] text-stone-500 uppercase tracking-widest">Trusted by 10,000+ Musicians</p>
-           </div>
-        </div>
-
-        {/* Right: Plans & Actions */}
-        <div className="md:w-7/12 bg-white p-8 flex flex-col overflow-y-auto max-h-[80vh] custom-scrollbar relative">
-           <button 
-             onClick={onClose}
-             className="absolute top-4 right-4 bg-stone-100 hover:bg-stone-200 text-stone-500 p-2 rounded-full transition-colors z-20"
-           >
-             <X size={20} />
-           </button>
-
-           {!isSuccess ? (
-             <>
-               <h3 className="text-lg font-bold text-stone-900 mb-6">选择订阅计划</h3>
-               
-               <div className="grid gap-4 mb-8">
-                   {/* Yearly Plan */}
-                   <button 
-                      onClick={() => setSelectedPlan('yearly')}
-                      className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'yearly' ? 'border-amber-500 bg-amber-50 shadow-md' : 'border-stone-200 hover:border-stone-300'}`}
-                   >
-                       <div className="absolute -top-3 left-4 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">BEST VALUE</div>
-                       <div>
-                           <div className="font-bold text-stone-900">年度会员 (Yearly)</div>
-                           <div className="text-xs text-stone-500">¥19.00 / 月</div>
-                       </div>
-                       <div className="text-right">
-                           <div className="text-2xl font-bold text-stone-900">¥228</div>
-                           <div className="text-[10px] text-green-600 font-bold bg-green-100 px-1.5 py-0.5 rounded">省 32%</div>
-                       </div>
-                   </button>
-
-                   {/* Monthly Plan */}
-                   <button 
-                      onClick={() => setSelectedPlan('monthly')}
-                      className={`p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'monthly' ? 'border-amber-500 bg-amber-50 shadow-md' : 'border-stone-200 hover:border-stone-300'}`}
-                   >
-                       <div>
-                           <div className="font-bold text-stone-900">月度会员 (Monthly)</div>
-                           <div className="text-xs text-stone-500">灵活订阅，随时取消</div>
-                       </div>
-                       <div className="text-right">
-                           <div className="text-2xl font-bold text-stone-900">¥28</div>
-                           <div className="text-xs text-stone-400">/ 月</div>
-                       </div>
-                   </button>
-               </div>
-
-               <button 
-                  onClick={handlePurchase}
-                  className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-xl hover:bg-stone-800 active:scale-[0.98] transition-all mb-6 flex items-center justify-center gap-2"
-               >
-                   <CreditCard size={18} />
-                   立即订阅 {selectedPlan === 'yearly' ? '¥228' : '¥28'}
-               </button>
-
-               <div className="border-t border-stone-100 pt-6">
-                  <div className="flex items-center gap-2 mb-4 cursor-pointer group" onClick={() => document.getElementById('invite-input')?.focus()}>
-                      <Ticket size={16} className="text-stone-400 group-hover:text-amber-500 transition-colors" />
-                      <span className="text-xs font-bold text-stone-500 uppercase tracking-widest group-hover:text-stone-700">使用邀请码 (Redeem Code)</span>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <input 
-                      id="invite-input"
-                      type="text" 
-                      value={inviteCode}
-                      onChange={(e) => { setInviteCode(e.target.value); setError(''); }}
-                      placeholder="输入代码 (如: 8888)"
-                      className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2 text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm font-mono tracking-wider uppercase"
-                    />
-                    <button 
-                      onClick={handleVerify}
-                      disabled={!inviteCode}
-                      className="bg-white border border-stone-200 text-stone-600 px-4 rounded-xl font-bold hover:bg-stone-50 hover:text-stone-900 transition-colors text-sm disabled:opacity-50"
-                    >
-                      兑换
-                    </button>
-                  </div>
-                  {error && <p className="text-red-500 text-xs mt-2 font-medium animate-pulse">{error}</p>}
-               </div>
-             </>
-           ) : (
-             <div className="flex-1 flex flex-col items-center justify-center text-center py-8 relative z-10">
-                 {/* Animation Styles */}
-                 <style>{`
-                   @keyframes explode {
-                      0% { transform: rotate(var(--angle)) translateX(0) rotate(0deg); opacity: 0; }
-                      10% { opacity: 1; }
-                      100% { transform: rotate(var(--angle)) translateX(var(--dist)) rotate(720deg); opacity: 0; }
-                   }
-                   .animate-explode {
-                      animation: explode 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-                   }
-                   @keyframes scale-in-elastic {
-                      0% { transform: scale(0); opacity: 0; }
-                      60% { transform: scale(1.1); opacity: 1; }
-                      100% { transform: scale(1); opacity: 1; }
-                   }
-                   .animate-scale-in {
-                      animation: scale-in-elastic 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-                   }
-                   @keyframes slide-up-fade {
-                      0% { opacity: 0; transform: translateY(20px); }
-                      100% { opacity: 1; transform: translateY(0); }
-                   }
-                   .animate-slide-up-fade {
-                      animation: slide-up-fade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-                      opacity: 0; /* Ensure hidden initially */
-                   }
-                 `}</style>
-                 
-                 {/* Confetti Explosion - Delay slightly to match the crown impact */}
-                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible z-0">
-                    {Array.from({ length: 50 }).map((_, i) => {
-                        const angle = Math.random() * 360;
-                        const dist = 100 + Math.random() * 200;
-                        const size = 4 + Math.random() * 6;
-                        // Delay logic: start after icon appears
-                        const delay = 0.2 + Math.random() * 0.2;
-                        return (
-                          <div 
-                              key={i}
-                              className="absolute animate-explode"
-                              style={{
-                                  '--angle': `${angle}deg`,
-                                  '--dist': `${dist}px`,
-                                  color: ['#f59e0b', '#fbbf24', '#fcd34d', '#3b82f6', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)],
-                                  fontSize: `${size}px`,
-                                  animationDelay: `${delay}s`,
-                                  top: '50%',
-                                  left: '50%'
-                              } as React.CSSProperties}
-                          >
-                              {['★', '●', '▲', '♪', '✦', '✿'][Math.floor(Math.random() * 6)]}
-                          </div>
-                        )
-                    })}
-                 </div>
-
-                 {/* Success Icon Container */}
-                 <div className="relative mb-8 z-10">
-                     <div className="w-32 h-32 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-full flex items-center justify-center shadow-2xl shadow-amber-200 animate-scale-in relative z-20">
-                        <Crown size={64} className="text-white drop-shadow-md" strokeWidth={2.5} />
-                        <Sparkles className="absolute -top-4 -right-4 text-amber-500 animate-spin-slow" size={32} />
-                     </div>
-                     {/* Ping ring effect delayed */}
-                     <div className="absolute inset-0 bg-amber-400/30 rounded-full animate-ping opacity-0 z-10" style={{ animationDelay: '0.6s', animationDuration: '2s' }}></div>
-                 </div>
-                 
-                 {/* Text Content - Sequenced */}
-                 <div className="relative z-10">
-                     <h2 className="text-4xl font-serif font-bold text-stone-900 mb-3 animate-slide-up-fade" style={{ animationDelay: '0.4s' }}>Welcome to Pro</h2>
-                     
-                     <div className="flex justify-center mb-6 animate-slide-up-fade" style={{ animationDelay: '0.5s' }}>
-                        <div className="h-1.5 w-16 bg-amber-400 rounded-full opacity-80"></div>
-                     </div>
-                     
-                     <p className="text-stone-500 max-w-xs mx-auto text-sm leading-relaxed mb-8 animate-slide-up-fade" style={{ animationDelay: '0.6s' }}>
-                         大师之路已为您开启。<br/>
-                         现在，您可以无限畅享所有高级课程与 AI 助教服务。
-                     </p>
-                     
-                     <button 
-                       onClick={onClose} 
-                       className="bg-stone-900 text-white px-10 py-4 rounded-2xl font-bold shadow-xl hover:scale-105 active:scale-95 transition-all animate-slide-up-fade flex items-center gap-2 mx-auto group"
-                       style={{ animationDelay: '0.8s' }}
-                     >
-                         <span>开始探索</span>
-                         <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                     </button>
-                 </div>
-             </div>
-           )}
-        </div>
-      </div>
-    </div>
-  );
+    const stopAmbience = () => {
+        nodesRef.current.forEach(node => {
+            try {
+                if (node.stop) node.stop();
+                node.disconnect();
+            } catch (e) {}
+        });
+        nodesRef.current = [];
+    };
 };
 
 
-enum Tab {
-  LESSON = 'lesson',
-  TUTOR = 'tutor'
-}
-
-enum LessonTopic {
-  // Level 1: Foundations
-  CLEFS = 'clefs',
-  ACCIDENTALS = 'accidentals',
-  RHYTHM = 'rhythm',
-  RESTS = 'rests',
-  
-  // Level 2: Expression
-  TEMPO = 'tempo',
-  DYNAMICS = 'dynamics',
-  ARTICULATIONS = 'articulations',
-  SLUR = 'slur',
-  PEDALING = 'pedaling',
-  RUBATO = 'rubato',
-
-  // Level 3: Theory
-  INTERVALS = 'intervals',
-  CONSONANCE = 'consonance',
-  SCALES = 'scales',
-  KEY_SIGNATURES = 'key_signatures',
-  ENHARMONICS = 'enharmonics', 
-  MODES = 'modes',
-
-  // Level 4: Harmony & Advanced
-  CHORDS = 'chords',
-  INVERSIONS = 'inversions',
-  VOICE_LEADING = 'voice_leading',
-  SEVENTH_CHORDS = 'seventh_chords',
-  JAZZ_EXTENSIONS = 'jazz_extensions', 
-  CADENCES = 'cadences',
-  ARPEGGIOS = 'arpeggios',
-  ORNAMENTATION = 'ornamentation',
-  
-  // Rhythm Advanced
-  TRIPLETS = 'triplets', 
-  SYNCOPATION = 'syncopation',
-
-  // Level 5: Master Class
-  POLYRHYTHMS = 'polyrhythms', 
-  COUNTERPOINT = 'counterpoint',
-  NEGATIVE_HARMONY = 'negative_harmony',
-  OVERTONE_SERIES = 'overtone_series', 
-  QUARTAL_HARMONY = 'quartal_harmony', 
-  ALEATORIC = 'aleatoric', 
-  IMPRESSIONISM = 'impressionism',
-  TWELVE_TONE = 'twelve_tone',
-  BITONALITY = 'bitonality',
-  MINIMALISM = 'minimalism',
-  NEO_RIEMANNIAN = 'neo_riemannian',
-  MICROTONALITY = 'microtonality', 
-  SPECTRALISM = 'spectralism', // New
-  PITCH_CLASS_SETS = 'pitch_class_sets', // New
-}
-
 const App: React.FC = () => {
+  const [showSplash, setShowSplash] = useState(true); 
+  const [isAppVisible, setIsAppVisible] = useState(false); 
   const [activeTab, setActiveTab] = useState<Tab>(Tab.LESSON);
-  const [activeLesson, setActiveLesson] = useState<LessonTopic>(LessonTopic.CLEFS); 
+  const [activeLesson, setActiveLesson] = useState<LessonTopic>(LessonTopic.HOME); 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
   
+  // --- User & Auth State ---
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // --- Global User Settings ---
+  const [userSettings, setUserSettings] = useState<UserSettings>({
+      themeColor: 'amber',
+      customColor: '', 
+      volume: 80,
+      dailyGoal: 15,
+      ambience: 'off'
+  });
+
+  // --- Achievement System ---
+  const [achievements, setAchievements] = useState<Achievement[]>(INITIAL_ACHIEVEMENTS);
+  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  const [unlockedToast, setUnlockedToast] = useState<Achievement | null>(null);
+
   // Subscription States
   const [isPro, setIsPro] = useState<boolean>(false);
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   
   const [openGroupIndex, setOpenGroupIndex] = useState<number | null>(0);
 
-  // Check Local Storage for Pro status
+  // Activate Ambience
+  useAmbience(userSettings.ambience, userSettings.volume / 100);
+
+  // Load User Data
   useEffect(() => {
-    const savedProStatus = localStorage.getItem('pianoTheoryPro');
-    if (savedProStatus === 'true') {
-      setIsPro(true);
-    }
+    const storedUser = localStorage.getItem('pt_user');
+    if (storedUser) setUser(JSON.parse(storedUser));
+    
+    const savedPro = localStorage.getItem('pianoTheoryPro');
+    if (savedPro === 'true') setIsPro(true);
+
+    const savedProgress = localStorage.getItem('pt_progress');
+    if (savedProgress) setCompletedLessons(JSON.parse(savedProgress));
+
+    const savedAchievements = localStorage.getItem('pt_achievements');
+    if (savedAchievements) setAchievements(JSON.parse(savedAchievements));
   }, []);
+
+  // Save Progress & Check Achievements
+  useEffect(() => {
+      localStorage.setItem('pt_progress', JSON.stringify(completedLessons));
+      localStorage.setItem('pt_achievements', JSON.stringify(achievements));
+      
+      // Check logic
+      const checkUnlock = (id: string, condition: boolean) => {
+          setAchievements(prev => {
+              const target = prev.find(a => a.id === id);
+              if (target && !target.unlocked && condition) {
+                  setUnlockedToast({ ...target, unlocked: true });
+                  return prev.map(a => a.id === id ? { ...a, unlocked: true, progress: a.maxProgress } : a);
+              }
+              return prev;
+          });
+      };
+
+      if (completedLessons.length >= 1) checkUnlock('first_lesson', true);
+      if (completedLessons.length >= 5) checkUnlock('scholar', true);
+      if (isPro) checkUnlock('pro_member', true);
+      
+      const hour = new Date().getHours();
+      if (hour >= 22 || hour < 4) checkUnlock('night_owl', true);
+
+  }, [completedLessons, isPro]);
+
+
+  const handleLogin = (profile: UserProfile) => {
+      setUser(profile);
+      localStorage.setItem('pt_user', JSON.stringify(profile));
+      setShowAuthModal(false);
+  };
+
+  const handleLogout = () => {
+      setUser(null);
+      setIsPro(false);
+      localStorage.removeItem('pt_user');
+      localStorage.removeItem('pianoTheoryPro');
+      setUserSettings(prev => ({ ...prev, themeColor: 'amber', customColor: '' })); 
+      setActiveLesson(LessonTopic.HOME);
+  };
 
   const handleProSuccess = () => {
     setIsPro(true);
     localStorage.setItem('pianoTheoryPro', 'true');
+  };
+
+  const checkAccess = (isProFeature: boolean) => {
+      if (!user) {
+          setShowAuthModal(true);
+          return false;
+      }
+      if (isProFeature && !isPro) {
+          setShowSubscribeModal(true);
+          return false;
+      }
+      return true;
   };
 
   useEffect(() => {
@@ -449,98 +697,188 @@ const App: React.FC = () => {
 
   const lessons = [
     { 
-      title: "阶段一：识谱与基础 (Foundations)",
-      description: "零基础起步，读懂乐谱地图",
+      title: "阶段一：识谱与节奏基础 (Foundations)",
+      description: "读谱核心技能与节奏律动",
       items: [
-        { id: LessonTopic.CLEFS, icon: AlignCenterVertical, label: '谱号 (Clefs)', desc: '高音与低音的定位' },
-        { id: LessonTopic.ACCIDENTALS, icon: ArrowUp, label: '升降号 (Accidentals)', desc: '黑键的秘密' },
-        { id: LessonTopic.RHYTHM, icon: Clock, label: '节拍 (Rhythm)', desc: '4/4 与 6/8 的律动' },
+        { id: LessonTopic.CLEFS, icon: AlignCenterVertical, label: '谱号 (Clefs)', desc: '乐谱的GPS定位' },
+        { id: LessonTopic.ACCIDENTALS, icon: ArrowUp, label: '升降号 (Accidentals)', desc: '黑键的语法' },
+        { id: LessonTopic.RHYTHM, icon: Clock, label: '拍号 (Time Signatures)', desc: '4/4 与 6/8' },
         { id: LessonTopic.RESTS, icon: PauseCircle, label: '休止符 (Rests)', desc: '沉默的艺术' },
+        { id: LessonTopic.TRIPLETS, icon: Music3, label: '三连音 (Triplets)', desc: '一拍分三份' },
+        { id: LessonTopic.SYNCOPATION, icon: MoveRight, label: '切分音 (Syncopation)', desc: '反拍的律动' },
+        { id: LessonTopic.POLYRHYTHMS, icon: Zap, label: '复合节奏 (Polyrhythms)', desc: '3对4的数学舞蹈' },
+        { id: LessonTopic.SIGHT_READING, icon: Eye, label: '视奏入门 (Sight Reading)', desc: '即时读谱能力' },
       ]
     },
+    // ... Other lessons
     { 
-      title: "阶段二：表情与呼吸 (Expression)",
-      description: "让演奏不再像机器人",
+      title: "阶段二：音高与调性 (Pitch & Tonality)",
+      description: "构建音乐的音高逻辑",
       items: [
-        { id: LessonTopic.TEMPO, icon: Gauge, label: '速度 (Tempo)', desc: 'BPM 与意大利术语' },
-        { id: LessonTopic.DYNAMICS, icon: Volume2, label: '强弱 (Dynamics)', desc: '力度的色彩变化' },
-        { id: LessonTopic.ARTICULATIONS, icon: MousePointerClick, label: '运音法 (Articulations)', desc: '跳音、重音与保持音' },
-        { id: LessonTopic.SLUR, icon: Activity, label: '连音线 (Slur)', desc: '连奏与乐句呼吸' },
-        { id: LessonTopic.PEDALING, icon: Wind, label: '踏板 (Pedaling)', desc: '钢琴的灵魂呼吸' },
-        { id: LessonTopic.RUBATO, icon: Hourglass, label: '弹性速度 (Rubato)', desc: '时间的魔法' },
-      ]
-    },
-    { 
-      title: "阶段三：音高与调性 (Pitch & Theory)",
-      description: "理解音乐的物理与逻辑",
-      items: [
-        { id: LessonTopic.INTERVALS, icon: Ruler, label: '音程 (Intervals)', desc: '音符之间的距离' },
-        { id: LessonTopic.CONSONANCE, icon: Ear, label: '协和感 (Consonance)', desc: '为什么有些音好听？' },
-        { id: LessonTopic.SCALES, icon: Hash, label: '音阶 (Scales)', desc: '全全半的排列智慧' },
+        { id: LessonTopic.INTERVALS, icon: Ruler, label: '音程 (Intervals)', desc: '音符的距离' },
+        { id: LessonTopic.CONSONANCE, icon: Ear, label: '协和感 (Consonance)', desc: '和谐与冲突' },
+        { id: LessonTopic.SCALES, icon: Hash, label: '音阶 (Scales)', desc: '全全半的排列' },
         { id: LessonTopic.KEY_SIGNATURES, icon: Disc, label: '调号 (Key Signatures)', desc: '五度圈的奥秘' },
-        { id: LessonTopic.ENHARMONICS, icon: ArrowLeftRight, label: '同音异名 (Enharmonics)', desc: '升C 还是 降D？' },
+        { id: LessonTopic.ENHARMONICS, icon: ArrowLeftRight, label: '同音异名 (Enharmonics)', desc: '拼写规则' },
         { id: LessonTopic.MODES, icon: Palette, label: '调式 (Modes)', desc: '多利安与利底亚色彩' },
+        { id: LessonTopic.EAR_TRAINING, icon: Radio, label: '练耳基础 (Ear Training)', desc: '听辨音程与和弦' },
+      ]
+    },
+    { 
+      title: "阶段三：表情与演奏法 (Expression)",
+      description: "赋予音乐情感与呼吸",
+      items: [
+        { id: LessonTopic.TEMPO, icon: Gauge, label: '速度 (Tempo)', desc: 'BPM 与术语' },
+        { id: LessonTopic.DYNAMICS, icon: Volume2, label: '强弱 (Dynamics)', desc: '力度的色彩' },
+        { id: LessonTopic.SLUR, icon: Activity, label: '连音线 (Slur)', desc: '乐句呼吸' },
+        { id: LessonTopic.ARTICULATIONS, icon: MousePointerClick, label: '运音法 (Articulations)', desc: '跳音与保持音' },
+        { id: LessonTopic.PEDALING, icon: Wind, label: '踏板 (Pedaling)', desc: '钢琴的灵魂' },
+        { id: LessonTopic.RUBATO, icon: Hourglass, label: '弹性速度 (Rubato)', desc: '时间的伸缩' },
+        { id: LessonTopic.ORNAMENTATION, icon: Flower2, label: '装饰音 (Ornamentation)', desc: '颤音与回音' },
       ]
     },
     { 
       title: "阶段四：和声与织体 (Harmony)",
-      description: "构建丰富立体的声音",
+      description: "纵向叠置与横向编织",
       items: [
-        { id: LessonTopic.CHORDS, icon: LayoutGrid, label: '和弦 (Chords)', desc: '大小三和弦色彩' },
-        { id: LessonTopic.INVERSIONS, icon: RefreshCw, label: '转位 (Inversions)', desc: '平滑的和声连接' },
-        { id: LessonTopic.VOICE_LEADING, icon: Route, label: '声部连接 (Voice Leading)', desc: '懒惰是美德' },
-        { id: LessonTopic.SEVENTH_CHORDS, icon: Layers, label: '七和弦 (7th Chords)', desc: '爵士乐的基石' },
-        { id: LessonTopic.JAZZ_EXTENSIONS, icon: ZapIcon, label: '爵士扩展音 (Extensions)', desc: '9/11/13和弦的色彩' },
-        { id: LessonTopic.CADENCES, icon: StopCircle, label: '终止式 (Cadences)', desc: '音乐的标点符号' },
-        { id: LessonTopic.ARPEGGIOS, icon: Waves, label: '琶音 (Arpeggios)', desc: '流动的分解和弦' },
-        { id: LessonTopic.TRIPLETS, icon: Music3, label: '三连音 (Triplets)', desc: '一拍分三份' },
-        { id: LessonTopic.SYNCOPATION, icon: MoveRight, label: '切分音 (Syncopation)', desc: '反拍的摇摆感' },
-        { id: LessonTopic.ORNAMENTATION, icon: Flower2, label: '装饰音 (Ornamentation)', desc: '音乐的珠宝' },
+        { id: LessonTopic.CHORDS, icon: LayoutGrid, label: '三和弦 (Triads)', desc: '大/小/增/减' },
+        { id: LessonTopic.INVERSIONS, icon: RefreshCw, label: '转位 (Inversions)', desc: '和弦变形' },
+        { id: LessonTopic.ARPEGGIOS, icon: Waves, label: '琶音 (Arpeggios)', desc: '流动的和弦' },
+        { id: LessonTopic.SEVENTH_CHORDS, icon: Layers, label: '七和弦 (7th Chords)', desc: '丰富的色彩' },
+        { id: LessonTopic.VOICE_LEADING, icon: Route, label: '声部连接 (Voice Leading)', desc: '最近路径原则' },
+        { id: LessonTopic.CADENCES, icon: StopCircle, label: '终止式 (Cadences)', desc: '音乐的标点' },
+        { id: LessonTopic.COUNTERPOINT, icon: GitMerge, label: '对位法 (Counterpoint)', desc: '旋律的对话' },
+      ]
+    },
+    {
+      title: "阶段五：曲式与分析 (Form)",
+      description: "宏观结构与设计图",
+      isPro: true,
+      items: [
+        { id: LessonTopic.FORM_BINARY_TERNARY, icon: SplitSquareHorizontal, label: '二部/三部曲式', desc: 'A-B 与 A-B-A' },
+        { id: LessonTopic.FORM_SONATA, icon: BookOpen, label: '奏鸣曲式 (Sonata)', desc: '呈示-展开-再现' },
+        { id: LessonTopic.FORM_RONDO, icon: RefreshCw, label: '回旋曲式 (Rondo)', desc: 'A-B-A-C-A' },
+      ]
+    },
+    {
+      title: "阶段六：风格与流派 (Styles)",
+      description: "从古典到爵士流行",
+      isPro: true,
+      items: [
+        { id: LessonTopic.STYLE_JAZZ_BASIC, icon: Music, label: '爵士基础 (Jazz Basics)', desc: 'Swing 与 II-V-I' },
+        { id: LessonTopic.STYLE_POP, icon: Star, label: '流行伴奏 (Pop)', desc: '和弦织体模式' },
+        { id: LessonTopic.JAZZ_EXTENSIONS, icon: ZapIcon, label: '爵士扩展音 (Extensions)', desc: '9/11/13和弦' },
       ]
     },
     { 
-      title: "阶段五：大师之路 (Master Class)",
-      description: "探索现代音乐的深层逻辑",
+      title: "阶段七：现代音乐 (Modernism)",
+      description: "打破传统，探索声音极限",
       isPro: true, 
       items: [
-        { id: LessonTopic.SPECTRALISM, icon: Radio, label: '频谱主义 (Spectralism)', desc: '音色即和声的物理本质' },
-        { id: LessonTopic.PITCH_CLASS_SETS, icon: ClockIcon, label: '音级集合 (Pitch Class Sets)', desc: '后调性音乐的数学语言' },
-        { id: LessonTopic.NEO_RIEMANNIAN, icon: Network, label: '新黎曼理论 (Tonnetz)', desc: '和弦的几何变换 (PLR)' },
-        { id: LessonTopic.MICROTONALITY, icon: Divide, label: '微分音 (Microtonality)', desc: '打破十二平均律的限制' },
-        { id: LessonTopic.NEGATIVE_HARMONY, icon: FlipHorizontal, label: '负面和声 (Negative Harmony)', desc: '音乐的镜像宇宙' },
-        { id: LessonTopic.OVERTONE_SERIES, icon: AudioWaveform, label: '泛音列 (Overtone Series)', desc: '音色的物理本源' },
-        { id: LessonTopic.QUARTAL_HARMONY, icon: AlignVerticalSpaceAround, label: '四度和声 (Quartal)', desc: '现代爵士的空灵感' },
-        { id: LessonTopic.POLYRHYTHMS, icon: Zap, label: '复合节奏 (Polyrhythms)', desc: '3对4的数学舞蹈' },
-        { id: LessonTopic.COUNTERPOINT, icon: GitMerge, label: '对位法 (Counterpoint)', desc: '旋律的独立与对话' },
-        { id: LessonTopic.ALEATORIC, icon: Dices, label: '偶然音乐 (Aleatoric)', desc: '掷骰子决定的音乐' },
-        { id: LessonTopic.IMPRESSIONISM, icon: CloudFog, label: '印象主义 (Impressionism)', desc: '全音阶的朦胧色彩' },
-        { id: LessonTopic.TWELVE_TONE, icon: Calculator, label: '十二音序列 (12-Tone)', desc: '勋伯格的数学游戏' },
-        { id: LessonTopic.BITONALITY, icon: SplitSquareHorizontal, label: '双调性 (Bitonality)', desc: '斯特拉文斯基的冲突' },
-        { id: LessonTopic.MINIMALISM, icon: Infinity, label: '极简主义 (Minimalism)', desc: '相位的移动与微变' },
+        { id: LessonTopic.IMPRESSIONISM, icon: CloudFog, label: '印象主义 (Impressionism)', desc: '全音阶色彩' },
+        { id: LessonTopic.TWELVE_TONE, icon: Calculator, label: '十二音序列 (12-Tone)', desc: '勋伯格的矩阵' },
+        { id: LessonTopic.PITCH_CLASS_SETS, icon: ClockIcon, label: '音级集合 (Set Theory)', desc: '[0,4,7] 数学分析' },
+        { id: LessonTopic.MICROTONALITY, icon: Divide, label: '微分音 (Microtonality)', desc: '半音之间的缝隙' },
+        { id: LessonTopic.SPECTRALISM, icon: AudioWaveform, label: '频谱主义 (Spectralism)', desc: '泛音列的微观世界' },
+        { id: LessonTopic.MINIMALISM, icon: Infinity, label: '极简主义 (Minimalism)', desc: '相位移动' },
+        { id: LessonTopic.BITONALITY, icon: SplitSquareHorizontal, label: '双调性 (Bitonality)', desc: '调性的碰撞' },
+        { id: LessonTopic.ALEATORIC, icon: Dices, label: '偶然音乐 (Aleatoric)', desc: '随机与概率' },
+        { id: LessonTopic.NEGATIVE_HARMONY, icon: FlipHorizontal, label: '负面和声 (Negative)', desc: '调性的镜像' },
+        { id: LessonTopic.NEO_RIEMANNIAN, icon: Network, label: '新黎曼理论 (Tonnetz)', desc: 'PLR 变换' },
+        { id: LessonTopic.QUARTAL_HARMONY, icon: AlignVerticalSpaceAround, label: '四度和声 (Quartal)', desc: '悬浮的空间感' },
+        { id: LessonTopic.OVERTONE_SERIES, icon: Radar, label: '泛音列 (Overtones)', desc: '物理声学基础' },
       ]
     }
   ];
+
+  // --- Dynamic Styling based on Theme ---
+  const getThemeClass = (type: 'text' | 'bg' | 'border' | 'gradient' | 'hoverBg' | 'activeBg' | 'sidebarBg') => {
+      const { themeColor, customColor } = userSettings;
+      
+      // Handle Custom Color
+      if (themeColor === 'custom' && customColor) {
+          // Dynamic styles can be tricky with Tailwind classes without arbitrary values.
+          // We will return generic base classes and apply colors via style prop where needed, 
+          // but for this helper, we'll use arbitrary values where possible.
+          // Note: Full hex support requires standard format.
+          const hex = customColor;
+          
+          if (type === 'text') return `text-[${hex}]`; // Arbitrary value
+          if (type === 'bg') return `bg-[${hex}]`;
+          if (type === 'border') return `border-[${hex}]`;
+          if (type === 'gradient') return `from-[${hex}] to-[${hex}]/80`; // Approximate
+          if (type === 'hoverBg') return `hover:bg-[${hex}]/10`; // Opacity modifier
+          if (type === 'activeBg') return `bg-[${hex}]/20`;
+          if (type === 'sidebarBg') return `bg-white`; 
+      }
+
+      const map: Record<string, any> = {
+          'amber': { text: 'text-amber-600', bg: 'bg-amber-500', border: 'border-amber-200', gradient: 'from-amber-500 to-orange-400', hoverBg: 'hover:bg-amber-50', activeBg: 'bg-amber-100', sidebarBg: 'bg-white' },
+          'rose': { text: 'text-rose-600', bg: 'bg-rose-500', border: 'border-rose-200', gradient: 'from-rose-500 to-pink-400', hoverBg: 'hover:bg-rose-50', activeBg: 'bg-rose-100', sidebarBg: 'bg-white' },
+          'sky': { text: 'text-sky-600', bg: 'bg-sky-500', border: 'border-sky-200', gradient: 'from-sky-500 to-blue-400', hoverBg: 'hover:bg-sky-50', activeBg: 'bg-sky-100', sidebarBg: 'bg-white' },
+          'emerald': { text: 'text-emerald-600', bg: 'bg-emerald-500', border: 'border-emerald-200', gradient: 'from-emerald-500 to-teal-400', hoverBg: 'hover:bg-emerald-50', activeBg: 'bg-emerald-100', sidebarBg: 'bg-white' },
+          'violet': { text: 'text-violet-600', bg: 'bg-violet-500', border: 'border-violet-200', gradient: 'from-violet-500 to-purple-400', hoverBg: 'hover:bg-violet-50', activeBg: 'bg-violet-100', sidebarBg: 'bg-white' },
+      };
+      const theme = map[themeColor] || map['amber'];
+      return theme[type];
+  };
 
   const toggleGroup = (index: number) => {
     setOpenGroupIndex(openGroupIndex === index ? null : index);
   };
 
-  const handleLessonSelect = (lessonId: LessonTopic, isProLesson: boolean) => {
-      if (isProLesson && !isPro) {
-          setShowSubscribeModal(true);
-          return;
+  const handleLessonSelect = (lessonId: LessonTopic | string, isProLesson: boolean) => {
+      // 1. Check Login
+      if (!checkAccess(false)) return;
+
+      // 2. Check Pro
+      if (!checkAccess(isProLesson)) return;
+
+      // 3. Mark Progress
+      if (!completedLessons.includes(lessonId)) {
+          setCompletedLessons(prev => [...prev, lessonId]);
       }
-      setActiveLesson(lessonId);
+
+      setActiveLesson(lessonId as LessonTopic);
       setIsMobileMenuOpen(false);
   };
 
   const renderLessonContent = () => {
+    // Pass user settings to StartPage
+    if (activeLesson === LessonTopic.HOME) {
+        return <StartPage 
+            onNavigate={handleLessonSelect} 
+            lessons={lessons} 
+            isPro={isPro} 
+            onUpgrade={() => setShowSubscribeModal(true)} 
+            userSettings={userSettings}
+            onUpdateSettings={setUserSettings}
+            user={user}
+            achievements={achievements}
+            onLogout={handleLogout}
+        />;
+    }
+
+    // Phase 1
+    if (activeLesson === LessonTopic.SIGHT_READING) return <GenericLesson level="Level 1" title="视奏入门" subtitle="Sight Reading" sections={[{ title: "看在前面", content: "眼睛永远走在手前面。", icon: Eye }]} />
+    if (activeLesson === LessonTopic.EAR_TRAINING) return <GenericLesson level="Level 2" title="练耳基础" subtitle="Ear Training" sections={[{ title: "音程色彩", content: "分辨大三度（快乐）和小三度（悲伤）。", icon: Mic2 }]} />
+
+    // Phase 5: Forms
+    if (activeLesson === LessonTopic.FORM_BINARY_TERNARY) return <FormBinaryTernaryLesson />;
+    if (activeLesson === LessonTopic.FORM_SONATA) return <FormSonataLesson />;
+    if (activeLesson === LessonTopic.FORM_RONDO) return <FormRondoLesson />;
+
+    // Phase 6: Styles
+    if (activeLesson === LessonTopic.STYLE_JAZZ_BASIC) return <JazzBasicsLesson />;
+    if (activeLesson === LessonTopic.STYLE_POP) return <PopStylesLesson />;
+
+    // Standard Components
     return (
       <div key={activeLesson} className="max-w-5xl mx-auto w-full pb-20 relative z-10">
         {activeLesson === LessonTopic.SLUR && (
           <div className="space-y-8">
             <header className="mb-10 animate-slideUp">
-               <div className="inline-block px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold tracking-wider uppercase mb-3">Level 2 - Expression</div>
+               <div className={`inline-block px-3 py-1 ${getThemeClass('activeBg')} ${getThemeClass('text')} rounded-full text-xs font-bold tracking-wider uppercase mb-3`}>Level 3 - Expression</div>
                <h2 className="text-4xl md:text-5xl font-bold serif text-stone-900 mb-6 leading-tight">
                  连音线 <span className="text-stone-300 font-light">|</span> Slur
                </h2>
@@ -548,43 +886,11 @@ const App: React.FC = () => {
                  学会用手指“歌唱”。连音线不仅仅是一个符号，它代表了音乐如水流般的连贯性与乐句的自然呼吸。
                </p>
             </header>
-            
-            <div className="animate-slideUp stagger-1">
-              <Explanation />
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6 animate-slideUp stagger-2 mt-8">
-              <div className="bg-gradient-to-br from-blue-50/80 to-white p-8 rounded-3xl border border-blue-100/50 card-hover group">
-                <h3 className="font-bold text-blue-900 flex items-center mb-4 text-xl">
-                  <div className="bg-white p-2 rounded-xl mr-3 shadow-sm text-blue-600 group-hover:scale-110 transition-transform">
-                    <Music size={22}/>
-                  </div>
-                  演奏技巧
-                </h3>
-                <p className="text-blue-900/70 leading-relaxed">
-                  想象你的手指在键盘上“行走”而不是“跳跃”。力量从一个指尖平滑地传递到下一个指尖，就像接力跑一样，声音之间不能有缝隙。
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-amber-50/80 to-white p-8 rounded-3xl border border-amber-100/50 card-hover group">
-                <h3 className="font-bold text-amber-900 flex items-center mb-4 text-xl">
-                  <div className="bg-white p-2 rounded-xl mr-3 shadow-sm text-amber-600 group-hover:scale-110 transition-transform">
-                    <Sparkles size={22}/>
-                  </div>
-                  乐句感 (Phrasing)
-                </h3>
-                <p className="text-amber-900/70 leading-relaxed">
-                  连音线勾勒出音乐的句子。就像说话需要换气，连音线的结束通常意味着一个乐思的自然停顿，此时手腕应柔和地“提起”呼吸。
-                </p>
-              </div>
-            </div>
-
+            <div className="animate-slideUp stagger-1"><Explanation /></div>
             <section className="mt-16 animate-slideUp stagger-3">
                <div className="flex items-center gap-6 mb-8">
                  <div className="h-px bg-stone-200 flex-1"></div>
-                 <h2 className="text-2xl font-bold serif text-stone-800 flex items-center gap-2">
-                   <Activity size={24} className="text-amber-500" />
-                   易混淆概念辨析
-                 </h2>
+                 <h2 className="text-2xl font-bold serif text-stone-800 flex items-center gap-2"><Activity size={24} className={getThemeClass('text')} /> 易混淆概念辨析</h2>
                  <div className="h-px bg-stone-200 flex-1"></div>
                </div>
                <SlurVsTie />
@@ -592,73 +898,95 @@ const App: React.FC = () => {
           </div>
         )}
         
-        {/* Foundations */}
+        {/* Phase 1 */}
         {activeLesson === LessonTopic.CLEFS && <ClefsLesson />}
         {activeLesson === LessonTopic.ACCIDENTALS && <AccidentalsLesson />}
         {activeLesson === LessonTopic.RHYTHM && <TimeSignatureLesson />}
         {activeLesson === LessonTopic.RESTS && <RestsLesson />}
-        
-        {/* Expression */}
-        {activeLesson === LessonTopic.TEMPO && <TempoLesson />}
         {activeLesson === LessonTopic.TRIPLETS && <TripletsLesson />}
-        {activeLesson === LessonTopic.ARTICULATIONS && <ArticulationsLesson />}
-        {activeLesson === LessonTopic.RUBATO && <RubatoLesson />}
         {activeLesson === LessonTopic.SYNCOPATION && <SyncopationLesson />}
-        {activeLesson === LessonTopic.DYNAMICS && <DynamicsLesson />}
-        {activeLesson === LessonTopic.PEDALING && <PedalingLesson />}
+        {activeLesson === LessonTopic.POLYRHYTHMS && <PolyrhythmsLesson />}
         
-        {/* Theory */}
+        {/* Phase 2 */}
         {activeLesson === LessonTopic.INTERVALS && <IntervalsLesson />}
         {activeLesson === LessonTopic.CONSONANCE && <ConsonanceLesson />}
         {activeLesson === LessonTopic.SCALES && <ScalesLesson />}
+        {activeLesson === LessonTopic.KEY_SIGNATURES && <KeySignaturesLesson />}
         {activeLesson === LessonTopic.ENHARMONICS && <EnharmonicsLesson />}
         {activeLesson === LessonTopic.MODES && <ModesLesson />}
-        {activeLesson === LessonTopic.KEY_SIGNATURES && <KeySignaturesLesson />}
         
-        {/* Advanced Harmony */}
-        {activeLesson === LessonTopic.CHORDS && <ChordsLesson />}
-        {activeLesson === LessonTopic.VOICE_LEADING && <VoiceLeadingLesson />}
-        {activeLesson === LessonTopic.SEVENTH_CHORDS && <SeventhChordsLesson />}
-        {activeLesson === LessonTopic.JAZZ_EXTENSIONS && <JazzExtensionsLesson />}
-        {activeLesson === LessonTopic.CADENCES && <CadencesLesson />}
-        {activeLesson === LessonTopic.INVERSIONS && <InversionsLesson />}
-        {activeLesson === LessonTopic.ARPEGGIOS && <ArpeggiosLesson />}
+        {/* Phase 3 */}
+        {activeLesson === LessonTopic.TEMPO && <TempoLesson />}
+        {activeLesson === LessonTopic.DYNAMICS && <DynamicsLesson />}
+        {activeLesson === LessonTopic.ARTICULATIONS && <ArticulationsLesson />}
+        {activeLesson === LessonTopic.PEDALING && <PedalingLesson />}
+        {activeLesson === LessonTopic.RUBATO && <RubatoLesson />}
         {activeLesson === LessonTopic.ORNAMENTATION && <OrnamentationLesson />}
         
-        {/* Master Class */}
-        {activeLesson === LessonTopic.NEGATIVE_HARMONY && <NegativeHarmonyLesson />}
-        {activeLesson === LessonTopic.OVERTONE_SERIES && <OvertoneSeriesLesson />}
-        {activeLesson === LessonTopic.QUARTAL_HARMONY && <QuartalHarmonyLesson />}
-        {activeLesson === LessonTopic.POLYRHYTHMS && <PolyrhythmsLesson />}
+        {/* Phase 4 */}
+        {activeLesson === LessonTopic.CHORDS && <ChordsLesson />}
+        {activeLesson === LessonTopic.INVERSIONS && <InversionsLesson />}
+        {activeLesson === LessonTopic.ARPEGGIOS && <ArpeggiosLesson />}
+        {activeLesson === LessonTopic.SEVENTH_CHORDS && <SeventhChordsLesson />}
+        {activeLesson === LessonTopic.VOICE_LEADING && <VoiceLeadingLesson />}
+        {activeLesson === LessonTopic.CADENCES && <CadencesLesson />}
         {activeLesson === LessonTopic.COUNTERPOINT && <CounterpointLesson />}
-        {activeLesson === LessonTopic.ALEATORIC && <AleatoricLesson />}
-        {activeLesson === LessonTopic.TWELVE_TONE && <TwelveToneLesson />}
-        {activeLesson === LessonTopic.BITONALITY && <BitonalityLesson />}
-        {activeLesson === LessonTopic.MINIMALISM && <MinimalismLesson />}
+        
+        {/* Phase 6 */}
+        {activeLesson === LessonTopic.JAZZ_EXTENSIONS && <JazzExtensionsLesson />}
+        
+        {/* Phase 7 */}
         {activeLesson === LessonTopic.IMPRESSIONISM && <ImpressionismLesson />}
-        {activeLesson === LessonTopic.NEO_RIEMANNIAN && <NeoRiemannianLesson />}
+        {activeLesson === LessonTopic.TWELVE_TONE && <TwelveToneLesson />}
+        {activeLesson === LessonTopic.PITCH_CLASS_SETS && <PitchClassSetLesson />}
         {activeLesson === LessonTopic.MICROTONALITY && <MicrotonalityLesson />}
         {activeLesson === LessonTopic.SPECTRALISM && <SpectralismLesson />}
-        {activeLesson === LessonTopic.PITCH_CLASS_SETS && <PitchClassSetLesson />}
+        {activeLesson === LessonTopic.MINIMALISM && <MinimalismLesson />}
+        {activeLesson === LessonTopic.BITONALITY && <BitonalityLesson />}
+        {activeLesson === LessonTopic.ALEATORIC && <AleatoricLesson />}
+        {activeLesson === LessonTopic.NEGATIVE_HARMONY && <NegativeHarmonyLesson />}
+        {activeLesson === LessonTopic.NEO_RIEMANNIAN && <NeoRiemannianLesson />}
+        {activeLesson === LessonTopic.QUARTAL_HARMONY && <QuartalHarmonyLesson />}
+        {activeLesson === LessonTopic.OVERTONE_SERIES && <OvertoneSeriesLesson />}
       </div>
     );
   };
 
   return (
-    <div className="h-screen flex flex-col md:flex-row bg-[#FAFAF9] overflow-hidden font-sans">
-      {/* Subscription Modal */}
+    <>
+    <style>{`
+      .sidebar-open-anim { transform: translateX(0); transition: transform 600ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+      .sidebar-closed-anim { transform: translateX(-100%); transition: transform 500ms cubic-bezier(0.6, -0.28, 0.735, 0.045); }
+      @media (min-width: 768px) { .sidebar-desktop-reset { transform: translateX(0) !important; transition: none !important; } }
+    `}</style>
+    {showSplash && (
+      <SplashScreen 
+        onStartExiting={() => setIsAppVisible(true)} 
+        onFinish={() => setShowSplash(false)} 
+      />
+    )}
+    <div className={`h-screen flex flex-col md:flex-row bg-[#FAFAF9] overflow-hidden font-sans transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isAppVisible ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-95 blur-sm'}`}>
+      
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onLogin={handleLogin}
+      />
+
+      <AchievementToast achievement={unlockedToast} onClose={() => setUnlockedToast(null)} />
+
       <SubscriptionModal 
         isOpen={showSubscribeModal} 
         onClose={() => setShowSubscribeModal(false)}
         onSuccess={handleProSuccess}
+        themeColor={userSettings.themeColor}
+        customColor={userSettings.customColor}
       />
 
       {/* Mobile Header */}
       <div className="md:hidden glass px-4 py-3 flex justify-between items-center z-50 sticky top-0 border-b border-stone-200/50">
          <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-tr from-amber-500 to-orange-400 p-1.5 rounded-lg text-white shadow-md shadow-amber-500/20">
-              <Music size={18} />
-            </div>
+            <div className={`bg-gradient-to-tr ${getThemeClass('gradient')} p-1.5 rounded-lg text-white shadow-md transition-colors duration-500`}><Music size={18} /></div>
             <span className="font-bold serif text-stone-900 tracking-tight">Piano Theory</span>
          </div>
          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-stone-600 hover:bg-stone-100 rounded-lg active:scale-95 transition-transform">
@@ -668,30 +996,33 @@ const App: React.FC = () => {
 
       {/* Sidebar Navigation */}
       <aside className={`
-        fixed md:static inset-y-0 left-0 z-40 w-80 bg-white/95 md:bg-white border-r border-stone-200/60 flex flex-col backdrop-blur-xl md:backdrop-blur-none
-        transform transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        fixed md:static inset-y-0 left-0 z-40 w-80 ${getThemeClass('sidebarBg')} border-r border-stone-200/60 flex flex-col backdrop-blur-xl md:backdrop-blur-none shadow-2xl md:shadow-none
+        ${isMobileMenuOpen ? 'sidebar-open-anim' : 'sidebar-closed-anim'}
+        sidebar-desktop-reset transition-colors duration-500
       `}>
-        <div className="p-8 hidden md:flex items-center gap-3 mb-2">
-           <div className="bg-gradient-to-tr from-amber-500 to-orange-400 p-3 rounded-xl shadow-lg shadow-amber-500/30 text-white transform hover:rotate-3 transition-transform duration-300">
+        <div 
+            onClick={() => { setActiveLesson(LessonTopic.HOME); setIsMobileMenuOpen(false); }}
+            className="p-8 hidden md:flex items-center gap-3 mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+        >
+           <div className={`bg-gradient-to-tr ${getThemeClass('gradient')} p-3 rounded-xl shadow-lg text-white transform hover:rotate-3 transition-transform duration-300`}>
              <Music size={26} strokeWidth={2.5} />
            </div>
            <div>
-             <h1 className="text-lg font-bold serif tracking-wide text-stone-900 leading-none">Piano Theory</h1>
-             <p className="text-stone-400 text-sm uppercase tracking-[0.2em] font-bold mt-1.5 ml-0.5">Interactive Guide</p>
+             <h1 className={`text-lg font-bold serif tracking-wide leading-none text-stone-900`}>Piano Theory</h1>
+             <p className={`text-sm uppercase tracking-[0.2em] font-bold mt-1.5 ml-0.5 text-stone-400`}>Interactive Guide</p>
            </div>
         </div>
 
         {/* Tab Switcher */}
         <div className="px-6 py-2">
-          <div className="bg-stone-100/80 p-1.5 rounded-2xl flex font-medium text-sm relative">
+          <div className={`bg-stone-100/80 p-1.5 rounded-2xl flex font-medium text-sm relative`}>
              <button
                onClick={() => { setActiveTab(Tab.LESSON); setIsMobileMenuOpen(false); }}
                className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 z-10 relative ${
                  activeTab === Tab.LESSON 
-                  ? 'bg-white text-stone-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)] font-bold' 
-                  : 'text-stone-500 hover:text-stone-700 hover:bg-white/50'
-               }`}
+                 ? 'bg-white text-stone-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)]' 
+                 : 'text-stone-500 hover:text-stone-700 hover:bg-white/50'
+               } ${activeTab === Tab.LESSON ? 'font-bold' : ''}`}
              >
                <BookOpen size={16} /> 课程
              </button>
@@ -699,9 +1030,9 @@ const App: React.FC = () => {
                onClick={() => { setActiveTab(Tab.TUTOR); setIsMobileMenuOpen(false); }}
                className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 z-10 relative ${
                  activeTab === Tab.TUTOR 
-                  ? 'bg-white text-stone-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)] font-bold' 
-                  : 'text-stone-500 hover:text-stone-700 hover:bg-white/50'
-               }`}
+                 ? 'bg-white text-stone-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)]' 
+                 : 'text-stone-500 hover:text-stone-700 hover:bg-white/50'
+               } ${activeTab === Tab.TUTOR ? 'font-bold' : ''}`}
              >
                <MessageCircle size={16} /> 助教
              </button>
@@ -711,73 +1042,71 @@ const App: React.FC = () => {
         {/* Lesson List */}
         {activeTab === Tab.LESSON && (
           <nav className="flex-1 overflow-y-auto px-4 py-2 custom-scrollbar z-10 relative">
+            <div className="mb-2">
+                <button 
+                    onClick={() => { setActiveLesson(LessonTopic.HOME); setIsMobileMenuOpen(false); }}
+                    className={`w-full px-4 py-3 flex items-center gap-3 rounded-xl transition-all duration-500 group ${
+                        activeLesson === LessonTopic.HOME 
+                        ? 'bg-stone-900 text-white shadow-md'
+                        : 'text-stone-600 hover:bg-stone-50'
+                    }`}
+                >
+                    <Layout size={18} className={`transition-colors duration-500 ${activeLesson === LessonTopic.HOME ? getThemeClass('text') : 'text-stone-400 group-hover:text-stone-600'}`} />
+                    <span className="font-bold text-sm">首页 (Dashboard)</span>
+                </button>
+            </div>
+
+            <div className={`h-px my-2 mx-2 bg-stone-100`}></div>
+
             {lessons.map((group, groupIdx) => {
               const isOpen = openGroupIndex === groupIdx;
               return (
                 <div key={groupIdx} className="mb-2">
                   <button 
                     onClick={() => toggleGroup(groupIdx)}
-                    className="w-full px-4 py-3 flex items-center justify-between group hover:bg-stone-50 rounded-xl transition-colors outline-none"
+                    className={`w-full px-4 py-3 flex items-center justify-between group rounded-xl transition-colors outline-none hover:bg-stone-50`}
                   >
                     <div className="text-left">
-                        <div className={`text-[11px] font-black uppercase tracking-wide flex items-center gap-2 transition-colors ${isOpen ? 'text-amber-600' : 'text-stone-900'}`}>
+                        <div className={`text-[11px] font-black uppercase tracking-wide flex items-center gap-2 transition-colors duration-300 ${isOpen ? getThemeClass('text') : 'text-stone-900'}`}>
                             {group.title}
-                            {/* Pro Badge for Level 5 */}
-                            {(group as any).isPro && !isPro && (
-                                <span className="bg-stone-900 text-white text-[9px] px-1.5 py-0.5 rounded ml-2 flex items-center gap-1">
-                                    <Lock size={8} /> PRO
-                                </span>
-                            )}
-                            {(group as any).isPro && isPro && (
-                                <span className="bg-amber-100 text-amber-700 text-[9px] px-1.5 py-0.5 rounded ml-2 flex items-center gap-1 font-bold">
-                                    UNLOCKED
-                                </span>
-                            )}
+                            {(group as any).isPro && !isPro && <span className={`text-[9px] px-1.5 py-0.5 rounded ml-2 flex items-center gap-1 bg-stone-900 text-white`}><Lock size={8} /> PRO</span>}
+                            {(group as any).isPro && isPro && <span className={`${getThemeClass('bg')}/10 ${getThemeClass('text')} text-[9px] px-1.5 py-0.5 rounded ml-2 flex items-center gap-1 font-bold`}>UNLOCKED</span>}
                         </div>
                         <div className="text-[10px] text-stone-400 mt-1 font-medium">{group.description}</div>
                     </div>
-                    <div className={`p-1.5 rounded-lg transition-transform duration-300 ${isOpen ? 'bg-amber-100 text-amber-600 rotate-180' : 'text-stone-400 group-hover:bg-stone-200'}`}>
+                    <div className={`p-1.5 rounded-lg transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isOpen ? `${getThemeClass('bg')}/10 ${getThemeClass('text')} rotate-180` : 'text-stone-400 group-hover:bg-stone-200'}`}>
                        <ChevronDown size={14} strokeWidth={3} />
                     </div>
                   </button>
 
-                  <div 
-                    className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
-                  >
+                  <div className={`grid transition-[grid-template-rows] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                     <div className="overflow-hidden">
-                      <div className="space-y-1.5 mt-1 pb-4 relative pl-2">
-                        {/* Visual connector line for the group */}
-                        <div className="absolute left-6 top-0 bottom-2 w-px bg-stone-100 -z-10"></div>
-                        
-                        {group.items.map((lesson) => (
-                          <button
-                            key={lesson.id}
-                            onClick={() => handleLessonSelect(lesson.id, (group as any).isPro)}
-                            className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
-                              activeLesson === lesson.id
-                                ? 'bg-amber-50 text-amber-900 shadow-sm ring-1 ring-amber-100 translate-x-1'
-                                : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900 hover:translate-x-1'
-                            }`}
-                          >
-                            <div className={`p-1.5 rounded-lg transition-all duration-300 ${
-                              activeLesson === lesson.id 
-                                ? 'bg-amber-100 text-amber-600' 
-                                : 'bg-white border border-stone-100 text-stone-400 group-hover:border-amber-100 group-hover:text-amber-500'
-                            }`}>
-                              <lesson.icon size={16} strokeWidth={activeLesson === lesson.id ? 2.5 : 2} />
-                            </div>
-                            <div className="flex-1 z-10 flex justify-between items-center">
-                              <div className={`font-bold text-[13px] ${activeLesson === lesson.id ? 'text-stone-900' : 'text-stone-700'}`}>
-                                {lesson.label}
-                              </div>
-                              {/* Lock Icon for individual items if needed, mostly group based now */}
-                              {(group as any).isPro && !isPro && <Lock size={12} className="text-stone-300" />}
-                            </div>
-                            {activeLesson === lesson.id && (
-                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                            )}
-                          </button>
-                        ))}
+                      <div className={`space-y-1.5 mt-1 pb-4 relative pl-2 transition-all duration-500 ease-out ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+                        <div className={`absolute left-6 top-0 bottom-2 w-px -z-10 bg-stone-100`}></div>
+                        {group.items.map((lesson) => {
+                            const isLocked = (group as any).isPro && !isPro;
+                            const isCompleted = completedLessons.includes(lesson.id);
+                            return (
+                              <button
+                                key={lesson.id}
+                                onClick={() => handleLessonSelect(lesson.id, (group as any).isPro)}
+                                className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group relative ${
+                                  activeLesson === lesson.id 
+                                  ? `${getThemeClass('activeBg')} ${getThemeClass('text').replace('text-','text-emerald-').replace('emerald','stone-900')} shadow-sm ring-1 ring-black/5 translate-x-1` 
+                                  : `text-stone-600 hover:bg-stone-50 hover:text-stone-900 hover:translate-x-1`
+                                }`}
+                              >
+                                <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeLesson === lesson.id ? `${getThemeClass('bg')}/20 ${getThemeClass('text')}` : (isCompleted ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-white border border-stone-100 text-stone-400 group-hover:border-stone-200 group-hover:text-stone-500')}`}>
+                                  {isCompleted ? <Check size={16} strokeWidth={2.5}/> : <lesson.icon size={16} strokeWidth={activeLesson === lesson.id ? 2.5 : 2} />}
+                                </div>
+                                <div className="flex-1 z-10 flex justify-between items-center">
+                                  <div className={`font-bold text-[13px]`}>{lesson.label}</div>
+                                  {isLocked && <Lock size={12} className="text-stone-300" />}
+                                </div>
+                                {activeLesson === lesson.id && <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${getThemeClass('bg')}`}></div>}
+                              </button>
+                            )
+                        })}
                       </div>
                     </div>
                   </div>
@@ -787,7 +1116,6 @@ const App: React.FC = () => {
           </nav>
         )}
         
-        {/* Tutor Info Side Panel View */}
         {activeTab === Tab.TUTOR && (
            <div className="px-6 py-10 text-center animate-fadeIn relative z-10">
               <div className="bg-indigo-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-500 shadow-inner">
@@ -797,7 +1125,11 @@ const App: React.FC = () => {
               <p className="text-sm text-stone-500 mt-3 leading-relaxed px-4">
                 {isPro ? "您已解锁无限 AI 辅导功能。" : "免费版限制 5 条消息。升级以解锁无限对话。"}
               </p>
-              {!isPro && (
+              {!user ? (
+                  <button onClick={() => setShowAuthModal(true)} className="mt-6 px-6 py-2 bg-stone-900 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-stone-800">
+                      登录使用
+                  </button>
+              ) : !isPro && (
                   <button 
                     onClick={() => setShowSubscribeModal(true)}
                     className="mt-6 px-6 py-2 bg-stone-900 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-stone-800 transition-colors"
@@ -808,7 +1140,32 @@ const App: React.FC = () => {
            </div>
         )}
 
-        <div className="p-4 border-t border-stone-100/80 text-center relative z-10 bg-white">
+        <div className={`p-4 border-t border-stone-100/80 bg-white text-center relative z-10`}>
+          {user ? (
+              <div className={`flex items-center gap-3 mb-4 p-3 rounded-xl border border-stone-200 bg-stone-50 overflow-hidden`}>
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-stone-200 shrink-0">
+                      {user.isCustomAvatar ? (
+                          <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                          <span className="text-xl">{user.avatar}</span>
+                      )}
+                  </div>
+                  <div className="flex-1 text-left overflow-hidden">
+                      <div className={`font-bold text-sm truncate text-stone-900`}>{user.name}</div>
+                      <div className="text-xs text-stone-500 flex items-center gap-1">
+                          <Trophy size={10} className="text-amber-500"/> {achievements.filter(a => a.unlocked).length} / {achievements.length}
+                      </div>
+                  </div>
+              </div>
+          ) : (
+              <button 
+                  onClick={() => setShowAuthModal(true)}
+                  className="w-full bg-white border-2 border-stone-200 text-stone-600 py-3 rounded-xl font-bold mb-4 hover:border-stone-400 hover:text-stone-800 transition-all flex items-center justify-center gap-2"
+              >
+                  <UserIcon size={16}/> 登录 / 注册
+              </button>
+          )}
+
           {!isPro ? (
             <button 
                 onClick={() => setShowSubscribeModal(true)}
@@ -816,7 +1173,6 @@ const App: React.FC = () => {
             >
                 <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="absolute -inset-full top-0 block h-full w-1/2 -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
-                
                 <Crown size={18} fill="currentColor" />
                 <div className="text-left">
                     <div className="text-xs font-bold uppercase tracking-widest text-amber-500">Upgrade</div>
@@ -824,32 +1180,27 @@ const App: React.FC = () => {
                 </div>
             </button>
           ) : (
-            <div className="w-full bg-amber-50 border border-amber-100 text-amber-700 py-3 rounded-xl flex items-center justify-center gap-2 mb-4 cursor-default">
-                <Crown size={16} fill="currentColor" className="text-amber-500" />
+            <div className={`w-full ${getThemeClass('bg')}/10 border ${getThemeClass('border')} ${getThemeClass('text')} py-3 rounded-xl flex items-center justify-center gap-2 mb-4 cursor-default transition-all duration-500`}>
+                <Crown size={16} fill="currentColor" />
                 <span className="font-bold text-sm">Pro 会员已激活</span>
             </div>
           )}
+          
+          {/* Ambience Status Mini */}
+          {userSettings.ambience !== 'off' && (
+              <div className="flex items-center justify-center gap-2 text-[10px] text-stone-400 mb-2 animate-pulse-soft">
+                  <Headphones size={10} /> Ambience Active: {userSettings.ambience.toUpperCase()}
+              </div>
+          )}
+          
           <p className="text-[10px] text-stone-400 font-medium tracking-wide">© 2024 Music Theory Interactive</p>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main 
-        id="main-content"
-        className="flex-1 h-full overflow-hidden flex flex-col relative"
-      >
-         {/* Background pattern */}
-         <div className="absolute inset-0 opacity-[0.3] pointer-events-none z-0" 
-              style={{ 
-                backgroundImage: 'radial-gradient(#d6d3d1 1px, transparent 1px)', 
-                backgroundSize: '32px 32px' 
-              }}>
-         </div>
-
-         {/* Immersive Background Particles */}
+      <main id="main-content" className="flex-1 h-full overflow-hidden flex flex-col relative transition-colors duration-500">
+         <div className="absolute inset-0 opacity-[0.3] pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(#d6d3d1 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
          <BackgroundParticles />
-         
-         {/* Gradient overlay for soft top/bottom fade */}
          <div className={`absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-[#FAFAF9] to-transparent z-10 pointer-events-none transition-opacity duration-300 ${hasScrolled ? 'opacity-100' : 'opacity-0'}`}></div>
 
          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12 lg:px-20 w-full z-10 scroll-smooth relative">
@@ -862,21 +1213,25 @@ const App: React.FC = () => {
                         <h2 className="text-3xl font-bold serif text-stone-900">智能助教</h2>
                         <p className="text-stone-500 text-sm mt-1">基于 Gemini 2.5 Flash 模型</p>
                     </div>
-                    {isPro && (
-                        <div className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                            <Crown size={12} fill="currentColor" /> Pro Unlocked
-                        </div>
-                    )}
+                    {isPro && <div className={`${getThemeClass('bg')}/10 ${getThemeClass('text')} px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border ${getThemeClass('border')} transition-colors duration-500`}><Crown size={12} fill="currentColor" /> Pro Unlocked</div>}
                   </header>
                   <div className="flex-1 bg-white rounded-3xl shadow-xl shadow-stone-200/50 border border-stone-200 overflow-hidden flex flex-col">
-                     <AITutor isPro={isPro} onRequestUpgrade={() => setShowSubscribeModal(true)} />
+                     {!user ? (
+                         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                             <div className="bg-stone-100 p-4 rounded-full mb-4"><Lock size={32} className="text-stone-400"/></div>
+                             <h3 className="text-xl font-bold text-stone-800">请先登录</h3>
+                             <p className="text-stone-500 mt-2 mb-6">您需要登录账户才能使用 AI 助教功能。</p>
+                             <button onClick={() => setShowAuthModal(true)} className="bg-stone-900 text-white px-8 py-3 rounded-xl font-bold shadow-lg">立即登录</button>
+                         </div>
+                     ) : (
+                         <AITutor isPro={isPro} onRequestUpgrade={() => setShowSubscribeModal(true)} />
+                     )}
                   </div>
                </div>
             )}
          </div>
       </main>
       
-      {/* Overlay for mobile menu */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-stone-900/20 backdrop-blur-sm z-30 md:hidden animate-fadeIn"
@@ -884,6 +1239,7 @@ const App: React.FC = () => {
         />
       )}
     </div>
+    </>
   );
 };
 

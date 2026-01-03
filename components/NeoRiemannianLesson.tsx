@@ -203,7 +203,7 @@ const NeoRiemannianLesson: React.FC = () => {
       </header>
 
       {/* Interactive Stage */}
-      <div className="bg-[#1c1917] rounded-[2rem] p-8 md:p-12 shadow-2xl relative overflow-hidden animate-slideUp stagger-1 border border-stone-800 flex flex-col items-center gap-10">
+      <div className="bg-[#1c1917] rounded-[2rem] p-8 md:p-12 shadow-2xl relative overflow-hidden animate-slideUp stagger-1 border border-stone-800 flex flex-col items-center gap-10 max-w-4xl mx-auto">
           
           {/* Grid Bg */}
           <div className="absolute inset-0 opacity-10 pointer-events-none" 

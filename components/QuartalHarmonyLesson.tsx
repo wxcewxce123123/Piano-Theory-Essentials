@@ -72,7 +72,7 @@ const QuartalHarmonyLesson: React.FC = () => {
       </header>
 
       {/* Main Interactive Stage */}
-      <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-stone-200 animate-slideUp stagger-1 flex flex-col items-center gap-12 min-h-[500px]">
+      <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-stone-200 animate-slideUp stagger-1 flex flex-col items-center gap-12 min-h-[500px] max-w-4xl mx-auto">
           
           <div className="flex flex-col md:flex-row gap-16 w-full max-w-4xl justify-center items-end h-[350px]">
               

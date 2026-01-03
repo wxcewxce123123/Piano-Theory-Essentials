@@ -102,7 +102,7 @@ const TwelveToneLesson: React.FC = () => {
       </header>
 
       {/* Main Interactive Stage */}
-      <div className="bg-[#1c1917] rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden animate-slideUp stagger-1 flex flex-col gap-10 border border-stone-800">
+      <div className="bg-[#1c1917] rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden animate-slideUp stagger-1 flex flex-col gap-10 border border-stone-800 max-w-4xl mx-auto">
           
           {/* Matrix Background Pattern */}
           <div className="absolute inset-0 opacity-20 pointer-events-none" 

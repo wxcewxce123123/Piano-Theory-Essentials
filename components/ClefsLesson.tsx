@@ -16,16 +16,10 @@ const ClefsLesson: React.FC = () => {
   const getKeyConfig = () => {
       switch(activeMode) {
           case 'treble': 
-              // Treble G4 is the 5th white key starting from C4
-              // Display Range: C4 to C6
               return { startLabel: 'C4', highlightIdx: 4, noteName: 'G4' }; 
           case 'bass': 
-              // Bass F3 is the 11th white key starting from C2 (C2..C3..F3)
-              // Display Range: C2 to C4
               return { startLabel: 'C2', highlightIdx: 10, noteName: 'F3' }; 
           case 'middleC': 
-              // Middle C (C4) is the 8th white key starting from C3
-              // Display Range: C3 to C5
               return { startLabel: 'C3', highlightIdx: 7, noteName: 'C4' };
           default: 
               return { startLabel: 'C', highlightIdx: -1, noteName: '' };
@@ -37,7 +31,6 @@ const ClefsLesson: React.FC = () => {
   // Helper to generate dynamic key labels
   const getKeyLabel = (index: number) => {
       if (activeMode === 'neutral') return '';
-      // Only label Cs
       if (index === 0) return keyConfig.startLabel;
       if (index === 7) {
           const base = parseInt(keyConfig.startLabel.charAt(1));
@@ -48,6 +41,43 @@ const ClefsLesson: React.FC = () => {
           return `C${base + 2}`;
       }
       return '';
+  };
+
+  // --- COORDINATE SYSTEM ---
+  // ViewBox: 0 0 600 450
+  // Center Y: 225
+  // Grand Staff Geometry:
+  // Treble Staff Top Y: 115
+  // Treble Staff Bottom Y: 115 + 80 = 195
+  // Gap: 60px
+  // Bass Staff Top Y: 255
+  // Bass Staff Bottom Y: 255 + 80 = 335
+  
+  // Offsets for Single Staff centering
+  // Treble Center Y (Line 3): 115 + 40 = 155. To move to 225: +70px
+  // Bass Center Y (Line 3): 255 + 40 = 295. To move to 225: -70px
+
+  const getTrebleTransform = () => {
+      if (activeMode === 'treble') return 'translate(0, 70px)'; // Center it
+      if (activeMode === 'bass') return 'translate(0, -50px)'; // Move out of way
+      return 'translate(0, 0)'; // Default Grand Staff position (middleC/neutral)
+  };
+
+  const getBassTransform = () => {
+      if (activeMode === 'bass') return 'translate(0, -70px)'; // Center it
+      if (activeMode === 'treble') return 'translate(0, 50px)'; // Move out of way
+      return 'translate(0, 0)'; // Default Grand Staff position
+  };
+
+  const getOpacity = (section: 'treble' | 'bass' | 'brace' | 'middleC') => {
+      if (activeMode === 'neutral') return 0.4;
+      if (activeMode === 'middleC') return 1;
+      
+      if (section === 'treble') return activeMode === 'treble' ? 1 : 0;
+      if (section === 'bass') return activeMode === 'bass' ? 1 : 0;
+      if (section === 'brace') return 0; // Only visible in neutral/middleC
+      if (section === 'middleC') return 0; // Handled separately
+      return 1;
   };
 
   return (
@@ -78,146 +108,155 @@ const ClefsLesson: React.FC = () => {
             
             {/* SVG CANVAS */}
             <svg width="100%" height="450" viewBox="0 0 600 450" className="overflow-visible max-w-2xl">
-                {/* --- GRAND STAFF LINES --- */}
-                {/* Treble Staff (Top) - Absolute Y: 50 to 130 */}
-                <g transform="translate(50, 50)" className="staff-lines">
-                    {/* Lines: 0(Top), 20, 40, 60(G-Line), 80(Bottom) */}
+                
+                {/* --- BRACE & LEFT BAR (Grand Staff Only) --- */}
+                <g 
+                    className="transition-all duration-700 ease-out" 
+                    style={{ opacity: (activeMode === 'neutral' || activeMode === 'middleC') ? 1 : 0 }}
+                >
+                    {/* Vertical Line connecting staves */}
+                    <line x1="40" y1="115" x2="40" y2="335" stroke="#44403c" strokeWidth="4" />
+                    
+                    {/* Curly Brace Path */}
+                    <path 
+                        d="M 35 115 Q -10 115 -10 165 Q -10 225 15 225 Q -10 225 -10 285 Q -10 335 35 335"
+                        fill="none" stroke="#44403c" strokeWidth="2"
+                    />
+                </g>
+
+                {/* --- TREBLE STAFF GROUP --- */}
+                {/* Base Y: 115 */}
+                <g 
+                    className="transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
+                    style={{ 
+                        transform: getTrebleTransform(), 
+                        opacity: getOpacity('treble') 
+                    }}
+                    onClick={() => setActiveMode('treble')}
+                >
+                    {/* Staff Lines */}
                     {[0, 20, 40, 60, 80].map((y, i) => (
                         <line 
                             key={`t-${i}`} 
-                            x1="0" y1={y} x2="500" y2={y} 
+                            x1="40" y1={115 + y} x2="560" y2={115 + y} 
                             stroke={activeMode === 'treble' && i === 3 ? '#d97706' : '#78716c'} 
                             strokeWidth={activeMode === 'treble' && i === 3 ? 3 : 1.5}
-                            className={`transition-all duration-700 ease-out ${isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}
-                            style={{ transitionDelay: `${i * 50}ms` }} 
                         />
                     ))}
-                    {activeMode === 'treble' && (
-                        <text x="-10" y="65" textAnchor="end" fontSize="12" fontWeight="bold" fill="#d97706" className="animate-fadeIn">G Line</text>
-                    )}
-                </g>
-
-                {/* Bass Staff (Bottom) - Absolute Y: 210 to 290 */}
-                <g transform="translate(50, 210)" className="staff-lines">
-                    {/* Lines: 0(Top), 20(F-Line), 40, 60, 80(Bottom) */}
-                    {[0, 20, 40, 60, 80].map((y, i) => (
-                        <line 
-                            key={`b-${i}`} 
-                            x1="0" y1={y} x2="500" y2={y} 
-                            stroke={activeMode === 'bass' && i === 1 ? '#4f46e5' : '#78716c'} 
-                            strokeWidth={activeMode === 'bass' && i === 1 ? 3 : 1.5}
-                            className={`transition-all duration-700 ease-out ${isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}
-                            style={{ transitionDelay: `${300 + i * 50}ms` }} 
-                        />
-                    ))}
-                    {activeMode === 'bass' && (
-                        <text x="-10" y="25" textAnchor="end" fontSize="12" fontWeight="bold" fill="#4f46e5" className="animate-fadeIn">F Line</text>
-                    )}
-                </g>
-
-                {/* Brace */}
-                <path 
-                    d="M 40 50 L 40 290" 
-                    stroke="#44403c" strokeWidth="4" 
-                    className={`transition-all duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
-                />
-                <path 
-                    d="M 35 50 C -5 100, -5 240, 35 290" 
-                    stroke="#44403c" strokeWidth="2" fill="none" 
-                    className={`transition-all duration-1000 delay-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
-                />
-
-
-                {/* --- CLEF SYMBOLS (Using Unicode Text) --- */}
-                
-                {/* Treble Clef: 𝄞 */}
-                {(activeMode === 'neutral' || activeMode === 'treble' || activeMode === 'middleC') && (
+                    
+                    {/* Clef */}
                     <text
-                        x="75"
-                        y="128" // Aligns spiral with G-Line (Absolute Y=110)
+                        x="75" y="193" // Adjusted for Group Transform (115 + 78 = 193)
                         fontSize="75"
                         fontFamily="'Noto Music', 'Bravura', 'Times New Roman', serif"
                         fill={activeMode === 'treble' ? "#1c1917" : "#57534e"}
                         textAnchor="middle"
-                        dominantBaseline="alphabetic"
-                        className={`transition-all duration-500 cursor-pointer ${activeMode === 'treble' ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
-                        onClick={() => setActiveMode('treble')}
-                        style={{ userSelect: 'none', pointerEvents: 'none' }} // pointerEvents none on text to allow click on group if wrapped, but here direct click
-                        pointerEvents="auto"
                     >
                         𝄞
                     </text>
-                )}
 
-                {/* Bass Clef: 𝄢 */}
-                {(activeMode === 'neutral' || activeMode === 'bass' || activeMode === 'middleC') && (
+                    {/* G Line Label */}
+                    {activeMode === 'treble' && (
+                        <text x="30" y="180" textAnchor="end" fontSize="12" fontWeight="bold" fill="#d97706" className="animate-fadeIn">G Line</text>
+                    )}
+
+                    {/* Interactive Note G (If Treble Mode) */}
+                    {activeMode === 'treble' && (
+                        <g className="animate-fadeIn">
+                            {/* G is on line 4 (Y=175 relative to canvas 0, or 60 relative to group 115) */}
+                            {/* Actually Y=115+60 = 175 */}
+                            <circle cx="140" cy="175" r="12" fill="none" stroke="#d97706" strokeWidth="2" strokeDasharray="4 2" className="animate-spin-slow" />
+                            <g className="animate-bounce-gentle">
+                                <ellipse cx="220" cy="175" rx="10" ry="8" transform="rotate(-15 220 175)" fill="#1c1917" />
+                                {/* Stem UP (Right side) */}
+                                <line x1="229" y1="175" x2="229" y2="115" stroke="#1c1917" strokeWidth="2" />
+                            </g>
+                            <text x="260" y="180" fill="#d97706" fontSize="16" fontWeight="bold" fontFamily="serif">G (Sol)</text>
+                        </g>
+                    )}
+                </g>
+
+                {/* --- BASS STAFF GROUP --- */}
+                {/* Base Y: 255 */}
+                <g 
+                    className="transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
+                    style={{ 
+                        transform: getBassTransform(), 
+                        opacity: getOpacity('bass') 
+                    }}
+                    onClick={() => setActiveMode('bass')}
+                >
+                    {/* Staff Lines */}
+                    {[0, 20, 40, 60, 80].map((y, i) => (
+                        <line 
+                            key={`b-${i}`} 
+                            x1="40" y1={255 + y} x2="560" y2={255 + y} 
+                            stroke={activeMode === 'bass' && i === 1 ? '#4f46e5' : '#78716c'} 
+                            strokeWidth={activeMode === 'bass' && i === 1 ? 3 : 1.5}
+                        />
+                    ))}
+
+                    {/* Clef */}
                     <text
-                        x="75"
-                        y="238" // Aligns dots with F-Line (Absolute Y=230)
+                        x="75" y="283" // Adjusted (255 + 28 = 283)
                         fontSize="75"
                         fontFamily="'Noto Music', 'Bravura', 'Times New Roman', serif"
                         fill={activeMode === 'bass' ? "#1c1917" : "#57534e"}
                         textAnchor="middle"
-                        dominantBaseline="alphabetic"
-                        className={`transition-all duration-500 cursor-pointer ${activeMode === 'bass' ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
-                        onClick={() => setActiveMode('bass')}
-                        style={{ userSelect: 'none' }}
-                        pointerEvents="auto"
                     >
                         𝄢
                     </text>
-                )}
 
-                {/* --- INTERACTIVE NOTES --- */}
+                    {/* F Line Label */}
+                    {activeMode === 'bass' && (
+                        <text x="30" y="280" textAnchor="end" fontSize="12" fontWeight="bold" fill="#4f46e5" className="animate-fadeIn">F Line</text>
+                    )}
 
-                {/* Treble G Note */}
-                {activeMode === 'treble' && (
-                    <g className="animate-fadeIn">
-                        {/* G4 on 2nd line (Y=110 absolute). Relative to staff top (50) -> 60 */}
-                        <circle cx="140" cy="110" r="12" fill="none" stroke="#d97706" strokeWidth="2" strokeDasharray="4 2" className="animate-spin-slow" />
-                        <g className="animate-bounce-gentle">
-                            <ellipse cx="220" cy="110" rx="10" ry="8" transform="rotate(-15 220 110)" fill="#1c1917" />
-                            {/* Stem UP (Right side) */}
-                            <line x1="229" y1="110" x2="229" y2="50" stroke="#1c1917" strokeWidth="2" />
+                    {/* Interactive Note F (If Bass Mode) */}
+                    {activeMode === 'bass' && (
+                        <g className="animate-fadeIn">
+                            {/* F is on line 2 (Y=20 relative to group start, 255+20=275) */}
+                            <circle cx="140" cy="275" r="16" fill="none" stroke="#4f46e5" strokeWidth="2" strokeDasharray="4 2" className="animate-pulse" />
+                            <g className="animate-bounce-gentle">
+                                <ellipse cx="220" cy="275" rx="10" ry="8" transform="rotate(-15 220 275)" fill="#1c1917" />
+                                {/* Stem DOWN (Left side) */}
+                                <line x1="211" y1="275" x2="211" y2="335" stroke="#1c1917" strokeWidth="2" />
+                            </g>
+                            <text x="260" y="280" fill="#4f46e5" fontSize="16" fontWeight="bold" fontFamily="serif">F (Fa)</text>
                         </g>
-                        <text x="260" y="115" fill="#d97706" fontSize="16" fontWeight="bold" fontFamily="serif">G (Sol)</text>
-                        <path d="M 220 120 L 220 340" stroke="#d97706" strokeWidth="1" strokeDasharray="4 4" className="animate-draw-line" />
-                    </g>
-                )}
+                    )}
+                </g>
 
-                {/* Bass F Note */}
-                {activeMode === 'bass' && (
-                    <g className="animate-fadeIn">
-                        {/* F3 on 4th line from bottom (Y=230 absolute). Relative to staff top (210) -> 20 */}
-                        <circle cx="140" cy="230" r="16" fill="none" stroke="#4f46e5" strokeWidth="2" strokeDasharray="4 2" className="animate-pulse" />
-                        <g className="animate-bounce-gentle">
-                            <ellipse cx="220" cy="230" rx="10" ry="8" transform="rotate(-15 220 230)" fill="#1c1917" />
-                            {/* Stem DOWN (Left side) */}
-                            <line x1="211" y1="230" x2="211" y2="290" stroke="#1c1917" strokeWidth="2" />
-                        </g>
-                        <text x="260" y="235" fill="#4f46e5" fontSize="16" fontWeight="bold" fontFamily="serif">F (Fa)</text>
-                        <path d="M 220 240 L 220 340" stroke="#4f46e5" strokeWidth="1" strokeDasharray="4 4" className="animate-draw-line" />
+                {/* --- MIDDLE C GROUP (Center) --- */}
+                {/* Fixed Y: 225 */}
+                <g 
+                    className="transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{ 
+                        opacity: activeMode === 'middleC' ? 1 : 0,
+                        transform: activeMode === 'middleC' ? 'scale(1)' : 'scale(0.8)',
+                        transformOrigin: 'center'
+                    }}
+                >
+                    {/* Ledger Line */}
+                    <line x1="200" y1="225" x2="240" y2="225" stroke="#10b981" strokeWidth="3" />
+                    
+                    {/* Note C */}
+                    <g className="animate-pulse-soft">
+                        <ellipse cx="220" cy="225" rx="10" ry="8" transform="rotate(-15 220 225)" fill="#10b981" />
+                        {/* Stem UP */}
+                        <line x1="229" y1="225" x2="229" y2="165" stroke="#10b981" strokeWidth="2" />
+                        <text x="260" y="230" fill="#10b981" fontSize="16" fontWeight="bold" fontFamily="serif">Middle C</text>
                     </g>
-                )}
+                    
+                    {/* Guideline connecting staves */}
+                    <line x1="220" y1="195" x2="220" y2="255" stroke="#10b981" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
+                </g>
 
-                {/* Middle C Note */}
-                {activeMode === 'middleC' && (
-                    <g className="animate-fadeIn">
-                        <line x1="200" y1="170" x2="240" y2="170" stroke="#10b981" strokeWidth="3" />
-                        <g className="animate-pulse-soft">
-                            <ellipse cx="220" cy="170" rx="10" ry="8" transform="rotate(-15 220 170)" fill="#10b981" />
-                            {/* Stem UP */}
-                            <line x1="229" y1="170" x2="229" y2="110" stroke="#10b981" strokeWidth="2" />
-                            <text x="260" y="175" fill="#10b981" fontSize="16" fontWeight="bold" fontFamily="serif">Middle C</text>
-                             <path d="M 220 180 L 220 340" stroke="#10b981" strokeWidth="1" strokeDasharray="4 4" className="animate-draw-line" />
-                        </g>
-                    </g>
-                )}
-                {/* Passive Middle C marker */}
+                {/* Passive Middle C marker for Neutral Mode */}
                 {activeMode === 'neutral' && (
-                    <g opacity="0.5">
-                         <line x1="200" y1="170" x2="240" y2="170" stroke="#a8a29e" strokeWidth="2" />
-                         <ellipse cx="220" cy="170" rx="9" ry="7" transform="rotate(-15 220 170)" fill="#a8a29e" />
+                    <g opacity="0.4">
+                         <line x1="200" y1="225" x2="240" y2="225" stroke="#a8a29e" strokeWidth="2" />
+                         <ellipse cx="220" cy="225" rx="9" ry="7" transform="rotate(-15 220 225)" fill="#a8a29e" />
                     </g>
                 )}
 
@@ -247,7 +286,7 @@ const ClefsLesson: React.FC = () => {
                         <rect key={`bk-${k}`} x={k * 24 - 8} y="0" width="16" height="50" fill="#1c1917" />
                     ))}
                     
-                    {/* Dynamic Label based on Offset */}
+                    {/* Dynamic Label */}
                     {keyConfig.highlightIdx >= 0 && (
                         <text 
                             x={keyConfig.highlightIdx * 24 + 12} 
@@ -390,7 +429,7 @@ const ClefsLesson: React.FC = () => {
         .animate-pop-in { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; transform: scale(0.5); transform-origin: center; }
         @keyframes popIn { to { opacity: 1; transform: scale(1); } }
         .animate-spin-slow { animation: spin 8s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); transform-origin: 94px 110px; } to { transform: rotate(360deg); transform-origin: 94px 110px; } }
+        @keyframes spin { from { transform: rotate(0deg); transform-origin: 94px 175px; } to { transform: rotate(360deg); transform-origin: 94px 175px; } }
         .animate-bounce-gentle { animation: bounceGentle 2s infinite ease-in-out; }
         @keyframes bounceGentle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
         .animate-draw-line { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw 1.5s forwards ease-out; }

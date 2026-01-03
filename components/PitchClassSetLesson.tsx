@@ -129,7 +129,7 @@ const PitchClassSetLesson: React.FC = () => {
       </header>
 
       {/* Main Interactive Stage - White Theme */}
-      <div className="bg-white rounded-[2.5rem] p-8 md:p-16 shadow-2xl border border-stone-200 relative overflow-hidden animate-slideUp stagger-1 flex flex-col xl:flex-row items-center gap-20">
+      <div className="bg-white rounded-[2.5rem] p-8 md:p-16 shadow-2xl border border-stone-200 relative overflow-hidden animate-slideUp stagger-1 flex flex-col xl:flex-row items-center gap-20 max-w-4xl mx-auto">
           
           {/* Background Grid - Subtle Light */}
           <div className="absolute inset-0 opacity-40 pointer-events-none" 

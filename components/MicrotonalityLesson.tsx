@@ -86,7 +86,7 @@ const MicrotonalityLesson: React.FC = () => {
       </header>
 
       {/* Main Interactive Stage */}
-      <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-stone-200 animate-slideUp stagger-1 flex flex-col items-center relative overflow-hidden min-h-[400px]">
+      <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-stone-200 animate-slideUp stagger-1 flex flex-col items-center relative overflow-hidden min-h-[400px] max-w-4xl mx-auto">
           
           <div className="absolute inset-0 bg-stone-50" style={{ backgroundImage: 'linear-gradient(90deg, #e5e7eb 1px, transparent 1px)', backgroundSize: '20px 100%' }}></div>
 

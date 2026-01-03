@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { SplitSquareHorizontal, Zap, Play } from 'lucide-react';
 
@@ -60,7 +61,7 @@ const BitonalityLesson: React.FC = () => {
       </header>
 
       {/* Main Interactive Stage */}
-      <div className="bg-white rounded-[2.5rem] shadow-2xl border border-stone-200 p-8 md:p-12 relative overflow-hidden animate-slideUp stagger-1 flex flex-col gap-10">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl border border-stone-200 p-8 md:p-12 relative overflow-hidden animate-slideUp stagger-1 flex flex-col gap-10 max-w-4xl mx-auto">
           
           {/* Split Background */}
           <div className="absolute inset-0 flex pointer-events-none opacity-5">
