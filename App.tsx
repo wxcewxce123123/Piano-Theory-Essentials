@@ -1,6 +1,8 @@
 
+
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BookOpen, Music, MessageCircle, Clock, Activity, Volume2, Ruler, LayoutGrid, Sparkles, Menu, X, ChevronRight, Hash, PauseCircle, Gauge, AlignCenterVertical, Disc, RefreshCw, Waves, Zap, Flower2, Wind, Hourglass, StopCircle, Layers, MoveRight, ChevronDown, Palette, MousePointerClick, ArrowUp, Music3, ArrowLeftRight, GitMerge, Calculator, SplitSquareHorizontal, Infinity, CloudFog, Ear, Route, Crown, Check, Lock, CreditCard, Ticket, Star, Zap as ZapIcon, Dices, FlipHorizontal, AudioWaveform, AlignVerticalSpaceAround, Network, Divide, Radar, Radio, Clock as ClockIcon, Eye, Grid, ListMusic, Mic2, Piano, Layout, Headphones, Coffee, User as UserIcon, LogIn, Upload, Camera, Trophy, Image as ImageIcon, ZoomIn } from 'lucide-react';
+import { BookOpen, Music, MessageCircle, Clock, Activity, Volume2, Ruler, LayoutGrid, Sparkles, Menu, X, ChevronRight, Hash, PauseCircle, Gauge, AlignCenterVertical, Disc, RefreshCw, Waves, Zap, Flower2, Wind, Hourglass, StopCircle, Layers, MoveRight, ChevronDown, Palette, MousePointerClick, ArrowUp, Music3, ArrowLeftRight, GitMerge, Calculator, SplitSquareHorizontal, Infinity, CloudFog, Ear, Route, Crown, Check, Lock, CreditCard, Ticket, Star, Zap as ZapIcon, Dices, FlipHorizontal, AudioWaveform, AlignVerticalSpaceAround, Network, Divide, Radar, Radio, Clock as ClockIcon, Eye, Grid, ListMusic, Mic2, Piano, Layout, Headphones, Coffee, User as UserIcon, LogIn, Upload, Camera, Trophy, Image as ImageIcon, ZoomIn, RotateCw, Move } from 'lucide-react';
 import Explanation from './components/Explanation';
 import SlurVsTie from './components/SlurVsTie';
 import TimeSignatureLesson from './components/TimeSignatureLesson';
@@ -55,7 +57,7 @@ import StartPage, { UserSettings, UserProfile, Achievement } from './components/
 // --- Constants ---
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
     { id: 'first_lesson', title: '初入琴房', desc: '完成你的第 1 个课程', icon: '🎵', unlocked: false, progress: 0, maxProgress: 1 },
-    { id: 'scholar', title: '乐理学徒', desc: '完成 5 个课程', icon: '📚', unlocked: false, progress: 0, maxProgress: 5 },
+    // Removed Scholar Achievement
     { id: 'pro_member', title: '尊贵会员', desc: '成为 Pro 用户', icon: '👑', unlocked: false, progress: 0, maxProgress: 1 },
     { id: 'night_owl', title: '夜猫子', desc: '在晚上 10 点后学习', icon: '🌙', unlocked: false, progress: 0, maxProgress: 1 },
     { id: 'master', title: '理论大师', desc: '解锁所有高级课程', icon: '🎓', unlocked: false, progress: 0, maxProgress: 10 },
@@ -93,7 +95,7 @@ const AchievementToast: React.FC<{ achievement: Achievement | null, onClose: () 
     )
 }
 
-// --- Auth Modal ---
+// --- Auth Modal with Advanced Image Editor ---
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -104,48 +106,95 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     const [name, setName] = useState('');
     const [selectedAvatar, setSelectedAvatar] = useState('🎹');
     const [customAvatar, setCustomAvatar] = useState<string | null>(null);
-    const [imageZoom, setImageZoom] = useState(1);
     
-    // Animation States
+    // Image Editor State
+    const [zoom, setZoom] = useState(1);
+    const [rotation, setRotation] = useState(0);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStart = useRef({ x: 0, y: 0 });
+    
     const [renderModal, setRenderModal] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
     
-    // Handle Opening/Closing Animation
     useEffect(() => {
         if (isOpen) {
             setRenderModal(true);
-            // Small delay to allow render before opacity transition
             requestAnimationFrame(() => setIsVisible(true));
         } else {
             setIsVisible(false);
-            const timer = setTimeout(() => setRenderModal(false), 300); // Wait for transition
+            const timer = setTimeout(() => setRenderModal(false), 300);
             return () => clearTimeout(timer);
         }
     }, [isOpen]);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+    };
+    
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging) return;
+        setPosition({
+            x: e.clientX - dragStart.current.x,
+            y: e.clientY - dragStart.current.y
+        });
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
 
     if (!renderModal) return null;
 
     const defaultAvatars = ['🎹', '🎵', '🎼', '🎻', '🎷', '🎸', '🎺', '🥁'];
 
+    const getCroppedImage = () => {
+        if (!customAvatar) return selectedAvatar;
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.src = customAvatar;
+        
+        // Return promise if we were doing async, but for simplicity we rely on cached image
+        canvas.width = 200;
+        canvas.height = 200;
+        
+        if (ctx) {
+            ctx.fillStyle = '#f5f5f4'; // bg-stone-100
+            ctx.fillRect(0, 0, 200, 200);
+            
+            // Apply transformations relative to center
+            ctx.translate(100, 100);
+            ctx.translate(position.x, position.y);
+            ctx.rotate((rotation * Math.PI) / 180);
+            ctx.scale(zoom, zoom);
+            
+            // Draw image centered
+            ctx.drawImage(img, -100, -100, 200, 200); 
+            
+            return canvas.toDataURL('image/jpeg');
+        }
+        return customAvatar;
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if(!name.trim()) return;
         
-        // Trigger exit animation first
+        const finalAvatar = customAvatar ? getCroppedImage() : selectedAvatar;
+
         setIsVisible(false);
-        
-        // Then perform login after animation
         setTimeout(() => {
             onLogin({
                 name: name,
-                avatar: customAvatar || selectedAvatar,
+                avatar: finalAvatar,
                 level: 'Level 1',
                 isGuest: false,
                 isCustomAvatar: !!customAvatar
             });
-            onClose(); // Tell parent to close
+            onClose();
         }, 300);
     };
 
@@ -160,7 +209,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setCustomAvatar(reader.result as string);
-                setImageZoom(1); // Reset zoom
+                setZoom(1);
+                setRotation(0);
+                setPosition({ x: 0, y: 0 });
             };
             reader.readAsDataURL(file);
         }
@@ -179,7 +230,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                 </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* 1. Name Input - moved to top for better flow */}
                     <div>
                         <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">昵称 (Nickname)</label>
                         <div className="relative">
@@ -195,42 +245,62 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                         </div>
                     </div>
 
-                    {/* 2. Avatar Selection */}
                     <div>
-                        <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 text-center">选择头像</label>
+                        <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 text-center">头像设置</label>
                         
-                        {/* Custom Image Preview & Crop Simulation */}
                         {customAvatar ? (
                             <div className="flex flex-col items-center mb-4 animate-fadeIn">
-                                <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-3 group bg-stone-100">
+                                {/* Editor Stage */}
+                                <div 
+                                    className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-4 cursor-move bg-stone-100"
+                                    onMouseDown={handleMouseDown}
+                                    onMouseMove={handleMouseMove}
+                                    onMouseUp={handleMouseUp}
+                                    onMouseLeave={handleMouseUp}
+                                >
                                     <img 
                                         src={customAvatar} 
                                         alt="Avatar Preview" 
-                                        className="w-full h-full object-cover transition-transform duration-100 origin-center" 
-                                        style={{ transform: `scale(${imageZoom})` }}
+                                        className="w-full h-full object-cover origin-center pointer-events-none" 
+                                        style={{ 
+                                            transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)` 
+                                        }}
                                     />
-                                    {/* Overlay to change */}
-                                    <button 
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-bold"
-                                    >
-                                        更换图片
-                                    </button>
+                                    {/* Grid Overlay */}
+                                    <div className="absolute inset-0 border border-white/20 rounded-full pointer-events-none"></div>
                                 </div>
                                 
-                                {/* Zoom Control */}
-                                <div className="flex items-center gap-2 w-2/3">
-                                    <ImageIcon size={12} className="text-stone-400"/>
-                                    <input 
-                                        type="range" 
-                                        min="1" max="2.5" step="0.1" 
-                                        value={imageZoom}
-                                        onChange={(e) => setImageZoom(parseFloat(e.target.value))}
-                                        className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800"
-                                    />
-                                    <ZoomIn size={12} className="text-stone-400"/>
+                                {/* Controls */}
+                                <div className="w-full space-y-3 bg-stone-50 p-4 rounded-xl border border-stone-100">
+                                    <div className="flex items-center gap-3">
+                                        <ZoomIn size={14} className="text-stone-400 shrink-0"/>
+                                        <input 
+                                            type="range" 
+                                            min="0.5" max="3" step="0.1" 
+                                            value={zoom}
+                                            onChange={(e) => setZoom(parseFloat(e.target.value))}
+                                            className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <RotateCw size={14} className="text-stone-400 shrink-0"/>
+                                        <input 
+                                            type="range" 
+                                            min="-180" max="180" step="5" 
+                                            value={rotation}
+                                            onChange={(e) => setRotation(parseFloat(e.target.value))}
+                                            className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800"
+                                        />
+                                    </div>
                                 </div>
+
+                                <button 
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="text-xs text-stone-400 hover:text-stone-600 underline mt-2"
+                                >
+                                    更换图片
+                                </button>
                             </div>
                         ) : (
                             <div className="flex justify-center gap-3 flex-wrap mb-4">
@@ -247,7 +317,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                             </div>
                         )}
                         
-                        {/* Upload Button */}
                         {!customAvatar && (
                             <div className="flex justify-center">
                                 <input 
@@ -282,7 +351,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     )
 };
 
-// --- Subscription Modal Component (Updated High Contrast) ---
+// --- Subscription Modal (Enhanced Animation) ---
 interface SubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -337,36 +406,38 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 
       <div className={`bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative overflow-hidden transform transition-all duration-300 border border-stone-200 flex flex-col md:flex-row ${isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
         {/* Left Side: Premium Branding */}
-        <div className={`md:w-5/12 p-8 flex flex-col relative overflow-hidden ${modalBg}`}>
-           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-           
-           <div className="relative z-10 flex-1">
-               <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/10 bg-white/10`}>
-                   <Crown size={24} className="text-amber-400" fill="currentColor" />
-               </div>
-               <h2 className="text-3xl font-bold font-serif mb-2">Piano Theory <span className="text-amber-400">Pro</span></h2>
-               <p className="text-white/60 text-sm mb-8">解锁大师级特权，定义你的音乐人格。</p>
+        {!isSuccess && (
+            <div className={`md:w-5/12 p-8 flex flex-col relative overflow-hidden ${modalBg}`}>
+                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
                 
-               <ul className="space-y-4">
-                   <li className="flex items-start gap-3">
-                       <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
-                       <span className="text-sm font-medium">解锁 <strong>Level 5-7 大师课程</strong></span>
-                   </li>
-                   <li className="flex items-start gap-3">
-                       <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
-                       <span className="text-sm font-medium">无限次 <strong>AI 助教</strong> 对话</span>
-                   </li>
-                   <li className="flex items-start gap-3">
-                       <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
-                       <span className="text-sm font-medium"><strong>自定义</strong> 主题色彩</span>
-                   </li>
-               </ul>
-           </div>
-        </div>
+                <div className="relative z-10 flex-1">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/10 bg-white/10`}>
+                        <Crown size={24} className="text-amber-400" fill="currentColor" />
+                    </div>
+                    <h2 className="text-3xl font-bold font-serif mb-2">Piano Theory <span className="text-amber-400">Pro</span></h2>
+                    <p className="text-white/60 text-sm mb-8">解锁大师级特权，定义你的音乐人格。</p>
+                        
+                    <ul className="space-y-4">
+                        <li className="flex items-start gap-3">
+                            <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
+                            <span className="text-sm font-medium">解锁 <strong>Level 5-7 大师课程</strong></span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
+                            <span className="text-sm font-medium">无限次 <strong>AI 助教</strong> 对话</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
+                            <span className="text-sm font-medium"><strong>自定义</strong> 主题色彩</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        )}
 
-        {/* Right Side: Action */}
-        <div className="md:w-7/12 bg-white p-8 flex flex-col overflow-y-auto max-h-[80vh] custom-scrollbar relative">
-           <button onClick={onClose} className="absolute top-4 right-4 bg-stone-100 hover:bg-stone-200 text-stone-500 p-2 rounded-full transition-colors z-20"><X size={20} /></button>
+        {/* Right Side / Success Overlay */}
+        <div className={`md:w-7/12 bg-white p-8 flex flex-col overflow-y-auto max-h-[80vh] custom-scrollbar relative transition-all duration-500 ${isSuccess ? 'w-full md:w-full bg-stone-950 text-white' : ''}`}>
+           <button onClick={onClose} className={`absolute top-4 right-4 p-2 rounded-full transition-colors z-20 ${isSuccess ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}><X size={20} /></button>
 
            {!isSuccess ? (
              <>
@@ -390,7 +461,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                    </button>
                </div>
                
-               {/* HIGH CONTRAST BUTTON FIX: Black background with White text */}
                <button onClick={handlePurchase} className={`w-full bg-black text-white py-4 rounded-xl font-bold shadow-xl hover:bg-stone-800 transition-all mb-6 flex items-center justify-center gap-2 active:scale-95`}>
                    <CreditCard size={18} /> 立即订阅
                </button>
@@ -404,16 +474,29 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                </div>
              </>
            ) : (
-             <div className="flex-1 flex flex-col items-center justify-center text-center py-8 relative z-10">
-                 <div className="relative mb-8 z-10">
-                     <div className="w-32 h-32 rounded-full flex items-center justify-center shadow-2xl animate-scale-in relative z-20 bg-stone-900">
-                        <Crown size={64} className="text-amber-400 drop-shadow-md" strokeWidth={2.5} />
-                        <Sparkles className="absolute -top-4 -right-4 text-amber-500 animate-spin-slow" size={32} />
-                     </div>
+             <div className="flex-1 flex flex-col items-center justify-center text-center py-8 relative z-10 w-full h-full min-h-[400px]">
+                 {/* Cinematic Success Animation */}
+                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                     <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] bg-amber-500/20 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 animate-pulse-slow"></div>
+                     {Array.from({length:20}).map((_,i) => (
+                         <div key={i} className="absolute w-1 h-1 bg-amber-300 rounded-full animate-float-particle" style={{ left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*2}s` }}></div>
+                     ))}
                  </div>
-                 <h2 className="text-4xl font-serif font-bold text-stone-900 mb-3 animate-slide-up-fade" style={{ animationDelay: '0.4s' }}>Welcome to Pro</h2>
-                 <button onClick={onClose} className="bg-stone-900 text-white px-10 py-4 rounded-2xl font-bold shadow-xl hover:scale-105 active:scale-95 transition-all animate-slide-up-fade flex items-center gap-2 mx-auto group mt-8">
-                     <span>开始探索</span> <ChevronRight size={18} />
+
+                 <div className="relative mb-8 z-10">
+                     <div className="w-40 h-28 bg-gradient-to-tr from-amber-200 via-amber-400 to-amber-200 rounded-2xl shadow-2xl animate-card-flip flex items-center justify-center transform preserve-3d border border-white/20">
+                        <div className="absolute inset-0 bg-black/10 rounded-2xl"></div>
+                        <Crown size={48} className="text-stone-900 drop-shadow-sm" fill="currentColor" />
+                        <div className="absolute bottom-3 left-0 w-full text-center text-[10px] font-black tracking-[0.3em] text-stone-900 uppercase">Pro Member</div>
+                     </div>
+                     <div className="absolute -inset-4 bg-amber-500/30 blur-xl -z-10 animate-pulse"></div>
+                 </div>
+                 
+                 <h2 className="text-5xl font-serif font-bold text-white mb-2 animate-slide-up-fade" style={{ animationDelay: '0.2s' }}>Welcome to <span className="text-amber-400">Pro</span></h2>
+                 <p className="text-white/60 mb-8 animate-slide-up-fade" style={{ animationDelay: '0.4s' }}>所有特权已解锁，开启您的大师之旅。</p>
+                 
+                 <button onClick={onClose} className="bg-white text-stone-900 px-12 py-4 rounded-full font-bold shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 transition-all animate-slide-up-fade flex items-center gap-2 group mt-4 hover:bg-amber-50">
+                     <span>进入 Pro 空间</span> <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                  </button>
              </div>
            )}
@@ -644,7 +727,7 @@ const App: React.FC = () => {
       };
 
       if (completedLessons.length >= 1) checkUnlock('first_lesson', true);
-      if (completedLessons.length >= 5) checkUnlock('scholar', true);
+      // Removed Scholar check
       if (isPro) checkUnlock('pro_member', true);
       
       const hour = new Date().getHours();
@@ -657,6 +740,11 @@ const App: React.FC = () => {
       setUser(profile);
       localStorage.setItem('pt_user', JSON.stringify(profile));
       setShowAuthModal(false);
+  };
+
+  const handleUpdateProfile = (profile: UserProfile) => {
+      setUser(profile);
+      localStorage.setItem('pt_user', JSON.stringify(profile));
   };
 
   const handleLogout = () => {
@@ -797,17 +885,13 @@ const App: React.FC = () => {
       
       // Handle Custom Color
       if (themeColor === 'custom' && customColor) {
-          // Dynamic styles can be tricky with Tailwind classes without arbitrary values.
-          // We will return generic base classes and apply colors via style prop where needed, 
-          // but for this helper, we'll use arbitrary values where possible.
-          // Note: Full hex support requires standard format.
           const hex = customColor;
           
           if (type === 'text') return `text-[${hex}]`; // Arbitrary value
           if (type === 'bg') return `bg-[${hex}]`;
           if (type === 'border') return `border-[${hex}]`;
-          if (type === 'gradient') return `from-[${hex}] to-[${hex}]/80`; // Approximate
-          if (type === 'hoverBg') return `hover:bg-[${hex}]/10`; // Opacity modifier
+          if (type === 'gradient') return `from-[${hex}] to-[${hex}]/80`; 
+          if (type === 'hoverBg') return `hover:bg-[${hex}]/10`; 
           if (type === 'activeBg') return `bg-[${hex}]/20`;
           if (type === 'sidebarBg') return `bg-white`; 
       }
@@ -856,6 +940,8 @@ const App: React.FC = () => {
             user={user}
             achievements={achievements}
             onLogout={handleLogout}
+            onUpdateProfile={handleUpdateProfile} // Pass updater
+            completedLessons={completedLessons}
         />;
     }
 
@@ -958,6 +1044,8 @@ const App: React.FC = () => {
       .sidebar-open-anim { transform: translateX(0); transition: transform 600ms cubic-bezier(0.34, 1.56, 0.64, 1); }
       .sidebar-closed-anim { transform: translateX(-100%); transition: transform 500ms cubic-bezier(0.6, -0.28, 0.735, 0.045); }
       @media (min-width: 768px) { .sidebar-desktop-reset { transform: translateX(0) !important; transition: none !important; } }
+      .animate-card-flip { animation: cardFlip 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+      @keyframes cardFlip { 0% { transform: rotateY(90deg); opacity: 0; } 100% { transform: rotateY(0deg); opacity: 1; } }
     `}</style>
     {showSplash && (
       <SplashScreen 
@@ -1085,7 +1173,7 @@ const App: React.FC = () => {
                         <div className={`absolute left-6 top-0 bottom-2 w-px -z-10 bg-stone-100`}></div>
                         {group.items.map((lesson) => {
                             const isLocked = (group as any).isPro && !isPro;
-                            const isCompleted = completedLessons.includes(lesson.id);
+                            // Check Removed from Visuals
                             return (
                               <button
                                 key={lesson.id}
@@ -1096,8 +1184,8 @@ const App: React.FC = () => {
                                   : `text-stone-600 hover:bg-stone-50 hover:text-stone-900 hover:translate-x-1`
                                 }`}
                               >
-                                <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeLesson === lesson.id ? `${getThemeClass('bg')}/20 ${getThemeClass('text')}` : (isCompleted ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-white border border-stone-100 text-stone-400 group-hover:border-stone-200 group-hover:text-stone-500')}`}>
-                                  {isCompleted ? <Check size={16} strokeWidth={2.5}/> : <lesson.icon size={16} strokeWidth={activeLesson === lesson.id ? 2.5 : 2} />}
+                                <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeLesson === lesson.id ? `${getThemeClass('bg')}/20 ${getThemeClass('text')}` : 'bg-white border border-stone-100 text-stone-400 group-hover:border-stone-200 group-hover:text-stone-500'}`}>
+                                  <lesson.icon size={16} strokeWidth={activeLesson === lesson.id ? 2.5 : 2} />
                                 </div>
                                 <div className="flex-1 z-10 flex justify-between items-center">
                                   <div className={`font-bold text-[13px]`}>{lesson.label}</div>
