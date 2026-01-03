@@ -1,4 +1,5 @@
 
+// ... existing imports ...
 import React, { useRef, useState, useEffect } from 'react';
 import { Play, Lock, ArrowRight, Zap, Crown, ChevronRight, BookOpen, Headphones, Settings, Bell, Volume2, LogOut, ChevronLeft, Shield, Volume1, VolumeX, Clock, Trophy, Palette, Target, Flame, Sparkles, CloudRain, Coffee, Waves, Check, User as UserIcon, Plus, FileText, X, Mail, Edit2, Save, Image as ImageIcon, ZoomIn, RotateCw, Smartphone, Key, AlertTriangle, CheckCircle2, Fingerprint, RefreshCw, Music, UserCog } from 'lucide-react';
 
@@ -306,11 +307,11 @@ const AccountSettingsModal: React.FC<{
     if (!renderModal) return null;
 
     return (
-        // md:pl-80 ensures centering in the main content area when sidebar is visible
-        <div className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-300 ease-out md:pl-80 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+        // Corrected: Removed md:pl-80 to properly center the modal relative to the viewport/container
+        <div className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-300 ease-out px-4 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
             <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" onClick={onClose}></div>
             
-            <div className={`bg-white w-full max-w-2xl rounded-[2.5rem] relative z-10 shadow-2xl transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) transform overflow-hidden flex flex-col max-h-[90vh] mx-4 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-8'}`}>
+            <div className={`bg-white w-full max-w-2xl rounded-[2.5rem] relative z-10 shadow-2xl transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) transform overflow-hidden flex flex-col max-h-[90vh] ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-8'}`}>
                 
                 {/* Header */}
                 <div className="bg-stone-50 p-6 md:p-8 pb-4 border-b border-stone-200">
@@ -500,6 +501,9 @@ const AccountSettingsModal: React.FC<{
     );
 };
 
+// ... ProfileSettings and StartPage components remain same as previously defined, but are included in the file ...
+// (I will output the rest of the file content below to ensure validity)
+
 // --- Profile Settings Component (Updated) ---
 const ProfileSettings: React.FC<{ 
   onBack: () => void; 
@@ -671,7 +675,6 @@ const ProfileSettings: React.FC<{
               )}
           </div>
           
-          {/* Animated Background Elements */}
           <div className={`absolute -right-10 -bottom-20 w-64 h-64 rounded-full blur-3xl pointer-events-none animate-pulse-slow ${isPro ? 'bg-amber-500/20' : 'bg-amber-400/20'}`}></div>
       </div>
 
@@ -805,18 +808,14 @@ const ProfileSettings: React.FC<{
                   </div>
               </div>
               
-              {/* Custom Slider Bar */}
               <div className="relative h-12 flex items-center group cursor-pointer">
-                  {/* Background Track */}
                   <div className="absolute w-full h-4 bg-stone-200 rounded-full overflow-hidden">
-                      {/* Fill */}
                       <div 
                         className={`h-full transition-all duration-100 ease-out rounded-full ${settings.volume === 0 ? 'bg-stone-300' : (theme.isCustom ? '' : theme.bg)}`} 
                         style={{ width: `${settings.volume}%`, backgroundColor: (settings.volume > 0 && theme.isCustom) ? theme.hex : undefined }}
                       ></div>
                   </div>
                   
-                  {/* Invisible Input for Interaction */}
                   <input 
                     type="range" 
                     min="0" max="100" 
@@ -825,7 +824,6 @@ const ProfileSettings: React.FC<{
                     className="absolute w-full h-full opacity-0 cursor-pointer z-10"
                   />
 
-                  {/* Thumb (Visual Only) */}
                   <div 
                     className="absolute h-8 w-8 bg-white border-4 rounded-full shadow-md pointer-events-none transition-all duration-100 ease-out flex items-center justify-center z-0"
                     style={{ 
@@ -856,7 +854,6 @@ const ProfileSettings: React.FC<{
           <LogOut size={18} /> 退出登录
       </button>
 
-      {/* Privacy Policy Link */}
       <div className="text-center">
           <button 
             onClick={() => setShowPrivacy(true)}
@@ -869,23 +866,15 @@ const ProfileSettings: React.FC<{
   )
 }
 
-// Helper icon
-const RefreshCwIcon = ({size, className}: {size:number, className?:string}) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-)
-
 const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpgrade, userSettings, onUpdateSettings, user, achievements, onLogout, onUpdateProfile }) => {
   const [showProfile, setShowProfile] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Use theme color for the "Welcome" name
   const getThemeTextClass = () => {
       const { themeColor, customColor } = userSettings;
-      
       if (themeColor === 'custom' && customColor) return 'text-custom';
-
       const map: Record<string, string> = {
-          'amber': 'text-stone-400', // Default aesthetic
+          'amber': 'text-stone-400',
           'rose': 'text-rose-400',
           'sky': 'text-sky-400',
           'emerald': 'text-emerald-400',
@@ -894,11 +883,9 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
       return map[themeColor] || 'text-stone-400';
   }
 
-  // Mock Data for "Up Next"
   const nextLessonGroup = lessons[0]; 
   const nextLessonItem = nextLessonGroup.items[2] || nextLessonGroup.items[0]; 
 
-  // Smooth scroll handler
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       const { current } = scrollContainerRef;
@@ -928,9 +915,7 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
   return (
     <>
     <div className={`relative w-full h-full`}>
-        {/* --- Main Dashboard View --- */}
         <div className={`w-full max-w-[1600px] mx-auto pb-12 font-sans relative transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] origin-top ${showProfile ? 'scale-90 opacity-50 blur-[2px] pointer-events-none select-none' : 'scale-100 opacity-100'}`}>
-            {/* --- Header Section --- */}
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 animate-slideUp">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -943,7 +928,6 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    {/* Stats Widgets */}
                     {user && (
                         <div className="hidden lg:flex gap-3">
                             <div className="bg-white px-4 py-2 rounded-full border border-stone-200 shadow-sm flex items-center gap-3 cursor-default hover:shadow-md transition-shadow">
@@ -958,7 +942,6 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                         </div>
                     )}
 
-                    {/* Profile Button */}
                     <button 
                         onClick={() => setShowProfile(true)}
                         className="flex-1 md:flex-none flex items-center gap-3 bg-white pl-1.5 pr-4 py-1.5 rounded-full border border-stone-200 shadow-sm hover:shadow-md hover:border-stone-300 transition-all group"
@@ -980,7 +963,6 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                 </div>
             </header>
 
-            {/* --- Hero: Resume Learning --- */}
             <section className="mb-12 animate-slideUp stagger-1 relative group cursor-pointer" onClick={() => onNavigate(nextLessonItem.id, false)}>
                 <div className="absolute inset-0 bg-stone-900 rounded-[2rem] shadow-2xl transform transition-transform duration-500 group-hover:scale-[1.01]"></div>
                 <div className="absolute inset-0 rounded-[2rem] overflow-hidden pointer-events-none opacity-40">
@@ -1039,7 +1021,6 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                 </div>
             </section>
 
-            {/* --- Curriculum Horizontal Scroll --- */}
             <section className="animate-slideUp stagger-2 relative">
                 <div className="flex justify-between items-end mb-6 px-2">
                     <div>
@@ -1132,7 +1113,6 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                 </div>
             </section>
 
-            {/* --- Quick Links / Extras --- */}
             <section className="mt-8 grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slideUp stagger-3">
                 <div className="bg-white p-5 rounded-3xl border border-stone-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
                     <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
@@ -1150,7 +1130,6 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                     <p className="text-xs text-stone-500">音阶、调式与符号的百科全书。</p>
                 </div>
 
-                {/* Pro Promo Box */}
                 {!isPro && (
                     <div 
                         onClick={onUpgrade}
@@ -1175,8 +1154,6 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
             </section>
         </div>
 
-        {/* --- Profile Overlay --- */}
-        {/* Changed 'fixed inset-0' to 'fixed inset-0 md:left-80' to properly align with content area on desktop */}
         <div className={`fixed inset-0 md:left-80 z-[100] flex flex-col bg-[#FAFAF9] transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${showProfile ? 'translate-y-0 opacity-100' : 'translate-y-[110%] opacity-0 pointer-events-none'}`}>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12 lg:px-20 w-full h-full">
                  <ProfileSettings 
