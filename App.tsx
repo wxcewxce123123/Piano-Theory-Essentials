@@ -102,6 +102,7 @@ interface AuthModalProps {
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     const [name, setName] = useState('');
+    const [password, setPassword] = useState('');
     const [selectedAvatar, setSelectedAvatar] = useState('🎹');
     const [customAvatar, setCustomAvatar] = useState<string | null>(null);
     
@@ -186,7 +187,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if(!name.trim()) return;
+        if(!name.trim() || !password.trim()) return;
         
         const finalAvatar = customAvatar ? getCroppedImage() : selectedAvatar;
 
@@ -251,7 +252,22 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                         </div>
                     </div>
 
-                    {/* 2. Avatar Selection */}
+                    {/* 2. Password Input */}
+                    <div>
+                        <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">设置密码 (Password)</label>
+                        <div className="relative">
+                            <input 
+                                type="password" 
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                placeholder="设置登录密码"
+                                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all"
+                            />
+                            <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                        </div>
+                    </div>
+
+                    {/* 3. Avatar Selection */}
                     <div>
                         <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 text-center">头像设置</label>
                         
@@ -351,7 +367,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
 
                     <button 
                         type="submit" 
-                        disabled={!name.trim()}
+                        disabled={!name.trim() || !password.trim()}
                         className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-stone-800 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                         <LogIn size={18} /> 进入
