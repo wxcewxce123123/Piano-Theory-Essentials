@@ -1,7 +1,9 @@
 
+// ... keep imports ...
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Check, ArrowRight, Zap, Rocket, Music, Star, Heart, Sparkles, Cloud, Piano } from 'lucide-react';
 
+// ... keep interfaces and constants (QUESTIONS, LOADING_TEXTS) ...
 interface SplashScreenProps {
   onFinish: () => void;
   onStartExiting?: () => void;
@@ -85,7 +87,6 @@ const FloatingParticles = () => {
 
 // --- App Logo Component ---
 const AppLogo = ({ size = 'normal', className = '' }: { size?: 'normal' | 'large', className?: string }) => {
-    // Dynamic sizing classes handled by parent or transition
     return (
         <div className={`relative flex items-center justify-center bg-stone-900 rounded-[2rem] shadow-2xl overflow-hidden transition-all duration-700 ${className}`} style={{ width: size === 'large' ? '160px' : '80px', height: size === 'large' ? '160px' : '80px' }}>
             <div className="absolute inset-0 rounded-[2rem] border border-white/10"></div>
@@ -109,6 +110,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
   const [loadProgress, setLoadProgress] = useState(0);
   const [loadingText, setLoadingText] = useState(LOADING_TEXTS[0]);
   const [isExiting, setIsExiting] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // --- Audio Logic ---
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -134,7 +136,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
       gain.connect(ctx.destination);
 
       if (type === 'select') {
-          // Crisp Bubble Pop
           osc.type = 'sine';
           osc.frequency.setValueAtTime(800, t);
           osc.frequency.exponentialRampToValueAtTime(1200, t + 0.1);
@@ -143,7 +144,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
           osc.start(t);
           osc.stop(t + 0.2);
       } else if (type === 'start') {
-          // Short & Snappy Start Sound (Modified)
           osc.type = 'triangle';
           osc.frequency.setValueAtTime(150, t);
           osc.frequency.exponentialRampToValueAtTime(50, t + 0.3);
@@ -151,17 +151,14 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
           osc.start(t);
           osc.stop(t + 0.35);
-          
-          // Background music removed
       } else if (type === 'success') {
-          // Major Chord Arpeggio (C Major)
-          const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
+          const notes = [523.25, 659.25, 783.99, 1046.50]; 
           notes.forEach((f, i) => {
                const o = ctx.createOscillator();
                const g = ctx.createGain();
                o.connect(g);
                g.connect(ctx.destination);
-               o.type = 'sine'; // Pure tone
+               o.type = 'sine'; 
                o.frequency.value = f;
                
                const start = t + i * 0.05;
@@ -173,7 +170,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
                o.stop(start + 1.6);
           });
       } else if (type === 'launch') {
-          // Futuristic Swoosh
           const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 1, ctx.sampleRate);
           const data = noiseBuffer.getChannelData(0);
           for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
@@ -196,10 +192,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
       }
   };
 
-  const startAmbience = () => {
-      // Removed functionality
-  };
-
   const stopAmbience = () => {
       const ctx = audioCtxRef.current;
       if (!ctx) return;
@@ -207,7 +199,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
       
       ambienceNodesRef.current.forEach(node => {
           if (node instanceof GainNode) {
-               // Fade out connected gains
                try { node.gain.exponentialRampToValueAtTime(0.0001, t + 1); } catch(e){}
           } else if (node instanceof OscillatorNode) {
               node.stop(t + 1);
@@ -219,7 +210,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
   // --- Animation Handlers ---
 
   const handleStart = () => {
-    initAudio(); // User Gesture Trigger
+    initAudio(); 
     playSound('start');
     setPhase('question');
   };
@@ -231,11 +222,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
   };
 
   const handleNextQuestion = () => {
+    if (isTransitioning) return;
+
     if (qIndex < QUESTIONS.length - 1) {
+        setIsTransitioning(true);
         playSound('select');
         setTimeout(() => {
             setQIndex(prev => prev + 1);
             setSelectedOption(null);
+            setIsTransitioning(false);
         }, 300);
     } else {
         playSound('select');
@@ -257,7 +252,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
               playSound('success');
               setTimeout(() => {
                   setPhase('ready');
-              }, 500); // Wait a bit at 100%
+              }, 500); 
           }
           setLoadProgress(p);
           const textIdx = Math.floor((p / 100) * LOADING_TEXTS.length);
@@ -315,7 +310,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
             )}
 
             {/* PHASE 2: QUESTION */}
-            {phase === 'question' && (
+            {phase === 'question' && QUESTIONS[qIndex] && (
                 <div key={qIndex} className="w-full flex flex-col items-center animate-card-enter">
                     <div className="text-center mb-8 w-full max-w-sm">
                         <h2 className="text-3xl font-black text-stone-900 leading-tight mb-2 font-serif">{QUESTIONS[qIndex].question}</h2>
@@ -367,7 +362,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
                     </div>
                     
                     {/* Progress Bar Morphing into Button */}
-                    {/* This container smoothly transitions from a thin bar to a large button */}
                     <div className="relative w-full max-w-xs h-16 flex items-center justify-center">
                         <div 
                             className={`absolute transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden shadow-xl
@@ -408,10 +402,10 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
             <div className="max-w-lg mx-auto">
                 <button
                     onClick={handleNextQuestion}
-                    disabled={selectedOption === null}
+                    disabled={selectedOption === null || isTransitioning}
                     className={`
                         w-full py-4 rounded-2xl font-bold text-lg tracking-wide shadow-lg transition-all duration-300 flex items-center justify-center gap-2
-                        ${selectedOption !== null 
+                        ${selectedOption !== null && !isTransitioning
                             ? 'bg-stone-900 text-white hover:bg-stone-800 hover:scale-[1.01] active:scale-95' 
                             : 'bg-white/80 border-2 border-stone-100 text-stone-300 cursor-not-allowed backdrop-blur-sm'}
                     `}

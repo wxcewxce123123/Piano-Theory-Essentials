@@ -536,7 +536,7 @@ const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) =>
                 
                 const filter = ctx!.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.value = 150; 
+                filter.frequency.value = 1500; 
                 
                 noise.connect(filter);
                 filter.connect(gainNode);
@@ -849,7 +849,9 @@ const App: React.FC = () => {
             user={user}
             achievements={achievements}
             onLogout={handleLogout}
-            onUpdateProfile={handleUpdateProfile} 
+            onUpdateProfile={handleUpdateProfile}
+            completedLessons={completedLessons}
+            onLoginRequest={() => setShowAuthModal(true)}
         />;
     }
 
@@ -1158,7 +1160,7 @@ const App: React.FC = () => {
 
           {!isPro ? (
             <button 
-                onClick={() => setShowSubscribeModal(true)}
+                onClick={() => user ? setShowSubscribeModal(true) : setShowAuthModal(true)}
                 className="w-full bg-gradient-to-r from-stone-900 to-stone-800 text-amber-400 py-3 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2 group overflow-hidden relative mb-4"
             >
                 <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>

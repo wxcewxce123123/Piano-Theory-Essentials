@@ -1,9 +1,10 @@
 
 // ... existing imports ...
-import React, { useRef, useState, useEffect } from 'react';
-import { Play, Lock, ArrowRight, Zap, Crown, ChevronRight, BookOpen, Headphones, Settings, Bell, Volume2, LogOut, ChevronLeft, Shield, Volume1, VolumeX, Clock, Trophy, Palette, Target, Flame, Sparkles, CloudRain, Coffee, Waves, Check, User as UserIcon, Plus, FileText, X, Mail, Edit2, Save, Image as ImageIcon, ZoomIn, RotateCw, Smartphone, Key, AlertTriangle, CheckCircle2, Fingerprint, RefreshCw, Music, UserCog } from 'lucide-react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { Play, Lock, ArrowRight, Zap, Crown, ChevronRight, BookOpen, Headphones, Settings, Bell, Volume2, LogOut, ChevronLeft, Shield, Volume1, VolumeX, Clock, Trophy, Palette, Target, Flame, Sparkles, CloudRain, Coffee, Waves, Check, User as UserIcon, Plus, FileText, X, Mail, Edit2, Save, Image as ImageIcon, ZoomIn, RotateCw, Smartphone, Key, AlertTriangle, CheckCircle2, Fingerprint, RefreshCw, Music, UserCog, LayoutTemplate, Droplet, Sun, Moon, Sliders, Copy, Move, MousePointer2, LogIn } from 'lucide-react';
 
-// --- Types ---
+// ... Types (UserProfile, UserSettings, etc. - keep existing) ...
 export interface UserProfile {
     name: string;
     avatar: string;
@@ -56,109 +57,355 @@ interface StartPageProps {
   achievements: Achievement[];
   onLogout: () => void;
   onUpdateProfile?: (p: UserProfile) => void;
+  completedLessons: string[];
+  onLoginRequest: () => void;
 }
 
-// --- Color Picker Modal ---
-const ColorPickerModal: React.FC<{ isOpen: boolean, onClose: () => void, onApply: (color: string) => void }> = ({ isOpen, onClose, onApply }) => {
-    const [color, setColor] = useState('#f59e0b');
+// --- Robust Color Helpers (HSV <-> Hex) ---
+// ... (Keep existing helper functions hexToHsv, hsvToHex, isLightColor) ...
+const hexToHsv = (hex: string) => {
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+        r = parseInt("0x" + hex[1] + hex[1]);
+        g = parseInt("0x" + hex[2] + hex[2]);
+        b = parseInt("0x" + hex[3] + hex[3]);
+    } else if (hex.length === 7) {
+        r = parseInt("0x" + hex[1] + hex[2]);
+        g = parseInt("0x" + hex[3] + hex[4]);
+        b = parseInt("0x" + hex[5] + hex[6]);
+    }
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, v = max;
+    const d = max - min;
+    s = max === 0 ? 0 : d / max;
+    if (max === min) {
+        h = 0;
+    } else {
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+    return { h: h * 360, s: s * 100, v: v * 100 };
+};
+
+const hsvToHex = (h: number, s: number, v: number) => {
+    const sDec = s / 100;
+    const vDec = v / 100;
+    
+    const fn = (n: number, k = (n + h / 60) % 6) => vDec - vDec * sDec * Math.max(Math.min(k, 4 - k, 1), 0);
+    
+    const r = fn(5);
+    const g = fn(3);
+    const b = fn(1);
+
+    const toHex = (x: number) => {
+        const hex = Math.round(x * 255).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    };
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+
+const isLightColor = (hex: string) => {
+    const rgb = parseInt(hex.substring(1), 16);
+    const r = (rgb >> 16) & 0xff;
+    const g = (rgb >>  8) & 0xff;
+    const b = (rgb >>  0) & 0xff;
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 160; 
+};
+
+// ... (Keep existing ColorPickerModal, PrivacyModal, AccountSettingsModal, ProfileSettings) ...
+// (Re-including ColorPickerModal for context, ensuring no code loss)
+const ColorPickerModal: React.FC<{ isOpen: boolean, onClose: () => void, onApply: (color: string) => void, initialColor?: string }> = ({ isOpen, onClose, onApply, initialColor }) => {
+    // ... (Keep implementation identical to previous step) ...
+    // State
+    const [hex, setHex] = useState(initialColor || '#f59e0b');
+    const [hsv, setHsv] = useState({ h: 35, s: 100, v: 100 });
+    const [activeTab, setActiveTab] = useState<'presets' | 'custom'>('custom'); 
     const [isVisible, setIsVisible] = useState(false);
     const [renderModal, setRenderModal] = useState(false);
+    
+    // Grid Logic
+    const gridRef = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setRenderModal(true);
+            if (initialColor) {
+                setHex(initialColor);
+                setHsv(hexToHsv(initialColor));
+            }
             requestAnimationFrame(() => setIsVisible(true));
         } else {
             setIsVisible(false);
-            const timer = setTimeout(() => setRenderModal(false), 300);
+            const timer = setTimeout(() => setRenderModal(false), 400);
             return () => clearTimeout(timer);
         }
-    }, [isOpen]);
+    }, [isOpen, initialColor]);
+
+    const updateFromHsv = (h: number, s: number, v: number) => {
+        setHsv({ h, s, v });
+        setHex(hsvToHex(h, s, v));
+    };
+
+    const updateFromHex = (newHex: string) => {
+        setHex(newHex);
+        setHsv(hexToHsv(newHex));
+    };
+
+    const handlePresetClick = (c: string) => {
+        updateFromHex(c);
+    };
+
+    const handleGridPointer = (e: React.PointerEvent) => {
+        setIsDragging(true);
+        if (!gridRef.current) return;
+        gridRef.current.setPointerCapture(e.pointerId);
+        
+        const updateGrid = (clientX: number, clientY: number) => {
+            if (!gridRef.current) return;
+            const rect = gridRef.current.getBoundingClientRect();
+            const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+            
+            const newS = x * 100;
+            const newV = (1 - y) * 100;
+            updateFromHsv(hsv.h, newS, newV);
+        };
+
+        updateGrid(e.clientX, e.clientY);
+
+        const onPointerMove = (moveEvent: PointerEvent) => updateGrid(moveEvent.clientX, moveEvent.clientY);
+        const onPointerUp = (upEvent: PointerEvent) => {
+            setIsDragging(false);
+            gridRef.current?.releasePointerCapture(upEvent.pointerId);
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+        };
+
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+    };
 
     if (!renderModal) return null;
 
-    const PRESETS = [
-        { name: '经典琥珀', hex: '#f59e0b' },
-        { name: '赛博霓虹', hex: '#06b6d4' },
-        { name: '午夜靛蓝', hex: '#6366f1' },
-        { name: '森林秘境', hex: '#10b981' },
-        { name: '绯红女巫', hex: '#ef4444' },
-        { name: '皇家紫罗兰', hex: '#8b5cf6' },
-        { name: '极简石灰', hex: '#64748b' },
-        { name: '蜜桃乌龙', hex: '#f97316' },
+    const PRESET_GROUPS = [
+        { title: '莫兰迪 (Morandi)', colors: ['#9ca3af', '#78716c', '#a8a29e', '#bcaaa4', '#d6d3d1'] },
+        { title: '活力 (Vibrant)', colors: ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#06b6d4'] },
+        { title: '深邃 (Deep)', colors: ['#1e3a8a', '#4c1d95', '#831843', '#14532d', '#7c2d12'] },
+        { title: '糖果 (Pastel)', colors: ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#67e8f9'] },
+        { title: '自然 (Nature)', colors: ['#3f6212', '#4d7c0f', '#65a30d', '#84cc16', '#bef264'] },
+        { title: '海洋 (Ocean)', colors: ['#0c4a6e', '#0369a1', '#0ea5e9', '#38bdf8', '#7dd3fc'] },
+        { title: '暗夜 (Midnight)', colors: ['#171717', '#262626', '#404040', '#525252', '#737373'] },
+        { title: '霓虹 (Neon)', colors: ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6'] },
     ];
 
-    return (
-        <div className={`fixed inset-0 z-[200] flex items-center justify-center px-4 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-md" onClick={onClose}></div>
-            <div className={`bg-white w-full max-w-lg rounded-3xl p-8 relative z-10 shadow-2xl transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) transform ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-8'}`}>
-                <button onClick={onClose} className="absolute top-4 right-4 p-2 text-stone-400 hover:bg-stone-100 rounded-full transition-colors"><X size={20}/></button>
+    const isLight = isLightColor(hex);
+    const posterText = isLight ? 'text-stone-900' : 'text-white';
+    const posterSubText = isLight ? 'text-stone-600' : 'text-white/60';
+
+    return createPortal(
+        <div className={`fixed inset-0 z-[9999] flex items-center justify-center px-4 transition-all duration-300 perspective-[1000px] ${isVisible ? 'bg-black/40 backdrop-blur-sm opacity-100' : 'bg-transparent opacity-0 pointer-events-none'}`} onClick={onClose}>
+            <style>{`
+                @keyframes modalSpring {
+                    0% { opacity: 0; transform: scale(0.92) translateY(30px); }
+                    100% { opacity: 1; transform: scale(1) translateY(0); }
+                }
+                .animate-modal-spring {
+                    animation: modalSpring 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                }
+                @keyframes shineSlide {
+                    0% { transform: translateX(-100%) skewX(-15deg); }
+                    100% { transform: translateX(200%) skewX(-15deg); }
+                }
+                .animate-shine-once {
+                    animation: shineSlide 1.2s ease-out forwards;
+                }
+            `}</style>
+            
+            <div 
+                onClick={e => e.stopPropagation()}
+                className={`
+                    bg-white w-full max-w-[340px] rounded-[2.5rem] shadow-2xl relative z-10 
+                    flex flex-col border border-white/20 overflow-hidden transform-style-3d
+                    ${isVisible ? 'animate-modal-spring' : 'opacity-0 scale-90 translate-y-12'}
+                `}
+            >
                 
-                <h2 className="text-2xl font-serif font-bold text-stone-900 mb-1">外观工作室</h2>
-                <p className="text-xs text-stone-500 mb-8 font-bold uppercase tracking-wider">Design Studio</p>
-
-                {/* Preview Card - Transitions removed for responsiveness */}
-                <div className="mb-8 p-6 rounded-2xl border border-stone-200 flex items-center justify-between shadow-sm" style={{ backgroundColor: `${color}10`, borderColor: `${color}40` }}>
-                    <div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: color }}>效果预览 (Preview)</div>
-                        <div className="font-bold text-lg text-stone-900">自定义主题风格</div>
-                    </div>
-                    <button className="px-5 py-2.5 rounded-xl font-bold text-white shadow-lg text-sm" style={{ backgroundColor: color }}>
-                        主要按钮
-                    </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-8 mb-8">
-                    {/* Color Input */}
-                    <div>
-                        <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3">色彩代码 (Hex Code)</label>
-                        <div className="flex items-center gap-3">
-                            <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-sm border border-stone-200 shrink-0">
-                                <input 
-                                    type="color" 
-                                    value={color} 
-                                    onChange={(e) => setColor(e.target.value)}
-                                    className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] cursor-pointer border-none p-0"
-                                />
-                            </div>
-                            <input 
-                                type="text" 
-                                value={color}
-                                onChange={(e) => setColor(e.target.value)}
-                                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-3 font-mono text-sm uppercase text-stone-600 focus:outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Presets */}
-                    <div>
-                        <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3">设计师预设 (Presets)</label>
-                        <div className="grid grid-cols-4 gap-2">
-                            {PRESETS.map(p => (
-                                <button
-                                    key={p.hex}
-                                    onClick={() => setColor(p.hex)}
-                                    className="w-8 h-8 rounded-full border-2 transition-all hover:scale-110 shadow-sm"
-                                    style={{ backgroundColor: p.hex, borderColor: color === p.hex ? '#1c1917' : 'transparent' }}
-                                    title={p.name}
-                                ></button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <button 
-                    onClick={() => { onApply(color); onClose(); }}
-                    className="w-full py-4 bg-stone-900 text-white rounded-xl font-bold shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                {/* --- 1. POSTER PREVIEW AREA --- */}
+                <div 
+                    className="h-[220px] w-full relative flex flex-col p-6 transition-colors duration-300 shrink-0"
+                    style={{ backgroundColor: hex }}
                 >
-                    <Palette size={18} /> 应用主题
-                </button>
+                    {/* Shine Effect */}
+                    {isVisible && (
+                        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
+                            <div className="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shine-once"></div>
+                        </div>
+                    )}
+
+                    {/* Noise Texture */}
+                    <div className="absolute inset-0 opacity-10 pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")` }}></div>
+                    
+                    {/* Header */}
+                    <div className="flex justify-between items-start relative z-10">
+                        <div className={`flex flex-col ${posterText}`}>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-70">Color Studio</span>
+                            <h2 className="text-xl font-serif font-bold leading-tight">主题配色</h2>
+                        </div>
+                        <button 
+                            onClick={onClose} 
+                            className={`p-2 rounded-full ${isLight ? 'bg-black/5 hover:bg-black/10' : 'bg-white/10 hover:bg-white/20'} transition-colors ${posterText} active:scale-90 transform`}
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    {/* Center Code */}
+                    <div className="flex-1 flex flex-col justify-center items-center relative z-10">
+                        <div className={`text-5xl font-black tracking-tighter ${posterText} transition-colors duration-300 select-all font-sans drop-shadow-sm`}>
+                            {hex.toUpperCase()}
+                        </div>
+                        <div className={`text-xs font-mono font-bold mt-2 ${posterSubText} flex items-center gap-2`}>
+                            <span>H {Math.round(hsv.h)}°</span>
+                            <span className="opacity-30">|</span>
+                            <span>S {Math.round(hsv.s)}%</span>
+                            <span className="opacity-30">|</span>
+                            <span>B {Math.round(hsv.v)}%</span>
+                        </div>
+                    </div>
+
+                    {/* Tabs Pill */}
+                    <div className="relative z-10 flex justify-center translate-y-3">
+                        <div className="bg-white p-1 rounded-full shadow-xl flex gap-1 border border-stone-100">
+                            <button 
+                                onClick={() => setActiveTab('custom')} 
+                                className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ${activeTab === 'custom' ? 'bg-stone-900 text-white shadow-md' : 'text-stone-500 hover:bg-stone-50'}`}
+                            >
+                                调色板
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('presets')} 
+                                className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ${activeTab === 'presets' ? 'bg-stone-900 text-white shadow-md' : 'text-stone-500 hover:bg-stone-50'}`}
+                            >
+                                推荐色
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- 2. CONTROLS AREA (Sliding Viewport) --- */}
+                <div className="bg-white flex-1 flex flex-col relative z-0">
+                    
+                    {/* Viewport: Fixed height for stability during transition */}
+                    <div className="relative w-full h-[320px] overflow-hidden">
+                        
+                        {/* Custom Tab Pane */}
+                        <div 
+                            className={`absolute inset-0 w-full h-full px-6 pt-10 pb-4 overflow-y-auto custom-scrollbar transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${activeTab === 'custom' ? 'translate-x-0 opacity-100' : '-translate-x-[30%] opacity-0 pointer-events-none'}`}
+                        >
+                            <div className="space-y-6">
+                                {/* HSB Grid */}
+                                <div className="w-full aspect-[2/1] rounded-2xl overflow-hidden shadow-inner border border-stone-200 cursor-crosshair touch-none relative group">
+                                    <div 
+                                        ref={gridRef}
+                                        className="absolute inset-0"
+                                        onPointerDown={handleGridPointer}
+                                        style={{
+                                            backgroundColor: `hsl(${hsv.h}, 100%, 50%)`,
+                                            backgroundImage: `
+                                                linear-gradient(to top, #000, transparent), 
+                                                linear-gradient(to right, #fff, transparent)
+                                            `
+                                        }}
+                                    >
+                                        <div 
+                                            className={`absolute w-5 h-5 rounded-full border-2 border-white shadow-[0_0_10px_rgba(0,0,0,0.3)] transform -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-transform duration-75 ease-out`}
+                                            style={{ 
+                                                left: `${hsv.s}%`, 
+                                                top: `${100 - hsv.v}%`,
+                                                backgroundColor: hex,
+                                                transform: `translate(-50%, -50%) scale(${isDragging ? 1.2 : 1})`
+                                            }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                {/* Hue Slider */}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center gap-1 px-1">
+                                        Hue Spectrum
+                                    </label>
+                                    <div className="relative h-6 w-full rounded-full overflow-hidden shadow-inner border border-stone-200 group">
+                                        <input 
+                                            type="range" min="0" max="360" value={hsv.h}
+                                            onChange={(e) => updateFromHsv(Number(e.target.value), hsv.s, hsv.v)}
+                                            className="absolute w-full h-full opacity-0 z-20 cursor-pointer"
+                                        />
+                                        <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)' }}></div>
+                                        <div 
+                                            className="absolute top-0 bottom-0 w-4 h-4 bg-white border-2 border-stone-100 rounded-full shadow-md pointer-events-none transform -translate-x-1/2 z-10 top-1 transition-transform group-active:scale-110"
+                                            style={{ left: `${(hsv.h / 360) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Presets Tab Pane */}
+                        <div 
+                            className={`absolute inset-0 w-full h-full px-6 pt-10 pb-4 overflow-y-auto custom-scrollbar transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${activeTab === 'presets' ? 'translate-x-0 opacity-100' : 'translate-x-[30%] opacity-0 pointer-events-none'}`}
+                        >
+                            <div className="space-y-6">
+                                {PRESET_GROUPS.map((group) => (
+                                    <div key={group.title}>
+                                        <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">{group.title}</h4>
+                                        <div className="grid grid-cols-5 gap-3">
+                                            {group.colors.map((c) => (
+                                                <button
+                                                    key={c}
+                                                    onClick={() => handlePresetClick(c)}
+                                                    className={`w-full aspect-square rounded-full shadow-sm transition-all duration-300 relative group border border-stone-100 ${hex.toLowerCase() === c.toLowerCase() ? 'scale-110 ring-2 ring-offset-2 ring-stone-900 z-10' : 'hover:scale-105'}`}
+                                                    style={{ backgroundColor: c }}
+                                                >
+                                                    {hex.toLowerCase() === c.toLowerCase() && (
+                                                        <div className="absolute inset-0 flex items-center justify-center animate-scale-in">
+                                                            <div className={`w-2 h-2 rounded-full ${isLightColor(c) ? 'bg-black' : 'bg-white'}`}></div>
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    
+                    </div>
+
+                    {/* Footer - Fixed */}
+                    <div className="p-6 pt-0 bg-white relative z-20">
+                        <button 
+                            onClick={() => { onApply(hex); onClose(); }}
+                            className="w-full py-3.5 bg-stone-900 text-white rounded-xl font-bold text-sm shadow-xl hover:bg-stone-800 active:scale-95 transition-all flex items-center justify-center gap-2 group"
+                        >
+                            <span>确认应用</span>
+                            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                        </button>
+                    </div>
+                </div>
+
             </div>
-        </div>
-    )
+        </div>,
+        document.body
+    );
 }
 
-// --- Privacy Modal ---
+// ... existing components PrivacyModal, AccountSettingsModal, ProfileSettings ...
 const PrivacyModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
     return (
@@ -182,7 +429,6 @@ const PrivacyModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOp
     )
 }
 
-// --- Account Settings Modal ---
 const AccountSettingsModal: React.FC<{ 
     isOpen: boolean; 
     onClose: () => void; 
@@ -191,7 +437,7 @@ const AccountSettingsModal: React.FC<{
 }> = ({ isOpen, onClose, user, onUpdateProfile }) => {
     const [isVisible, setIsVisible] = useState(false);
     const [renderModal, setRenderModal] = useState(false);
-    const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile'); // Removed devices
+    const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile'); 
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     
@@ -202,7 +448,7 @@ const AccountSettingsModal: React.FC<{
     
     // Security States
     const [twoFactor, setTwoFactor] = useState(false);
-    const [hasPassword, setHasPassword] = useState(true); // Default true since it's required now
+    const [hasPassword, setHasPassword] = useState(true); 
     const [isEditingPassword, setIsEditingPassword] = useState(false);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -220,7 +466,6 @@ const AccountSettingsModal: React.FC<{
     useEffect(() => {
         if (isOpen) {
             setRenderModal(true);
-            // Increased delay slightly to ensure DOM insertion happens before class transition
             const timer = setTimeout(() => setIsVisible(true), 50);
             return () => clearTimeout(timer);
         } else {
@@ -234,7 +479,6 @@ const AccountSettingsModal: React.FC<{
         if (!user || !onUpdateProfile) return;
         setIsSaving(true);
         
-        // Process Avatar
         let finalAvatar = editAvatar;
         if (editAvatar.startsWith('data:') && (editZoom !== 1 || editRotation !== 0 || editPosition.x !== 0)) {
              const canvas = document.createElement('canvas');
@@ -300,7 +544,6 @@ const AccountSettingsModal: React.FC<{
         }
     };
 
-    // Drag Logic for Avatar
     const handleMouseDown = (e: React.MouseEvent) => { setIsDragging(true); dragStart.current = { x: e.clientX - editPosition.x, y: e.clientY - editPosition.y }; };
     const handleMouseMove = (e: React.MouseEvent) => { if (!isDragging) return; setEditPosition({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y }); };
     const handleMouseUp = () => setIsDragging(false);
@@ -313,7 +556,6 @@ const AccountSettingsModal: React.FC<{
             
             <div className={`bg-white w-full max-w-2xl rounded-[2.5rem] relative z-10 shadow-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) transform overflow-hidden flex flex-col max-h-[90vh] ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-12 opacity-0'}`}>
                 
-                {/* Header */}
                 <div className="bg-stone-50 p-6 md:p-8 pb-4 border-b border-stone-200">
                     <div className="flex justify-between items-start mb-6">
                         <div>
@@ -326,7 +568,6 @@ const AccountSettingsModal: React.FC<{
                         <button onClick={onClose} className="p-2 bg-white hover:bg-stone-100 rounded-full transition-colors border border-stone-200"><X size={20} className="text-stone-500"/></button>
                     </div>
 
-                    {/* Tabs */}
                     <div className="flex gap-2 mt-6">
                         {[
                             {id: 'profile', label: '个人资料', icon: UserIcon},
@@ -343,13 +584,10 @@ const AccountSettingsModal: React.FC<{
                     </div>
                 </div>
 
-                {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-white custom-scrollbar">
-                    
-                    {/* PROFILE TAB */}
+                    {/* ... (Keep profile tab identical) ... */}
                     {activeTab === 'profile' && (
                         <div className="space-y-6 animate-fadeIn">
-                            {/* Avatar Editor */}
                             <div className="bg-stone-50 p-6 rounded-2xl border border-stone-100">
                                 <div className="flex flex-col md:flex-row gap-6 items-center">
                                     <div 
@@ -402,10 +640,8 @@ const AccountSettingsModal: React.FC<{
                         </div>
                     )}
 
-                    {/* SECURITY TAB */}
                     {activeTab === 'security' && (
                         <div className="space-y-4 animate-fadeIn">
-                            {/* Password Setup */}
                             <div className={`p-5 rounded-2xl border flex flex-col gap-4 ${hasPassword ? 'bg-white border-stone-200 shadow-sm' : 'bg-amber-50 border-amber-200 shadow-md'}`}>
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -483,7 +719,6 @@ const AccountSettingsModal: React.FC<{
 
                 </div>
 
-                {/* Footer Actions */}
                 <div className="p-6 bg-stone-50 border-t border-stone-200 flex justify-end gap-3">
                     <button onClick={onClose} className="px-6 py-3 rounded-xl font-bold text-stone-500 hover:bg-stone-100 transition-colors">取消</button>
                     <button 
@@ -501,7 +736,6 @@ const AccountSettingsModal: React.FC<{
     );
 };
 
-// --- Profile Settings Component ---
 const ProfileSettings: React.FC<{ 
   onBack: () => void; 
   isPro: boolean; 
@@ -513,12 +747,12 @@ const ProfileSettings: React.FC<{
   onLogout: () => void;
   onUpdateProfile?: (p: UserProfile) => void;
 }> = ({ onBack, isPro, onUpgrade, settings, onUpdate, user, achievements, onLogout, onUpdateProfile }) => {
-  
+  // ... (Identical implementation to existing ProfileSettings, just ensuring correct context)
   const [lastVolume, setLastVolume] = useState(80); 
   const [notify, setNotify] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
-  const [showSecurity, setShowSecurity] = useState(false); // New Security Modal State
+  const [showSecurity, setShowSecurity] = useState(false); 
 
   // Helper for Theme Colors
   const getThemeStyles = () => {
@@ -570,10 +804,10 @@ const ProfileSettings: React.FC<{
         isOpen={showColorPicker} 
         onClose={() => setShowColorPicker(false)}
         onApply={handleCustomColorApply}
+        initialColor={settings.themeColor === 'custom' ? settings.customColor : undefined}
       />
       <PrivacyModal isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} />
       
-      {/* --- NEW SECURITY MODAL --- */}
       <AccountSettingsModal 
         isOpen={showSecurity} 
         onClose={() => setShowSecurity(false)} 
@@ -581,6 +815,7 @@ const ProfileSettings: React.FC<{
         onUpdateProfile={onUpdateProfile}
       />
 
+      {/* ... (rest of ProfileSettings UI) ... */}
       <button onClick={onBack} className="flex items-center gap-2 text-stone-500 hover:text-stone-900 mb-6 font-bold transition-colors group">
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> 返回首页
       </button>
@@ -676,6 +911,7 @@ const ProfileSettings: React.FC<{
       </div>
 
       {/* --- Personalization Section --- */}
+      {/* ... (Kept existing Personalization code) ... */}
       <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4 px-2">个性化 (Personalization)</h3>
       <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm mb-8">
           
@@ -784,6 +1020,7 @@ const ProfileSettings: React.FC<{
       </div>
 
       {/* --- System Settings --- */}
+      {/* ... (Kept existing System Settings code) ... */}
       <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4 px-2">系统设置 (System)</h3>
       <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm mb-8">
           
@@ -863,7 +1100,7 @@ const ProfileSettings: React.FC<{
   )
 }
 
-const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpgrade, userSettings, onUpdateSettings, user, achievements, onLogout, onUpdateProfile }) => {
+const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpgrade, userSettings, onUpdateSettings, user, achievements, onLogout, onUpdateProfile, completedLessons, onLoginRequest }) => {
   const [showProfile, setShowProfile] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -880,8 +1117,25 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
       return map[themeColor] || 'text-stone-400';
   }
 
-  const nextLessonGroup = lessons[0]; 
-  const nextLessonItem = nextLessonGroup.items[2] || nextLessonGroup.items[0]; 
+  // --- LOGIC: Find Next Lesson & Calculate Progress ---
+  const totalLessons = lessons.reduce((acc, g) => acc + g.items.length, 0);
+  const completedCount = completedLessons.length;
+  const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+
+  const activeLessonData = useMemo(() => {
+      for (const group of lessons) {
+          for (const item of group.items) {
+              if (!completedLessons.includes(item.id)) {
+                  return { group, item };
+              }
+          }
+      }
+      // Fallback if all done
+      const lastGroup = lessons[lessons.length-1];
+      return { group: lastGroup, item: lastGroup.items[lastGroup.items.length-1] };
+  }, [lessons, completedLessons]);
+
+  const { group: nextLessonGroup, item: nextLessonItem } = activeLessonData;
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -919,9 +1173,15 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                         <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]"></span>
                         <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">仪表盘</span>
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-serif font-medium text-stone-900 leading-tight">
-                        欢迎回来，<span className={`${getThemeTextClass()} italic transition-colors duration-700`} style={getThemeTextClass() === 'text-custom' ? { color: userSettings.customColor } : {}}>{user ? user.name : 'Guest'}</span>
-                    </h1>
+                    {user ? (
+                        <h1 className="text-3xl md:text-4xl font-serif font-medium text-stone-900 leading-tight">
+                            欢迎回来，<span className={`${getThemeTextClass()} italic transition-colors duration-700`} style={getThemeTextClass() === 'text-custom' ? { color: userSettings.customColor } : {}}>{user.name}</span>
+                        </h1>
+                    ) : (
+                        <h1 className="text-3xl md:text-4xl font-serif font-medium text-stone-900 leading-tight">
+                            欢迎来到 Piano Theory
+                        </h1>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
@@ -940,7 +1200,7 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                     )}
 
                     <button 
-                        onClick={() => setShowProfile(true)}
+                        onClick={() => user ? setShowProfile(true) : onLoginRequest()}
                         className="flex-1 md:flex-none flex items-center gap-3 bg-white pl-1.5 pr-4 py-1.5 rounded-full border border-stone-200 shadow-sm hover:shadow-md hover:border-stone-300 transition-all group"
                     >
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center font-serif text-lg border-2 border-stone-100 shadow-sm group-hover:scale-105 transition-transform overflow-hidden ${userSettings.themeColor === 'custom' ? 'bg-white' : 'bg-stone-100'}`} style={userSettings.themeColor === 'custom' && userSettings.customColor ? { borderColor: userSettings.customColor } : {}}>
@@ -951,16 +1211,21 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                             )}
                         </div>
                         <div className="text-left">
-                            <div className="text-xs font-bold text-stone-900 leading-tight group-hover:text-stone-700 transition-colors">个人中心</div>
+                            <div className="text-xs font-bold text-stone-900 leading-tight group-hover:text-stone-700 transition-colors">
+                                {user ? '个人中心' : '点击登录'}
+                            </div>
                             <div className="text-[10px] text-stone-400 flex items-center gap-1">
-                                {isPro ? 'Pro 会员' : '免费版'} <Settings size={10} />
+                                {user ? (isPro ? 'Pro 会员' : '免费版') : 'Guest'} <Settings size={10} />
                             </div>
                         </div>
                     </button>
                 </div>
             </header>
 
-            <section className="mb-12 animate-slideUp stagger-1 relative group cursor-pointer" onClick={() => onNavigate(nextLessonItem.id, false)}>
+            <section 
+                className="mb-12 animate-slideUp stagger-1 relative group cursor-pointer" 
+                onClick={() => user ? onNavigate(nextLessonItem.id, nextLessonGroup.isPro || false) : onLoginRequest()}
+            >
                 <div className="absolute inset-0 bg-stone-900 rounded-[2rem] shadow-2xl transform transition-transform duration-500 group-hover:scale-[1.01]"></div>
                 <div className="absolute inset-0 rounded-[2rem] overflow-hidden pointer-events-none opacity-40">
                     <div 
@@ -972,46 +1237,67 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
 
                 <div className="relative z-10 p-8 md:p-12 flex flex-col md:flex-row justify-between items-center gap-8 text-white">
                     <div className="flex-1 space-y-6">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-bold uppercase tracking-widest shadow-sm">
-                            <Play size={10} fill="currentColor" /> 继续学习 (Resume)
-                        </div>
-                        <div>
-                            <h2 className="text-4xl md:text-5xl font-bold font-serif mb-2 leading-tight">
-                                {nextLessonGroup.title.split('：')[1] || nextLessonGroup.title}
-                            </h2>
-                            <p className="text-stone-400 text-sm">{nextLessonGroup.title.split('：')[0] || "Foundations"}</p>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm font-medium">
-                            <div className="flex items-center gap-2 bg-black/20 px-4 py-2 rounded-xl border border-white/5 backdrop-blur-sm">
-                                <nextLessonItem.icon size={16} className="text-stone-300" />
-                                <span className="text-stone-200">{nextLessonItem.label}</span>
-                            </div>
-                            <span className="text-stone-500">•</span>
-                            <span className="text-stone-400 flex items-center gap-1.5">
-                                <Clock size={14} /> 5 分钟阅读
-                            </span>
-                        </div>
+                        {user ? (
+                            <>
+                                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-bold uppercase tracking-widest shadow-sm">
+                                    <Play size={10} fill="currentColor" /> {progressPercent > 0 ? "继续学习 (Resume)" : "开始学习 (Start)"}
+                                </div>
+                                <div>
+                                    <h2 className="text-4xl md:text-5xl font-bold font-serif mb-2 leading-tight">
+                                        {nextLessonGroup.title.split('：')[1] || nextLessonGroup.title}
+                                    </h2>
+                                    <p className="text-stone-400 text-sm">{nextLessonGroup.title.split('：')[0] || "Foundations"}</p>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm font-medium">
+                                    <div className="flex items-center gap-2 bg-black/20 px-4 py-2 rounded-xl border border-white/5 backdrop-blur-sm">
+                                        <nextLessonItem.icon size={16} className="text-stone-300" />
+                                        <span className="text-stone-200">{nextLessonItem.label}</span>
+                                    </div>
+                                    <span className="text-stone-500">•</span>
+                                    <span className="text-stone-400 flex items-center gap-1.5">
+                                        <Clock size={14} /> 5 分钟阅读
+                                    </span>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-bold uppercase tracking-widest shadow-sm">
+                                    <LogIn size={10} /> Guest Mode
+                                </div>
+                                <div>
+                                    <h2 className="text-4xl md:text-5xl font-bold font-serif mb-2 leading-tight">
+                                        探索乐理奥秘
+                                    </h2>
+                                    <p className="text-stone-400 text-sm">Sign in to track progress and unlock features.</p>
+                                </div>
+                                <button className="bg-white text-stone-900 px-6 py-3 rounded-xl font-bold text-sm shadow-lg hover:bg-stone-100 transition-colors flex items-center gap-2 w-fit">
+                                    <UserIcon size={16} /> 登录 / 注册
+                                </button>
+                            </>
+                        )}
                     </div>
                     <div className="flex items-center gap-8 w-full md:w-auto justify-end">
-                        <div className="text-right hidden lg:block">
-                            <div className="text-4xl font-bold tabular-nums">35%</div>
-                            <div className="text-[10px] text-stone-500 font-bold uppercase tracking-wider mt-1">课程进度</div>
-                        </div>
+                        {user && (
+                            <div className="text-right hidden lg:block">
+                                <div className="text-4xl font-bold tabular-nums">{progressPercent}%</div>
+                                <div className="text-[10px] text-stone-500 font-bold uppercase tracking-wider mt-1">课程进度</div>
+                            </div>
+                        )}
                         <div className="relative w-24 h-24 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ease-out">
                             <svg className="absolute inset-0 w-full h-full rotate-[-90deg]" viewBox="0 0 100 100">
                                 <circle cx="50" cy="50" r="46" fill="none" stroke="#333" strokeWidth="8" />
                                 <circle 
                                     cx="50" cy="50" r="46" fill="none" 
-                                    stroke={userSettings.customColor || (userSettings.themeColor === 'amber' ? '#f59e0b' : '#3b82f6')} 
+                                    stroke={user && (userSettings.customColor || (userSettings.themeColor === 'amber' ? '#f59e0b' : '#3b82f6')) || '#555'} 
                                     strokeWidth="8" 
                                     strokeDasharray="289" // 2 * PI * 46
-                                    strokeDashoffset="188" // 289 * (1 - 0.35)
+                                    strokeDashoffset={user ? 289 * (1 - progressPercent / 100) : 289} 
                                     strokeLinecap="round"
                                     className="transition-all duration-1000 ease-out"
                                 />
                             </svg>
                             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-stone-900 shadow-xl z-10">
-                                <ArrowRight size={24} />
+                                {user ? <ArrowRight size={24} /> : <Lock size={20} className="text-stone-400"/>}
                             </div>
                         </div>
                     </div>
@@ -1096,7 +1382,7 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                                     {isLocked && (
                                         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent pt-12 flex justify-center">
                                             <button 
-                                                onClick={onUpgrade}
+                                                onClick={() => user ? onUpgrade() : onLoginRequest()}
                                                 className="bg-stone-900 text-white px-5 py-2 rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
                                             >
                                                 <Crown size={12} className="text-amber-400" fill="currentColor"/> 解锁阶段 {idx + 1}
@@ -1129,7 +1415,7 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
 
                 {!isPro && (
                     <div 
-                        onClick={onUpgrade}
+                        onClick={() => user ? onUpgrade() : onLoginRequest()}
                         className="bg-gradient-to-br from-amber-100 to-orange-100 p-5 rounded-3xl border border-amber-200 shadow-sm cursor-pointer group relative overflow-hidden"
                     >
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl -mr-10 -mt-10"></div>
