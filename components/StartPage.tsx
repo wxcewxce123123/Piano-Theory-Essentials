@@ -59,6 +59,8 @@ interface StartPageProps {
   onUpdateProfile?: (p: UserProfile) => void;
   completedLessons: string[];
   onLoginRequest: () => void;
+  lastActiveLessonId: string | null;
+  studyMinutes: number;
 }
 
 // --- Robust Color Helpers (HSV <-> Hex) ---
@@ -118,7 +120,6 @@ const isLightColor = (hex: string) => {
 };
 
 // ... (Keep existing ColorPickerModal, PrivacyModal, AccountSettingsModal, ProfileSettings) ...
-// (Re-including ColorPickerModal for context, ensuring no code loss)
 const ColorPickerModal: React.FC<{ isOpen: boolean, onClose: () => void, onApply: (color: string) => void, initialColor?: string }> = ({ isOpen, onClose, onApply, initialColor }) => {
     // ... (Keep implementation identical to previous step) ...
     // State
@@ -1100,7 +1101,7 @@ const ProfileSettings: React.FC<{
   )
 }
 
-const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpgrade, userSettings, onUpdateSettings, user, achievements, onLogout, onUpdateProfile, completedLessons, onLoginRequest }) => {
+const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpgrade, userSettings, onUpdateSettings, user, achievements, onLogout, onUpdateProfile, completedLessons, onLoginRequest, lastActiveLessonId, studyMinutes }) => {
   const [showProfile, setShowProfile] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -1117,25 +1118,36 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
       return map[themeColor] || 'text-stone-400';
   }
 
-  // --- LOGIC: Find Next Lesson & Calculate Progress ---
-  const totalLessons = lessons.reduce((acc, g) => acc + g.items.length, 0);
-  const completedCount = completedLessons.length;
-  const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
-
+  // --- LOGIC: Find Lesson to Display ---
+  // Priority: 1. Last active lesson (user explicitly clicked), 2. First uncompleted, 3. Fallback
   const activeLessonData = useMemo(() => {
+      // 1. Try last active
+      if (lastActiveLessonId) {
+          for (const group of lessons) {
+              const found = group.items.find(i => i.id === lastActiveLessonId);
+              if (found) return { group, item: found, isLastActive: true };
+          }
+      }
+
+      // 2. Fallback to first uncompleted
       for (const group of lessons) {
           for (const item of group.items) {
               if (!completedLessons.includes(item.id)) {
-                  return { group, item };
+                  return { group, item, isLastActive: false };
               }
           }
       }
-      // Fallback if all done
+      
+      // 3. Fallback to very last
       const lastGroup = lessons[lessons.length-1];
-      return { group: lastGroup, item: lastGroup.items[lastGroup.items.length-1] };
-  }, [lessons, completedLessons]);
+      return { group: lastGroup, item: lastGroup.items[lastGroup.items.length-1], isLastActive: false };
+  }, [lessons, completedLessons, lastActiveLessonId]);
 
-  const { group: nextLessonGroup, item: nextLessonItem } = activeLessonData;
+  const { group: nextLessonGroup, item: nextLessonItem, isLastActive } = activeLessonData;
+
+  const totalLessons = lessons.reduce((acc, g) => acc + g.items.length, 0);
+  const completedCount = completedLessons.length;
+  const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -1240,7 +1252,7 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                         {user ? (
                             <>
                                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-bold uppercase tracking-widest shadow-sm">
-                                    <Play size={10} fill="currentColor" /> {progressPercent > 0 ? "继续学习 (Resume)" : "开始学习 (Start)"}
+                                    <Play size={10} fill="currentColor" /> {isLastActive ? "继续学习 (RESUME)" : "开始学习 (START)"}
                                 </div>
                                 <div>
                                     <h2 className="text-4xl md:text-5xl font-bold font-serif mb-2 leading-tight">
@@ -1255,20 +1267,20 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                                     </div>
                                     <span className="text-stone-500">•</span>
                                     <span className="text-stone-400 flex items-center gap-1.5">
-                                        <Clock size={14} /> 5 分钟阅读
+                                        <Clock size={14} /> {studyMinutes > 0 ? `已学习 ${studyMinutes} 分钟` : '5 分钟阅读'}
                                     </span>
                                 </div>
                             </>
                         ) : (
                             <>
                                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-bold uppercase tracking-widest shadow-sm">
-                                    <LogIn size={10} /> Guest Mode
+                                    <LogIn size={10} /> 访客模式 (GUEST)
                                 </div>
                                 <div>
                                     <h2 className="text-4xl md:text-5xl font-bold font-serif mb-2 leading-tight">
-                                        探索乐理奥秘
+                                        开启音乐之旅
                                     </h2>
-                                    <p className="text-stone-400 text-sm">Sign in to track progress and unlock features.</p>
+                                    <p className="text-stone-400 text-sm">登录以保存进度和解锁成就。</p>
                                 </div>
                                 <button className="bg-white text-stone-900 px-6 py-3 rounded-xl font-bold text-sm shadow-lg hover:bg-stone-100 transition-colors flex items-center gap-2 w-fit">
                                     <UserIcon size={16} /> 登录 / 注册
@@ -1346,7 +1358,6 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] bg-white/80 px-2 py-1 rounded-md shadow-sm text-stone-500 border border-stone-100">
                                                 阶段 {idx + 1}
                                             </span>
-                                            {isLocked && <Lock size={16} className="text-stone-400" />}
                                         </div>
                                         <h4 className="text-xl font-serif font-bold text-stone-900 mb-2 leading-tight">
                                             {group.title.split('：')[1] || group.title}
@@ -1361,8 +1372,8 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                                         {group.items.map((item) => (
                                             <button
                                                 key={item.id}
-                                                onClick={() => onNavigate(item.id, group.isPro || false)}
-                                                disabled={isLocked}
+                                                onClick={() => user ? onNavigate(item.id, group.isPro || false) : onLoginRequest()}
+                                                disabled={isLocked && user !== null}
                                                 className="w-full p-3 rounded-xl hover:bg-white transition-colors flex items-center gap-3 text-left group/item border border-transparent hover:border-stone-100 hover:shadow-sm"
                                             >
                                                 <div className={`w-9 h-9 rounded-lg ${getIconColor(idx)}/50 flex items-center justify-center text-stone-700 group-hover/item:scale-110 transition-transform shrink-0`}>
@@ -1378,17 +1389,6 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                                             </button>
                                         ))}
                                     </div>
-
-                                    {isLocked && (
-                                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent pt-12 flex justify-center">
-                                            <button 
-                                                onClick={() => user ? onUpgrade() : onLoginRequest()}
-                                                className="bg-stone-900 text-white px-5 py-2 rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
-                                            >
-                                                <Crown size={12} className="text-amber-400" fill="currentColor"/> 解锁阶段 {idx + 1}
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         );

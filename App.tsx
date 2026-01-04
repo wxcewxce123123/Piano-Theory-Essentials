@@ -54,11 +54,9 @@ import GenericLesson from './components/GenericLesson';
 import SplashScreen from './components/SplashScreen';
 import StartPage, { UserSettings, UserProfile, Achievement } from './components/StartPage'; 
 
-// ... (rest of imports and components before App) ...
-// (Retaining existing code up to App component definition)
-
-// ... Constants and Helper Components (AchievementToast, AuthModal, SubscriptionModal) ...
-// ... (Retaining all helper components)
+// ... (AuthModal, SubscriptionModal, etc. retained) ...
+// (Keeping existing helper components like INITIAL_ACHIEVEMENTS, AchievementToast, AuthModal, SubscriptionModal for brevity, assuming they are unchanged from previous context. 
+// If I were to output the full file I would include them, but `App` logic is the focus here.)
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
     { id: 'first_lesson', title: '初入琴房', desc: '完成你的第 1 个课程', icon: '🎵', unlocked: false, progress: 0, maxProgress: 1 },
@@ -68,47 +66,33 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [
 ];
 
 const AchievementToast: React.FC<{ achievement: Achievement | null, onClose: () => void }> = ({ achievement, onClose }) => {
-    // ... (same as before)
     const [visible, setVisible] = useState(false);
-
     useEffect(() => {
         if (achievement) {
             setVisible(true);
-            const timer = setTimeout(() => {
-                setVisible(false);
-                setTimeout(onClose, 500);
-            }, 3000);
+            const timer = setTimeout(() => { setVisible(false); setTimeout(onClose, 500); }, 3000);
             return () => clearTimeout(timer);
         }
     }, [achievement, onClose]);
-
     if (!achievement) return null;
-
     return (
         <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 transform ${visible ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0'}`}>
             <div className="bg-stone-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-stone-700 min-w-[300px]">
-                <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-2xl animate-bounce">
-                    {achievement.icon}
-                </div>
-                <div>
-                    <div className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-1">Achievement Unlocked</div>
-                    <div className="font-bold text-lg leading-none">{achievement.title}</div>
-                </div>
+                <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-2xl animate-bounce">{achievement.icon}</div>
+                <div><div className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-1">Achievement Unlocked</div><div className="font-bold text-lg leading-none">{achievement.title}</div></div>
             </div>
         </div>
     )
 }
 
-// ... (AuthModal, SubscriptionModal, etc. retained - skipping for brevity in replacement block as they are long, assuming user context has them. I will include App component fully below) ...
+// ... (AuthModal & SubscriptionModal components here - assumed unchanged) ...
+// For the purpose of this update, assume AuthModal and SubscriptionModal are defined as before. 
+// I will include placeholder definitions to ensure the code compiles if this was a fresh file, 
+// but in a patch scenario I would rely on existing content.
+// RE-INCLUDING FULL COMPONENT DEFINITIONS TO BE SAFE:
 
-interface AuthModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onLogin: (profile: UserProfile) => void;
-}
-
+interface AuthModalProps { isOpen: boolean; onClose: () => void; onLogin: (profile: UserProfile) => void; }
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
-    // ... (same as before)
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [selectedAvatar, setSelectedAvatar] = useState('🎹');
@@ -121,299 +105,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     const [renderModal, setRenderModal] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    
-    useEffect(() => {
-        if (isOpen) {
-            setRenderModal(true);
-            const timer = setTimeout(() => setIsVisible(true), 50);
-            return () => clearTimeout(timer);
-        } else {
-            setIsVisible(false);
-            const timer = setTimeout(() => setRenderModal(false), 300);
-            return () => clearTimeout(timer);
-        }
-    }, [isOpen]);
-
-    const handleMouseDown = (e: React.MouseEvent) => {
-        setIsDragging(true);
-        dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
-    };
-    
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isDragging) return;
-        setPosition({
-            x: e.clientX - dragStart.current.x,
-            y: e.clientY - dragStart.current.y
-        });
-    };
-
+    useEffect(() => { if (isOpen) { setRenderModal(true); const t = setTimeout(() => setIsVisible(true), 50); return () => clearTimeout(t); } else { setIsVisible(false); const t = setTimeout(() => setRenderModal(false), 300); return () => clearTimeout(t); } }, [isOpen]);
+    const handleMouseDown = (e: React.MouseEvent) => { setIsDragging(true); dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y }; };
+    const handleMouseMove = (e: React.MouseEvent) => { if (!isDragging) return; setPosition({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y }); };
     const handleMouseUp = () => setIsDragging(false);
-
     if (!renderModal) return null;
-
     const defaultAvatars = ['🎹', '🎵', '🎼', '🎻', '🎷', '🎸', '🎺', '🥁'];
+    const getCroppedImage = () => { if (!customAvatar) return selectedAvatar; const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const img = new Image(); img.src = customAvatar; canvas.width = 200; canvas.height = 200; if (ctx) { ctx.fillStyle = '#f5f5f4'; ctx.fillRect(0, 0, 200, 200); ctx.translate(100, 100); ctx.translate(position.x, position.y); ctx.rotate((rotation * Math.PI) / 180); ctx.scale(zoom, zoom); const size = Math.min(img.width, img.height); ctx.drawImage(img, -100, -100, 200, 200); return canvas.toDataURL('image/jpeg'); } return customAvatar; };
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if(!name.trim() || !password.trim()) return; const finalAvatar = customAvatar ? getCroppedImage() : selectedAvatar; setIsVisible(false); setTimeout(() => { onLogin({ name: name, avatar: finalAvatar, level: 'Level 1', isGuest: false, isCustomAvatar: !!customAvatar }); onClose(); }, 300); };
+    const handleClose = () => { setIsVisible(false); setTimeout(onClose, 300); };
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => { setCustomAvatar(reader.result as string); setZoom(1); setRotation(0); setPosition({ x: 0, y: 0 }); }; reader.readAsDataURL(file); } };
+    return ( <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}> <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={handleClose}></div> <div className={`bg-white w-full max-w-md rounded-[2rem] p-8 relative z-10 shadow-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) transform ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-12 opacity-0'}`}> <button onClick={handleClose} className="absolute top-4 right-4 p-2 text-stone-400 hover:bg-stone-100 rounded-full transition-colors"><X size={20}/></button> <div className="text-center mb-6"> <h2 className="text-2xl font-serif font-bold text-stone-900">欢迎加入</h2> <p className="text-stone-500 text-sm mt-1">创建您的音乐档案</p> </div> <form onSubmit={handleSubmit} className="space-y-6"> <div> <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">昵称 (Nickname)</label> <div className="relative"> <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="例如: Chopin Lover" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all" autoFocus /> <UserIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" /> </div> </div> <div> <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">设置密码 (Password)</label> <div className="relative"> <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="设置登录密码" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all" /> <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" /> </div> </div> <div> <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 text-center">头像设置</label> {customAvatar ? ( <div className="flex flex-col items-center mb-4 animate-fadeIn"> <div className="relative w-40 h-40 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-4 cursor-move bg-stone-100" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}> <img src={customAvatar} alt="Avatar Preview" className="w-full h-full object-cover origin-center pointer-events-none" style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)` }} /> <div className="absolute inset-0 border border-white/20 rounded-full pointer-events-none"></div> </div> <div className="w-full space-y-3 bg-stone-50 p-4 rounded-xl border border-stone-100"> <div className="flex items-center gap-3"> <ZoomIn size={14} className="text-stone-400 shrink-0"/> <input type="range" min="0.5" max="3" step="0.1" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800" /> </div> <div className="flex items-center gap-3"> <RotateCw size={14} className="text-stone-400 shrink-0"/> <input type="range" min="-180" max="180" step="5" value={rotation} onChange={(e) => setRotation(parseFloat(e.target.value))} className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800" /> </div> </div> <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs text-stone-400 hover:text-stone-600 underline mt-2">更换图片</button> </div> ) : ( <div className="flex justify-center gap-3 flex-wrap mb-4"> {defaultAvatars.map(emoji => ( <button key={emoji} type="button" onClick={() => setSelectedAvatar(emoji)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${selectedAvatar === emoji ? 'bg-stone-900 text-white shadow-md scale-110' : 'bg-stone-50 hover:bg-stone-100 text-stone-600'}`}>{emoji}</button> ))} </div> )} {!customAvatar && ( <div className="flex justify-center"> <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} /> <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-stone-300 text-stone-500 hover:border-stone-400 hover:text-stone-800 hover:bg-stone-50 transition-all"> <Camera size={14} /> <span>上传自定义图片</span> </button> </div> )} </div> <button type="submit" disabled={!name.trim() || !password.trim()} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-stone-800 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"> <LogIn size={18} /> 进入 </button> </form> </div> </div> ) };
 
-    const getCroppedImage = () => {
-        if (!customAvatar) return selectedAvatar;
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        img.src = customAvatar;
-        canvas.width = 200;
-        canvas.height = 200;
-        if (ctx) {
-            ctx.fillStyle = '#f5f5f4';
-            ctx.fillRect(0, 0, 200, 200);
-            ctx.translate(100, 100);
-            ctx.translate(position.x, position.y);
-            ctx.rotate((rotation * Math.PI) / 180);
-            ctx.scale(zoom, zoom);
-            const size = Math.min(img.width, img.height);
-            ctx.drawImage(img, -100, -100, 200, 200); 
-            return canvas.toDataURL('image/jpeg');
-        }
-        return customAvatar;
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if(!name.trim() || !password.trim()) return;
-        const finalAvatar = customAvatar ? getCroppedImage() : selectedAvatar;
-        setIsVisible(false);
-        setTimeout(() => {
-            onLogin({
-                name: name,
-                avatar: finalAvatar,
-                level: 'Level 1',
-                isGuest: false,
-                isCustomAvatar: !!customAvatar
-            });
-            onClose();
-        }, 300);
-    };
-
-    const handleClose = () => {
-        setIsVisible(false);
-        setTimeout(onClose, 300);
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setCustomAvatar(reader.result as string);
-                setZoom(1);
-                setRotation(0);
-                setPosition({ x: 0, y: 0 });
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    return (
-        <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={handleClose}></div>
-            <div className={`bg-white w-full max-w-md rounded-[2rem] p-8 relative z-10 shadow-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) transform ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-12 opacity-0'}`}>
-                <button onClick={handleClose} className="absolute top-4 right-4 p-2 text-stone-400 hover:bg-stone-100 rounded-full transition-colors"><X size={20}/></button>
-                <div className="text-center mb-6">
-                    <h2 className="text-2xl font-serif font-bold text-stone-900">欢迎加入</h2>
-                    <p className="text-stone-500 text-sm mt-1">创建您的音乐档案</p>
-                </div>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">昵称 (Nickname)</label>
-                        <div className="relative">
-                            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="例如: Chopin Lover" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all" autoFocus />
-                            <UserIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">设置密码 (Password)</label>
-                        <div className="relative">
-                            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="设置登录密码" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all" />
-                            <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 text-center">头像设置</label>
-                        {customAvatar ? (
-                            <div className="flex flex-col items-center mb-4 animate-fadeIn">
-                                <div className="relative w-40 h-40 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-4 cursor-move bg-stone-100" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-                                    <img src={customAvatar} alt="Avatar Preview" className="w-full h-full object-cover origin-center pointer-events-none" style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)` }} />
-                                    <div className="absolute inset-0 border border-white/20 rounded-full pointer-events-none"></div>
-                                </div>
-                                <div className="w-full space-y-3 bg-stone-50 p-4 rounded-xl border border-stone-100">
-                                    <div className="flex items-center gap-3">
-                                        <ZoomIn size={14} className="text-stone-400 shrink-0"/>
-                                        <input type="range" min="0.5" max="3" step="0.1" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800" />
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <RotateCw size={14} className="text-stone-400 shrink-0"/>
-                                        <input type="range" min="-180" max="180" step="5" value={rotation} onChange={(e) => setRotation(parseFloat(e.target.value))} className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800" />
-                                    </div>
-                                </div>
-                                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs text-stone-400 hover:text-stone-600 underline mt-2">更换图片</button>
-                            </div>
-                        ) : (
-                            <div className="flex justify-center gap-3 flex-wrap mb-4">
-                                {defaultAvatars.map(emoji => (
-                                    <button key={emoji} type="button" onClick={() => setSelectedAvatar(emoji)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${selectedAvatar === emoji ? 'bg-stone-900 text-white shadow-md scale-110' : 'bg-stone-50 hover:bg-stone-100 text-stone-600'}`}>{emoji}</button>
-                                ))}
-                            </div>
-                        )}
-                        {!customAvatar && (
-                            <div className="flex justify-center">
-                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                                <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-stone-300 text-stone-500 hover:border-stone-400 hover:text-stone-800 hover:bg-stone-50 transition-all">
-                                    <Camera size={14} /> <span>上传自定义图片</span>
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                    <button type="submit" disabled={!name.trim() || !password.trim()} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-stone-800 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                        <LogIn size={18} /> 进入
-                    </button>
-                </form>
-            </div>
-        </div>
-    )
-};
-
-interface SubscriptionModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  themeColor: string;
-  customColor?: string; 
-}
-
-const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, onSuccess, themeColor, customColor }) => {
-  // ... (same as before)
-  const [inviteCode, setInviteCode] = useState('');
-  const [error, setError] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
-  const [isVisible, setIsVisible] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsVisible(true);
-      setInviteCode('');
-      setError('');
-      setIsSuccess(false);
-      setTimeout(() => setIsAnimating(true), 10);
-    } else {
-      setIsAnimating(false);
-      const timer = setTimeout(() => setIsVisible(false), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen]);
-
-  if (!isVisible) return null;
-
-  const handleVerify = () => {
-    if (inviteCode === '8888') {
-      setIsSuccess(true);
-      setTimeout(() => { onSuccess(); }, 1000);
-    } else {
-      setError('无效的邀请码。请重试。');
-    }
-  };
-
-  const handlePurchase = () => {
-      setIsSuccess(true);
-      setTimeout(() => { onSuccess(); }, 1000);
-  }
-
-  const modalBg = 'bg-stone-900 text-white';
-
-  return (
-    <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ${isAnimating ? 'opacity-100' : 'opacity-0'}`}>
-      <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-sm" onClick={onClose}></div>
-      <div className={`bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative overflow-hidden transform transition-all duration-300 border border-stone-200 flex flex-col md:flex-row ${isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
-        {!isSuccess && (
-            <div className={`md:w-5/12 p-8 flex flex-col relative overflow-hidden ${modalBg}`}>
-                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-                <div className="relative z-10 flex-1">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/10 bg-white/10`}>
-                        <Crown size={24} className="text-amber-400" fill="currentColor" />
-                    </div>
-                    <h2 className="text-3xl font-bold font-serif mb-2">Piano Theory <span className="text-amber-400">Pro</span></h2>
-                    <p className="text-white/60 text-sm mb-8">解锁大师级特权，定义你的音乐人格。</p>
-                    <ul className="space-y-4">
-                        <li className="flex items-start gap-3">
-                            <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
-                            <span className="text-sm font-medium">解锁 <strong>Level 5-7 大师课程</strong></span>
-                        </li>
-                        <li className="flex items-start gap-3">
-                            <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
-                            <span className="text-sm font-medium">无限次 <strong>AI 助教</strong> 对话</span>
-                        </li>
-                        <li className="flex items-start gap-3">
-                            <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
-                            <span className="text-sm font-medium"><strong>自定义</strong> 主题色彩</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        )}
-        <div className={`md:w-7/12 bg-white p-8 flex flex-col overflow-y-auto max-h-[80vh] custom-scrollbar relative transition-all duration-500 ${isSuccess ? 'w-full md:w-full bg-stone-950 text-white' : ''}`}>
-           <button onClick={onClose} className={`absolute top-4 right-4 p-2 rounded-full transition-colors z-20 ${isSuccess ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}><X size={20} /></button>
-           {!isSuccess ? (
-             <>
-               <h3 className="text-lg font-bold text-stone-900 mb-6">选择订阅计划</h3>
-               <div className="grid gap-4 mb-8">
-                   <button onClick={() => setSelectedPlan('yearly')} className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'yearly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}>
-                       <div className={`absolute -top-3 left-4 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm bg-stone-900`}>BEST VALUE</div>
-                       <div><div className="font-bold text-stone-900">年度会员</div><div className="text-xs text-stone-500">¥19.00 / 月</div></div>
-                       <div className="text-right"><div className="text-2xl font-bold text-stone-900">¥228</div><div className="text-[10px] text-stone-400 line-through">¥348</div></div>
-                   </button>
-                   <button onClick={() => setSelectedPlan('monthly')} className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'monthly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}>
-                       <div><div className="font-bold text-stone-900">月度会员</div><div className="text-xs text-stone-500">灵活订阅</div></div>
-                       <div className="text-right"><div className="text-2xl font-bold text-stone-900">¥29</div></div>
-                   </button>
-               </div>
-               <button onClick={handlePurchase} className={`w-full bg-black text-white py-4 rounded-xl font-bold shadow-xl hover:bg-stone-800 transition-all mb-6 flex items-center justify-center gap-2 active:scale-95`}>
-                   <CreditCard size={18} /> 立即订阅
-               </button>
-               <div className="border-t border-stone-100 pt-6">
-                  <div className="flex gap-2">
-                    <input id="invite-input" type="text" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value); setError(''); }} placeholder="输入兑换代码" className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2 text-stone-900 focus:outline-none focus:ring-2 text-sm font-mono tracking-wider uppercase" />
-                    <button onClick={handleVerify} disabled={!inviteCode} className="bg-white border border-stone-200 text-stone-600 px-4 rounded-xl font-bold hover:bg-stone-50 transition-colors text-sm">兑换</button>
-                  </div>
-                  {error && <p className="text-red-500 text-xs mt-2 font-medium animate-pulse">{error}</p>}
-               </div>
-             </>
-           ) : (
-             <div className="flex-1 flex flex-col items-center justify-center text-center py-8 relative z-10 w-full h-full min-h-[400px]">
-                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                     <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] bg-amber-500/20 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 animate-pulse-slow"></div>
-                     {Array.from({length:20}).map((_,i) => (
-                         <div key={i} className="absolute w-1 h-1 bg-amber-300 rounded-full animate-float-particle" style={{ left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*2}s` }}></div>
-                     ))}
-                 </div>
-                 <div className="relative mb-8 z-10">
-                     <div className="w-40 h-28 bg-gradient-to-tr from-amber-200 via-amber-400 to-amber-200 rounded-2xl shadow-2xl animate-card-flip flex items-center justify-center transform preserve-3d border border-white/20">
-                        <div className="absolute inset-0 bg-black/10 rounded-2xl"></div>
-                        <Crown size={48} className="text-stone-900 drop-shadow-sm" fill="currentColor" />
-                        <div className="absolute bottom-3 left-0 w-full text-center text-[10px] font-black tracking-[0.3em] text-stone-900 uppercase">Pro Member</div>
-                     </div>
-                     <div className="absolute -inset-4 bg-amber-500/30 blur-xl -z-10 animate-pulse"></div>
-                 </div>
-                 <h2 className="text-5xl font-serif font-bold text-white mb-2 animate-slide-up-fade" style={{ animationDelay: '0.2s' }}>Welcome to <span className="text-amber-400">Pro</span></h2>
-                 <p className="text-white/60 mb-8 animate-slide-up-fade" style={{ animationDelay: '0.4s' }}>所有特权已解锁，开启您的大师之旅。</p>
-                 <button onClick={onClose} className="bg-white text-stone-900 px-12 py-4 rounded-full font-bold shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 transition-all animate-slide-up-fade flex items-center gap-2 group mt-4 hover:bg-amber-50">
-                     <span>进入 Pro 空间</span> <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                 </button>
-             </div>
-           )}
-        </div>
-      </div>
-    </div>
-  );
-};
+interface SubscriptionModalProps { isOpen: boolean; onClose: () => void; onSuccess: () => void; themeColor: string; customColor?: string; }
+const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, onSuccess, themeColor, customColor }) => { const [inviteCode, setInviteCode] = useState(''); const [error, setError] = useState(''); const [isSuccess, setIsSuccess] = useState(false); const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly'); const [isVisible, setIsVisible] = useState(false); const [isAnimating, setIsAnimating] = useState(false); useEffect(() => { if (isOpen) { setIsVisible(true); setInviteCode(''); setError(''); setIsSuccess(false); setTimeout(() => setIsAnimating(true), 10); } else { setIsAnimating(false); const timer = setTimeout(() => setIsVisible(false), 300); return () => clearTimeout(timer); } }, [isOpen]); if (!isVisible) return null; const handleVerify = () => { if (inviteCode === '8888') { setIsSuccess(true); setTimeout(() => { onSuccess(); }, 1000); } else { setError('无效的邀请码。请重试。'); } }; const handlePurchase = () => { setIsSuccess(true); setTimeout(() => { onSuccess(); }, 1000); }; const modalBg = 'bg-stone-900 text-white'; return ( <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ${isAnimating ? 'opacity-100' : 'opacity-0'}`}> <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-sm" onClick={onClose}></div> <div className={`bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative overflow-hidden transform transition-all duration-300 border border-stone-200 flex flex-col md:flex-row ${isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}> {!isSuccess && ( <div className={`md:w-5/12 p-8 flex flex-col relative overflow-hidden ${modalBg}`}> <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div> <div className="relative z-10 flex-1"> <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/10 bg-white/10`}> <Crown size={24} className="text-amber-400" fill="currentColor" /> </div> <h2 className="text-3xl font-bold font-serif mb-2">Piano Theory <span className="text-amber-400">Pro</span></h2> <p className="text-white/60 text-sm mb-8">解锁大师级特权，定义你的音乐人格。</p> <ul className="space-y-4"> <li className="flex items-start gap-3"> <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div> <span className="text-sm font-medium">解锁 <strong>Level 5-7 大师课程</strong></span> </li> <li className="flex items-start gap-3"> <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div> <span className="text-sm font-medium">无限次 <strong>AI 助教</strong> 对话</span> </li> <li className="flex items-start gap-3"> <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div> <span className="text-sm font-medium"><strong>自定义</strong> 主题色彩</span> </li> </ul> </div> </div> )} <div className={`md:w-7/12 bg-white p-8 flex flex-col overflow-y-auto max-h-[80vh] custom-scrollbar relative transition-all duration-500 ${isSuccess ? 'w-full md:w-full bg-stone-950 text-white' : ''}`}> <button onClick={onClose} className={`absolute top-4 right-4 p-2 rounded-full transition-colors z-20 ${isSuccess ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}><X size={20} /></button> {!isSuccess ? ( <> <h3 className="text-lg font-bold text-stone-900 mb-6">选择订阅计划</h3> <div className="grid gap-4 mb-8"> <button onClick={() => setSelectedPlan('yearly')} className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'yearly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}> <div className={`absolute -top-3 left-4 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm bg-stone-900`}>BEST VALUE</div> <div><div className="font-bold text-stone-900">年度会员</div><div className="text-xs text-stone-500">¥19.00 / 月</div></div> <div className="text-right"><div className="text-2xl font-bold text-stone-900">¥228</div><div className="text-[10px] text-stone-400 line-through">¥348</div></div> </button> <button onClick={() => setSelectedPlan('monthly')} className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'monthly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}> <div><div className="font-bold text-stone-900">月度会员</div><div className="text-xs text-stone-500">灵活订阅</div></div> <div className="text-right"><div className="text-2xl font-bold text-stone-900">¥29</div></div> </button> </div> <button onClick={handlePurchase} className={`w-full bg-black text-white py-4 rounded-xl font-bold shadow-xl hover:bg-stone-800 transition-all mb-6 flex items-center justify-center gap-2 active:scale-95`}> <CreditCard size={18} /> 立即订阅 </button> <div className="border-t border-stone-100 pt-6"> <div className="flex gap-2"> <input id="invite-input" type="text" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value); setError(''); }} placeholder="输入兑换代码" className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2 text-stone-900 focus:outline-none focus:ring-2 text-sm font-mono tracking-wider uppercase" /> <button onClick={handleVerify} disabled={!inviteCode} className="bg-white border border-stone-200 text-stone-600 px-4 rounded-xl font-bold hover:bg-stone-50 transition-colors text-sm">兑换</button> </div> {error && <p className="text-red-500 text-xs mt-2 font-medium animate-pulse">{error}</p>} </div> </> ) : ( <div className="flex-1 flex flex-col items-center justify-center text-center py-8 relative z-10 w-full h-full min-h-[400px]"> <div className="absolute inset-0 overflow-hidden pointer-events-none"> <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] bg-amber-500/20 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 animate-pulse-slow"></div> {Array.from({length:20}).map((_,i) => ( <div key={i} className="absolute w-1 h-1 bg-amber-300 rounded-full animate-float-particle" style={{ left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*2}s` }}></div> ))} </div> <div className="relative mb-8 z-10"> <div className="w-40 h-28 bg-gradient-to-tr from-amber-200 via-amber-400 to-amber-200 rounded-2xl shadow-2xl animate-card-flip flex items-center justify-center transform preserve-3d border border-white/20"> <div className="absolute inset-0 bg-black/10 rounded-2xl"></div> <Crown size={48} className="text-stone-900 drop-shadow-sm" fill="currentColor" /> <div className="absolute bottom-3 left-0 w-full text-center text-[10px] font-black tracking-[0.3em] text-stone-900 uppercase">Pro Member</div> </div> <div className="absolute -inset-4 bg-amber-500/30 blur-xl -z-10 animate-pulse"></div> </div> <h2 className="text-5xl font-serif font-bold text-white mb-2 animate-slide-up-fade" style={{ animationDelay: '0.2s' }}>Welcome to <span className="text-amber-400">Pro</span></h2> <p className="text-white/60 mb-8 animate-slide-up-fade" style={{ animationDelay: '0.4s' }}>所有特权已解锁，开启您的大师之旅。</p> <button onClick={onClose} className="bg-white text-stone-900 px-12 py-4 rounded-full font-bold shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 transition-all animate-slide-up-fade flex items-center gap-2 group mt-4 hover:bg-amber-50"> <span>进入 Pro 空间</span> <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" /> </button> </div> )} </div> </div> </div> ); };
 
 enum Tab {
   LESSON = 'lesson',
@@ -594,9 +299,13 @@ const App: React.FC = () => {
   
   const [openGroupIndex, setOpenGroupIndex] = useState<number | null>(0);
 
+  // New State for "Last Active Lesson" and "Real Minutes"
+  const [lastActiveLessonId, setLastActiveLessonId] = useState<string | null>(null);
+  const [studyMinutes, setStudyMinutes] = useState(0);
+
   useAmbience(userSettings.ambience, userSettings.volume / 100);
 
-  // ... (useEffect hooks same as before) ...
+  // Load Saved Data
   useEffect(() => {
     const storedUser = localStorage.getItem('pt_user');
     if (storedUser) setUser(JSON.parse(storedUser));
@@ -609,8 +318,15 @@ const App: React.FC = () => {
 
     const savedAchievements = localStorage.getItem('pt_achievements');
     if (savedAchievements) setAchievements(JSON.parse(savedAchievements));
+
+    const savedLastLesson = localStorage.getItem('pt_last_lesson');
+    if (savedLastLesson) setLastActiveLessonId(savedLastLesson);
+
+    const savedMinutes = localStorage.getItem('pt_study_minutes');
+    if (savedMinutes) setStudyMinutes(parseInt(savedMinutes, 10));
   }, []);
 
+  // Save Progress
   useEffect(() => {
       localStorage.setItem('pt_progress', JSON.stringify(completedLessons));
       localStorage.setItem('pt_achievements', JSON.stringify(achievements));
@@ -633,6 +349,22 @@ const App: React.FC = () => {
       if (hour >= 22 || hour < 4) checkUnlock('night_owl', true);
 
   }, [completedLessons, isPro]);
+
+  // Study Timer Logic
+  useEffect(() => {
+      let interval: number;
+      // Only count time if user is logged in and actually on a lesson (not home dashboard)
+      if (user && activeTab === Tab.LESSON && activeLesson !== LessonTopic.HOME) {
+          interval = window.setInterval(() => {
+              setStudyMinutes(prev => {
+                  const newVal = prev + 1;
+                  localStorage.setItem('pt_study_minutes', newVal.toString());
+                  return newVal;
+              });
+          }, 60000); // 1 minute
+      }
+      return () => clearInterval(interval);
+  }, [user, activeTab, activeLesson]);
 
 
   const handleLogin = (profile: UserProfile) => {
@@ -828,6 +560,10 @@ const App: React.FC = () => {
       if (!checkAccess(false)) return;
       if (!checkAccess(isProLesson)) return;
 
+      // Persist Last Active Lesson
+      setLastActiveLessonId(lessonId);
+      localStorage.setItem('pt_last_lesson', lessonId);
+
       if (!completedLessons.includes(lessonId)) {
           setCompletedLessons(prev => [...prev, lessonId]);
       }
@@ -852,6 +588,8 @@ const App: React.FC = () => {
             onUpdateProfile={handleUpdateProfile}
             completedLessons={completedLessons}
             onLoginRequest={() => setShowAuthModal(true)}
+            lastActiveLessonId={lastActiveLessonId}
+            studyMinutes={studyMinutes}
         />;
     }
 
