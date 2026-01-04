@@ -97,13 +97,13 @@ const ColorPickerModal: React.FC<{ isOpen: boolean, onClose: () => void, onApply
                 <h2 className="text-2xl font-serif font-bold text-stone-900 mb-1">外观工作室</h2>
                 <p className="text-xs text-stone-500 mb-8 font-bold uppercase tracking-wider">Design Studio</p>
 
-                {/* Preview Card */}
-                <div className="mb-8 p-6 rounded-2xl border border-stone-200 flex items-center justify-between shadow-sm transition-colors duration-300" style={{ backgroundColor: `${color}10`, borderColor: `${color}40` }}>
+                {/* Preview Card - Transitions removed for responsiveness */}
+                <div className="mb-8 p-6 rounded-2xl border border-stone-200 flex items-center justify-between shadow-sm" style={{ backgroundColor: `${color}10`, borderColor: `${color}40` }}>
                     <div>
                         <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: color }}>效果预览 (Preview)</div>
                         <div className="font-bold text-lg text-stone-900">自定义主题风格</div>
                     </div>
-                    <button className="px-5 py-2.5 rounded-xl font-bold text-white shadow-lg transition-colors text-sm" style={{ backgroundColor: color }}>
+                    <button className="px-5 py-2.5 rounded-xl font-bold text-white shadow-lg text-sm" style={{ backgroundColor: color }}>
                         主要按钮
                     </button>
                 </div>
@@ -182,7 +182,7 @@ const PrivacyModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOp
     )
 }
 
-// --- Account Settings Modal (Updated) ---
+// --- Account Settings Modal ---
 const AccountSettingsModal: React.FC<{ 
     isOpen: boolean; 
     onClose: () => void; 
@@ -274,7 +274,6 @@ const AccountSettingsModal: React.FC<{
 
     const handleSavePassword = () => {
         if (!password || password !== confirmPassword) {
-            // In a real app, show error
             return;
         }
         setIsSettingPassword(true);
@@ -502,7 +501,7 @@ const AccountSettingsModal: React.FC<{
     );
 };
 
-// --- Profile Settings Component (Updated) ---
+// --- Profile Settings Component ---
 const ProfileSettings: React.FC<{ 
   onBack: () => void; 
   isPro: boolean; 
@@ -597,7 +596,7 @@ const ProfileSettings: React.FC<{
       <div className="bg-white p-6 rounded-3xl border border-stone-100 shadow-xl shadow-stone-200/50 mb-6 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden group">
          <div className="absolute top-0 right-0 w-32 h-32 bg-stone-50 rounded-full -mr-10 -mt-10 pointer-events-none transition-transform group-hover:scale-150 duration-700"></div>
          
-         <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl border-4 border-stone-100 shadow-inner shrink-0 relative z-10 overflow-hidden ${!user?.isCustomAvatar ? (theme.isCustom ? '' : theme.lightBg) : 'bg-stone-100'}`} style={theme.isCustom ? { backgroundColor: theme.hex + '20' } : {}}>
+         <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl border-4 border-stone-100 shadow-inner shrink-0 relative z-10 overflow-hidden transition-colors duration-500 ${!user?.isCustomAvatar ? (theme.isCustom ? '' : theme.lightBg) : 'bg-stone-100'}`} style={theme.isCustom ? { backgroundColor: theme.hex + '20' } : {}}>
             {user?.isCustomAvatar ? (
                 <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
@@ -616,7 +615,7 @@ const ProfileSettings: React.FC<{
                         <span className="text-xs font-bold text-stone-700">12.5 小时</span>
                     </div>
                     <div className="flex items-center gap-1.5 bg-stone-50 px-3 py-1.5 rounded-lg border border-stone-100">
-                        <Trophy size={14} className={theme.isCustom ? '' : theme.text} style={theme.isCustom ? { color: theme.hex } : {}} />
+                        <Trophy size={14} className={`${theme.isCustom ? '' : theme.text} transition-colors duration-500`} style={theme.isCustom ? { color: theme.hex } : {}} />
                         <span className="text-xs font-bold text-stone-700">{achievements.filter(a => a.unlocked).length} 成就</span>
                     </div>
                 </div>
@@ -652,7 +651,7 @@ const ProfileSettings: React.FC<{
 
       {/* Subscription Card */}
       <div 
-        className={`p-8 rounded-3xl border mb-8 relative overflow-hidden transition-all duration-500 ${isPro ? 'bg-stone-900 text-white border-stone-800 shadow-2xl' : `bg-gradient-to-br from-stone-50 to-orange-50 border-amber-200`}`}
+        className={`p-8 rounded-3xl border mb-8 relative overflow-hidden transition-all duration-700 ${isPro ? 'bg-stone-900 text-white border-stone-800 shadow-2xl' : `bg-gradient-to-br from-stone-50 to-orange-50 border-amber-200`}`}
         style={(!isPro && theme.isCustom) ? { borderColor: theme.hex + '40', background: `linear-gradient(to bottom right, ${theme.hex}10, white)` } : {}}
       >
           <div className="relative z-10 flex justify-between items-center">
@@ -673,7 +672,7 @@ const ProfileSettings: React.FC<{
               )}
           </div>
           
-          <div className={`absolute -right-10 -bottom-20 w-64 h-64 rounded-full blur-3xl pointer-events-none animate-pulse-slow ${isPro ? 'bg-amber-500/20' : 'bg-amber-400/20'}`}></div>
+          <div className={`absolute -right-10 -bottom-20 w-64 h-64 rounded-full blur-3xl pointer-events-none animate-pulse-slow transition-colors duration-700 ${isPro ? 'bg-amber-500/20' : 'bg-amber-400/20'}`}></div>
       </div>
 
       {/* --- Personalization Section --- */}
@@ -697,7 +696,7 @@ const ProfileSettings: React.FC<{
                               onClick={() => {
                                   onUpdate({ ...settings, themeColor: color.id as any });
                               }}
-                              className={`w-6 h-6 rounded-full relative flex items-center justify-center transition-all duration-300 ${color.bg} ${isActive ? 'ring-2 ring-offset-2 ring-stone-300 scale-125 shadow-md' : 'opacity-80 hover:opacity-100 hover:scale-110'}`}
+                              className={`w-6 h-6 rounded-full relative flex items-center justify-center transition-all duration-500 ${color.bg} ${isActive ? 'ring-2 ring-offset-2 ring-stone-300 scale-125 shadow-md' : 'opacity-80 hover:opacity-100 hover:scale-110'}`}
                           ></button>
                       )
                   })}
@@ -708,7 +707,7 @@ const ProfileSettings: React.FC<{
                         if (!isPro) { onUpgrade(); return; }
                         setShowColorPicker(true);
                     }}
-                    className={`w-6 h-6 rounded-full relative flex items-center justify-center transition-all duration-300 border bg-white ${settings.themeColor === 'custom' ? 'ring-2 ring-offset-2 ring-stone-300 scale-125 shadow-md border-stone-300' : 'border-stone-200 opacity-80 hover:opacity-100 hover:scale-110'}`}
+                    className={`w-6 h-6 rounded-full relative flex items-center justify-center transition-all duration-500 border bg-white ${settings.themeColor === 'custom' ? 'ring-2 ring-offset-2 ring-stone-300 scale-125 shadow-md border-stone-300' : 'border-stone-200 opacity-80 hover:opacity-100 hover:scale-110'}`}
                     style={settings.themeColor === 'custom' && settings.customColor ? { backgroundColor: settings.customColor } : {}}
                   >
                       {!isPro && <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center"><Lock size={10} className="text-white"/></div>}
@@ -794,7 +793,7 @@ const ProfileSettings: React.FC<{
                   <div className="flex items-center gap-4">
                       <button 
                         onClick={toggleMute}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${settings.volume === 0 ? 'bg-stone-200 text-stone-400' : `${theme.isCustom ? '' : theme.lightBg} ${theme.isCustom ? '' : theme.text}`}`}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-500 ${settings.volume === 0 ? 'bg-stone-200 text-stone-400' : `${theme.isCustom ? '' : theme.lightBg} ${theme.isCustom ? '' : theme.text}`}`}
                         style={settings.volume > 0 && theme.isCustom ? { backgroundColor: theme.hex + '20', color: theme.hex } : {}}
                       >
                           {settings.volume === 0 ? <VolumeX size={18}/> : (settings.volume < 50 ? <Volume1 size={18}/> : <Volume2 size={18} />)}
@@ -809,7 +808,7 @@ const ProfileSettings: React.FC<{
               <div className="relative h-12 flex items-center group cursor-pointer">
                   <div className="absolute w-full h-4 bg-stone-200 rounded-full overflow-hidden">
                       <div 
-                        className={`h-full transition-all duration-100 ease-out rounded-full ${settings.volume === 0 ? 'bg-stone-300' : (theme.isCustom ? '' : theme.bg)}`} 
+                        className={`h-full transition-all duration-500 ease-out rounded-full ${settings.volume === 0 ? 'bg-stone-300' : (theme.isCustom ? '' : theme.bg)}`} 
                         style={{ width: `${settings.volume}%`, backgroundColor: (settings.volume > 0 && theme.isCustom) ? theme.hex : undefined }}
                       ></div>
                   </div>
@@ -823,7 +822,7 @@ const ProfileSettings: React.FC<{
                   />
 
                   <div 
-                    className="absolute h-8 w-8 bg-white border-4 rounded-full shadow-md pointer-events-none transition-all duration-100 ease-out flex items-center justify-center z-0"
+                    className="absolute h-8 w-8 bg-white border-4 rounded-full shadow-md pointer-events-none transition-all duration-500 ease-out flex items-center justify-center z-0"
                     style={{ 
                         left: `calc(${settings.volume}% - 16px)`, 
                         borderColor: settings.volume === 0 ? '#d6d3d1' : (theme.isCustom ? theme.hex : (settings.themeColor === 'amber' ? '#f59e0b' : settings.themeColor === 'rose' ? '#f43f5e' : settings.themeColor === 'sky' ? '#0ea5e9' : settings.themeColor === 'emerald' ? '#10b981' : '#8b5cf6'))
@@ -837,12 +836,12 @@ const ProfileSettings: React.FC<{
           {/* Notifications Toggle */}
           <div className="w-full flex items-center justify-between p-6 hover:bg-stone-50 transition-colors cursor-pointer" onClick={() => setNotify(!notify)}>
               <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${notify ? `${theme.isCustom ? '' : theme.lightBg} ${theme.isCustom ? '' : theme.text}` : 'bg-stone-100 text-stone-400'}`} style={notify && theme.isCustom ? { backgroundColor: theme.hex + '20', color: theme.hex } : {}}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-500 ${notify ? `${theme.isCustom ? '' : theme.lightBg} ${theme.isCustom ? '' : theme.text}` : 'bg-stone-100 text-stone-400'}`} style={notify && theme.isCustom ? { backgroundColor: theme.hex + '20', color: theme.hex } : {}}>
                       <Bell size={18} fill={notify ? "currentColor" : "none"} />
                   </div>
                   <span className="font-bold text-stone-700">消息通知</span>
               </div>
-              <div className={`w-12 h-7 rounded-full p-1 transition-colors duration-300 relative ${notify ? 'bg-green-500' : 'bg-stone-300'}`}>
+              <div className={`w-12 h-7 rounded-full p-1 transition-colors duration-500 relative ${notify ? 'bg-green-500' : 'bg-stone-300'}`}>
                   <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${notify ? 'translate-x-5' : 'translate-x-0'}`}></div>
               </div>
           </div>
@@ -921,7 +920,7 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                         <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">仪表盘</span>
                     </div>
                     <h1 className="text-3xl md:text-4xl font-serif font-medium text-stone-900 leading-tight">
-                        欢迎回来，<span className={`${getThemeTextClass()} italic`} style={getThemeTextClass() === 'text-custom' ? { color: userSettings.customColor } : {}}>{user ? user.name : 'Guest'}</span>
+                        欢迎回来，<span className={`${getThemeTextClass()} italic transition-colors duration-700`} style={getThemeTextClass() === 'text-custom' ? { color: userSettings.customColor } : {}}>{user ? user.name : 'Guest'}</span>
                     </h1>
                 </div>
 
@@ -929,7 +928,7 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                     {user && (
                         <div className="hidden lg:flex gap-3">
                             <div className="bg-white px-4 py-2 rounded-full border border-stone-200 shadow-sm flex items-center gap-3 cursor-default hover:shadow-md transition-shadow">
-                                <div className={`p-1.5 rounded-full ${userSettings.themeColor === 'custom' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600'}`} style={userSettings.themeColor === 'custom' && userSettings.customColor ? { backgroundColor: userSettings.customColor } : {}}>
+                                <div className={`p-1.5 rounded-full transition-colors duration-500 ${userSettings.themeColor === 'custom' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600'}`} style={userSettings.themeColor === 'custom' && userSettings.customColor ? { backgroundColor: userSettings.customColor } : {}}>
                                     <Zap size={14} fill="currentColor" />
                                 </div>
                                 <div>
@@ -965,7 +964,7 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                 <div className="absolute inset-0 bg-stone-900 rounded-[2rem] shadow-2xl transform transition-transform duration-500 group-hover:scale-[1.01]"></div>
                 <div className="absolute inset-0 rounded-[2rem] overflow-hidden pointer-events-none opacity-40">
                     <div 
-                        className={`absolute -top-24 -right-24 w-96 h-96 rounded-full blur-[100px] transition-colors duration-500 bg-${userSettings.themeColor}-500/20`}
+                        className={`absolute -top-24 -right-24 w-96 h-96 rounded-full blur-[100px] transition-colors duration-700 bg-${userSettings.themeColor}-500/20`}
                         style={userSettings.themeColor === 'custom' && userSettings.customColor ? { backgroundColor: userSettings.customColor, opacity: 0.2 } : {}}
                     ></div>
                     <div className="absolute bottom-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>

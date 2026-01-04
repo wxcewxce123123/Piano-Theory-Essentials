@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Check, ArrowRight, Zap, Rocket, Music, Star, Heart, Sparkles, Cloud, Piano } from 'lucide-react';
 
 interface SplashScreenProps {
@@ -110,24 +110,135 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
   const [loadingText, setLoadingText] = useState(LOADING_TEXTS[0]);
   const [isExiting, setIsExiting] = useState(false);
 
+  // --- Audio Logic ---
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const ambienceNodesRef = useRef<any[]>([]);
+
+  const initAudio = () => {
+      if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume();
+      }
+  };
+
+  const playSound = (type: 'select' | 'start' | 'success' | 'launch') => {
+      if (!audioCtxRef.current) return;
+      const ctx = audioCtxRef.current;
+      const t = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === 'select') {
+          // Crisp Bubble Pop
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, t);
+          osc.frequency.exponentialRampToValueAtTime(1200, t + 0.1);
+          gain.gain.setValueAtTime(0.05, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+          osc.start(t);
+          osc.stop(t + 0.2);
+      } else if (type === 'start') {
+          // Short & Snappy Start Sound (Modified)
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(150, t);
+          osc.frequency.exponentialRampToValueAtTime(50, t + 0.3);
+          gain.gain.setValueAtTime(0.2, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+          osc.start(t);
+          osc.stop(t + 0.35);
+          
+          // Background music removed
+      } else if (type === 'success') {
+          // Major Chord Arpeggio (C Major)
+          const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
+          notes.forEach((f, i) => {
+               const o = ctx.createOscillator();
+               const g = ctx.createGain();
+               o.connect(g);
+               g.connect(ctx.destination);
+               o.type = 'sine'; // Pure tone
+               o.frequency.value = f;
+               
+               const start = t + i * 0.05;
+               g.gain.setValueAtTime(0, start);
+               g.gain.linearRampToValueAtTime(0.1, start + 0.05);
+               g.gain.exponentialRampToValueAtTime(0.001, start + 1.5);
+               
+               o.start(start);
+               o.stop(start + 1.6);
+          });
+      } else if (type === 'launch') {
+          // Futuristic Swoosh
+          const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 1, ctx.sampleRate);
+          const data = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+          
+          const noise = ctx.createBufferSource();
+          noise.buffer = noiseBuffer;
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.Q.value = 1;
+          filter.frequency.setValueAtTime(200, t);
+          filter.frequency.exponentialRampToValueAtTime(5000, t + 0.8);
+          
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.gain.setValueAtTime(0.15, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+          noise.start(t);
+          
+          stopAmbience();
+      }
+  };
+
+  const startAmbience = () => {
+      // Removed functionality
+  };
+
+  const stopAmbience = () => {
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      
+      ambienceNodesRef.current.forEach(node => {
+          if (node instanceof GainNode) {
+               // Fade out connected gains
+               try { node.gain.exponentialRampToValueAtTime(0.0001, t + 1); } catch(e){}
+          } else if (node instanceof OscillatorNode) {
+              node.stop(t + 1);
+          }
+      });
+      ambienceNodesRef.current = [];
+  };
+
   // --- Animation Handlers ---
 
   const handleStart = () => {
+    initAudio(); // User Gesture Trigger
+    playSound('start');
     setPhase('question');
   };
 
   const handleOptionSelect = (idx: number) => {
     if (selectedOption === idx) return;
+    playSound('select');
     setSelectedOption(idx);
   };
 
   const handleNextQuestion = () => {
     if (qIndex < QUESTIONS.length - 1) {
+        playSound('select');
         setTimeout(() => {
             setQIndex(prev => prev + 1);
             setSelectedOption(null);
         }, 300);
     } else {
+        playSound('select');
         setPhase('loading');
         startLoadingSimulation();
     }
@@ -142,9 +253,11 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
           if (p > 100) {
               p = 100;
               clearInterval(interval);
+              // Loading Complete Sound
+              playSound('success');
               setTimeout(() => {
                   setPhase('ready');
-              }, 800); // Wait a bit at 100%
+              }, 500); // Wait a bit at 100%
           }
           setLoadProgress(p);
           const textIdx = Math.floor((p / 100) * LOADING_TEXTS.length);
@@ -153,6 +266,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
   };
 
   const handleFinalStart = () => {
+      playSound('launch');
       setIsExiting(true);
       if (onStartExiting) onStartExiting();
       setTimeout(onFinish, 1100);
@@ -290,8 +404,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, onStartExiting })
         </div>
 
         {/* Floating Continue Button (Question Phase Only) */}
-        {/* FIX: Removed background completely to allow perfect blending via transparency. 
-            The button now floats cleanly over the animated background. */}
         <div className={`fixed bottom-0 left-0 right-0 p-6 pb-8 z-50 transition-all duration-500 ease-out transform ${phase === 'question' ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}>
             <div className="max-w-lg mx-auto">
                 <button

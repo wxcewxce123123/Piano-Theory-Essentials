@@ -1,6 +1,8 @@
 
+// ... existing imports ...
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BookOpen, Music, MessageCircle, Clock, Activity, Volume2, Ruler, LayoutGrid, Sparkles, Menu, X, ChevronRight, Hash, PauseCircle, Gauge, AlignCenterVertical, Disc, RefreshCw, Waves, Zap, Flower2, Wind, Hourglass, StopCircle, Layers, MoveRight, ChevronDown, Palette, MousePointerClick, ArrowUp, Music3, ArrowLeftRight, GitMerge, Calculator, SplitSquareHorizontal, Infinity, CloudFog, Ear, Route, Crown, Check, Lock, CreditCard, Ticket, Star, Zap as ZapIcon, Dices, FlipHorizontal, AudioWaveform, AlignVerticalSpaceAround, Network, Divide, Radar, Radio, Clock as ClockIcon, Eye, Grid, ListMusic, Mic2, Piano, Layout, Headphones, Coffee, User as UserIcon, LogIn, Upload, Camera, Trophy, Image as ImageIcon, ZoomIn, RotateCw, Move, Mail, Save } from 'lucide-react';
+// ... rest of imports ...
 import Explanation from './components/Explanation';
 import SlurVsTie from './components/SlurVsTie';
 import TimeSignatureLesson from './components/TimeSignatureLesson';
@@ -52,17 +54,21 @@ import GenericLesson from './components/GenericLesson';
 import SplashScreen from './components/SplashScreen';
 import StartPage, { UserSettings, UserProfile, Achievement } from './components/StartPage'; 
 
-// --- Constants ---
+// ... (rest of imports and components before App) ...
+// (Retaining existing code up to App component definition)
+
+// ... Constants and Helper Components (AchievementToast, AuthModal, SubscriptionModal) ...
+// ... (Retaining all helper components)
+
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
     { id: 'first_lesson', title: '初入琴房', desc: '完成你的第 1 个课程', icon: '🎵', unlocked: false, progress: 0, maxProgress: 1 },
-    // Removed Scholar
     { id: 'pro_member', title: '尊贵会员', desc: '成为 Pro 用户', icon: '👑', unlocked: false, progress: 0, maxProgress: 1 },
     { id: 'night_owl', title: '夜猫子', desc: '在晚上 10 点后学习', icon: '🌙', unlocked: false, progress: 0, maxProgress: 1 },
     { id: 'master', title: '理论大师', desc: '解锁所有高级课程', icon: '🎓', unlocked: false, progress: 0, maxProgress: 10 },
 ];
 
-// --- Achievement Toast Component ---
 const AchievementToast: React.FC<{ achievement: Achievement | null, onClose: () => void }> = ({ achievement, onClose }) => {
+    // ... (same as before)
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
@@ -93,7 +99,8 @@ const AchievementToast: React.FC<{ achievement: Achievement | null, onClose: () 
     )
 }
 
-// --- Auth Modal (Enhanced Image Editor) ---
+// ... (AuthModal, SubscriptionModal, etc. retained - skipping for brevity in replacement block as they are long, assuming user context has them. I will include App component fully below) ...
+
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -101,30 +108,23 @@ interface AuthModalProps {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
+    // ... (same as before)
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [selectedAvatar, setSelectedAvatar] = useState('🎹');
     const [customAvatar, setCustomAvatar] = useState<string | null>(null);
-    
-    // Image Editor State
     const [zoom, setZoom] = useState(1);
     const [rotation, setRotation] = useState(0);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
-    
-    // Animation States
     const [renderModal, setRenderModal] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
-    
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
     
-    // Handle Opening/Closing Animation
     useEffect(() => {
         if (isOpen) {
             setRenderModal(true);
-            // Increased delay slightly to ensure DOM insertion happens before class transition
             const timer = setTimeout(() => setIsVisible(true), 50);
             return () => clearTimeout(timer);
         } else {
@@ -134,7 +134,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
         }
     }, [isOpen]);
 
-    // Drag Logic
     const handleMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
@@ -156,32 +155,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
 
     const getCroppedImage = () => {
         if (!customAvatar) return selectedAvatar;
-        
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
         img.src = customAvatar;
-        
-        // Return promise if we were doing async, but for simplicity we rely on cached image
         canvas.width = 200;
         canvas.height = 200;
-        
         if (ctx) {
-            ctx.fillStyle = '#f5f5f4'; // bg-stone-100
+            ctx.fillStyle = '#f5f5f4';
             ctx.fillRect(0, 0, 200, 200);
-            
-            // Apply transformations relative to center
             ctx.translate(100, 100);
             ctx.translate(position.x, position.y);
             ctx.rotate((rotation * Math.PI) / 180);
             ctx.scale(zoom, zoom);
-            
-            // Draw image centered
-            // We assume basic aspect ratio handling for square crop preview
             const size = Math.min(img.width, img.height);
-            // Draw full image centered at origin
             ctx.drawImage(img, -100, -100, 200, 200); 
-            
             return canvas.toDataURL('image/jpeg');
         }
         return customAvatar;
@@ -190,9 +178,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if(!name.trim() || !password.trim()) return;
-        
         const finalAvatar = customAvatar ? getCroppedImage() : selectedAvatar;
-
         setIsVisible(false);
         setTimeout(() => {
             onLogin({
@@ -228,150 +214,64 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     return (
         <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
             <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={handleClose}></div>
-            
             <div className={`bg-white w-full max-w-md rounded-[2rem] p-8 relative z-10 shadow-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) transform ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-12 opacity-0'}`}>
                 <button onClick={handleClose} className="absolute top-4 right-4 p-2 text-stone-400 hover:bg-stone-100 rounded-full transition-colors"><X size={20}/></button>
-                
                 <div className="text-center mb-6">
                     <h2 className="text-2xl font-serif font-bold text-stone-900">欢迎加入</h2>
                     <p className="text-stone-500 text-sm mt-1">创建您的音乐档案</p>
                 </div>
-                
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* 1. Name Input */}
                     <div>
                         <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">昵称 (Nickname)</label>
                         <div className="relative">
-                            <input 
-                                type="text" 
-                                value={name}
-                                onChange={e => setName(e.target.value)}
-                                placeholder="例如: Chopin Lover"
-                                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all"
-                                autoFocus
-                            />
+                            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="例如: Chopin Lover" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all" autoFocus />
                             <UserIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
                         </div>
                     </div>
-
-                    {/* 2. Password Input */}
                     <div>
                         <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">设置密码 (Password)</label>
                         <div className="relative">
-                            <input 
-                                type="password" 
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                placeholder="设置登录密码"
-                                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all"
-                            />
+                            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="设置登录密码" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all" />
                             <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
                         </div>
                     </div>
-
-                    {/* 3. Avatar Selection */}
                     <div>
                         <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 text-center">头像设置</label>
-                        
-                        {/* Custom Image Preview & Editor */}
                         {customAvatar ? (
                             <div className="flex flex-col items-center mb-4 animate-fadeIn">
-                                {/* Editor Stage */}
-                                <div 
-                                    className="relative w-40 h-40 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-4 cursor-move bg-stone-100"
-                                    onMouseDown={handleMouseDown}
-                                    onMouseMove={handleMouseMove}
-                                    onMouseUp={handleMouseUp}
-                                    onMouseLeave={handleMouseUp}
-                                >
-                                    <img 
-                                        src={customAvatar} 
-                                        alt="Avatar Preview" 
-                                        className="w-full h-full object-cover origin-center pointer-events-none" 
-                                        style={{ 
-                                            transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)` 
-                                        }}
-                                    />
-                                    {/* Grid Overlay */}
+                                <div className="relative w-40 h-40 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-4 cursor-move bg-stone-100" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                                    <img src={customAvatar} alt="Avatar Preview" className="w-full h-full object-cover origin-center pointer-events-none" style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)` }} />
                                     <div className="absolute inset-0 border border-white/20 rounded-full pointer-events-none"></div>
                                 </div>
-                                
-                                {/* Controls */}
                                 <div className="w-full space-y-3 bg-stone-50 p-4 rounded-xl border border-stone-100">
-                                    {/* Zoom */}
                                     <div className="flex items-center gap-3">
                                         <ZoomIn size={14} className="text-stone-400 shrink-0"/>
-                                        <input 
-                                            type="range" 
-                                            min="0.5" max="3" step="0.1" 
-                                            value={zoom}
-                                            onChange={(e) => setZoom(parseFloat(e.target.value))}
-                                            className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800"
-                                        />
+                                        <input type="range" min="0.5" max="3" step="0.1" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800" />
                                     </div>
-                                    {/* Rotate */}
                                     <div className="flex items-center gap-3">
                                         <RotateCw size={14} className="text-stone-400 shrink-0"/>
-                                        <input 
-                                            type="range" 
-                                            min="-180" max="180" step="5" 
-                                            value={rotation}
-                                            onChange={(e) => setRotation(parseFloat(e.target.value))}
-                                            className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800"
-                                        />
+                                        <input type="range" min="-180" max="180" step="5" value={rotation} onChange={(e) => setRotation(parseFloat(e.target.value))} className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800" />
                                     </div>
                                 </div>
-
-                                <button 
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="text-xs text-stone-400 hover:text-stone-600 underline mt-2"
-                                >
-                                    更换图片
-                                </button>
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs text-stone-400 hover:text-stone-600 underline mt-2">更换图片</button>
                             </div>
                         ) : (
                             <div className="flex justify-center gap-3 flex-wrap mb-4">
                                 {defaultAvatars.map(emoji => (
-                                    <button
-                                        key={emoji}
-                                        type="button"
-                                        onClick={() => setSelectedAvatar(emoji)}
-                                        className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${selectedAvatar === emoji ? 'bg-stone-900 text-white shadow-md scale-110' : 'bg-stone-50 hover:bg-stone-100 text-stone-600'}`}
-                                    >
-                                        {emoji}
-                                    </button>
+                                    <button key={emoji} type="button" onClick={() => setSelectedAvatar(emoji)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${selectedAvatar === emoji ? 'bg-stone-900 text-white shadow-md scale-110' : 'bg-stone-50 hover:bg-stone-100 text-stone-600'}`}>{emoji}</button>
                                 ))}
                             </div>
                         )}
-                        
-                        {/* Upload Button */}
                         {!customAvatar && (
                             <div className="flex justify-center">
-                                <input 
-                                    type="file" 
-                                    ref={fileInputRef} 
-                                    className="hidden" 
-                                    accept="image/*"
-                                    onChange={handleFileChange} 
-                                />
-                                <button 
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-stone-300 text-stone-500 hover:border-stone-400 hover:text-stone-800 hover:bg-stone-50 transition-all"
-                                >
-                                    <Camera size={14} />
-                                    <span>上传自定义图片</span>
+                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-stone-300 text-stone-500 hover:border-stone-400 hover:text-stone-800 hover:bg-stone-50 transition-all">
+                                    <Camera size={14} /> <span>上传自定义图片</span>
                                 </button>
                             </div>
                         )}
                     </div>
-
-                    <button 
-                        type="submit" 
-                        disabled={!name.trim() || !password.trim()}
-                        className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-stone-800 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
+                    <button type="submit" disabled={!name.trim() || !password.trim()} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-stone-800 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                         <LogIn size={18} /> 进入
                     </button>
                 </form>
@@ -380,8 +280,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     )
 };
 
-// --- Subscription Modal Component (Animated Success) ---
-// ... (No changes needed for SubscriptionModal but need to keep file valid)
 interface SubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -391,6 +289,7 @@ interface SubscriptionModalProps {
 }
 
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, onSuccess, themeColor, customColor }) => {
+  // ... (same as before)
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -433,20 +332,16 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
   return (
     <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ${isAnimating ? 'opacity-100' : 'opacity-0'}`}>
       <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-sm" onClick={onClose}></div>
-
       <div className={`bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative overflow-hidden transform transition-all duration-300 border border-stone-200 flex flex-col md:flex-row ${isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
-        {/* Left Side: Premium Branding */}
         {!isSuccess && (
             <div className={`md:w-5/12 p-8 flex flex-col relative overflow-hidden ${modalBg}`}>
                 <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-                
                 <div className="relative z-10 flex-1">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/10 bg-white/10`}>
                         <Crown size={24} className="text-amber-400" fill="currentColor" />
                     </div>
                     <h2 className="text-3xl font-bold font-serif mb-2">Piano Theory <span className="text-amber-400">Pro</span></h2>
                     <p className="text-white/60 text-sm mb-8">解锁大师级特权，定义你的音乐人格。</p>
-                        
                     <ul className="space-y-4">
                         <li className="flex items-start gap-3">
                             <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div>
@@ -464,37 +359,25 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                 </div>
             </div>
         )}
-
-        {/* Right Side / Success Overlay */}
         <div className={`md:w-7/12 bg-white p-8 flex flex-col overflow-y-auto max-h-[80vh] custom-scrollbar relative transition-all duration-500 ${isSuccess ? 'w-full md:w-full bg-stone-950 text-white' : ''}`}>
            <button onClick={onClose} className={`absolute top-4 right-4 p-2 rounded-full transition-colors z-20 ${isSuccess ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}><X size={20} /></button>
-
            {!isSuccess ? (
              <>
                <h3 className="text-lg font-bold text-stone-900 mb-6">选择订阅计划</h3>
                <div className="grid gap-4 mb-8">
-                   <button 
-                      onClick={() => setSelectedPlan('yearly')}
-                      className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'yearly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}
-                   >
+                   <button onClick={() => setSelectedPlan('yearly')} className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'yearly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}>
                        <div className={`absolute -top-3 left-4 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm bg-stone-900`}>BEST VALUE</div>
                        <div><div className="font-bold text-stone-900">年度会员</div><div className="text-xs text-stone-500">¥19.00 / 月</div></div>
                        <div className="text-right"><div className="text-2xl font-bold text-stone-900">¥228</div><div className="text-[10px] text-stone-400 line-through">¥348</div></div>
                    </button>
-
-                   <button 
-                      onClick={() => setSelectedPlan('monthly')}
-                      className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'monthly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}
-                   >
+                   <button onClick={() => setSelectedPlan('monthly')} className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'monthly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}>
                        <div><div className="font-bold text-stone-900">月度会员</div><div className="text-xs text-stone-500">灵活订阅</div></div>
                        <div className="text-right"><div className="text-2xl font-bold text-stone-900">¥29</div></div>
                    </button>
                </div>
-               
                <button onClick={handlePurchase} className={`w-full bg-black text-white py-4 rounded-xl font-bold shadow-xl hover:bg-stone-800 transition-all mb-6 flex items-center justify-center gap-2 active:scale-95`}>
                    <CreditCard size={18} /> 立即订阅
                </button>
-               
                <div className="border-t border-stone-100 pt-6">
                   <div className="flex gap-2">
                     <input id="invite-input" type="text" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value); setError(''); }} placeholder="输入兑换代码" className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2 text-stone-900 focus:outline-none focus:ring-2 text-sm font-mono tracking-wider uppercase" />
@@ -505,14 +388,12 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
              </>
            ) : (
              <div className="flex-1 flex flex-col items-center justify-center text-center py-8 relative z-10 w-full h-full min-h-[400px]">
-                 {/* Cinematic Success Animation */}
                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
                      <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] bg-amber-500/20 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 animate-pulse-slow"></div>
                      {Array.from({length:20}).map((_,i) => (
                          <div key={i} className="absolute w-1 h-1 bg-amber-300 rounded-full animate-float-particle" style={{ left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*2}s` }}></div>
                      ))}
                  </div>
-
                  <div className="relative mb-8 z-10">
                      <div className="w-40 h-28 bg-gradient-to-tr from-amber-200 via-amber-400 to-amber-200 rounded-2xl shadow-2xl animate-card-flip flex items-center justify-center transform preserve-3d border border-white/20">
                         <div className="absolute inset-0 bg-black/10 rounded-2xl"></div>
@@ -521,10 +402,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                      </div>
                      <div className="absolute -inset-4 bg-amber-500/30 blur-xl -z-10 animate-pulse"></div>
                  </div>
-                 
                  <h2 className="text-5xl font-serif font-bold text-white mb-2 animate-slide-up-fade" style={{ animationDelay: '0.2s' }}>Welcome to <span className="text-amber-400">Pro</span></h2>
                  <p className="text-white/60 mb-8 animate-slide-up-fade" style={{ animationDelay: '0.4s' }}>所有特权已解锁，开启您的大师之旅。</p>
-                 
                  <button onClick={onClose} className="bg-white text-stone-900 px-12 py-4 rounded-full font-bold shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 transition-all animate-slide-up-fade flex items-center gap-2 group mt-4 hover:bg-amber-50">
                      <span>进入 Pro 空间</span> <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                  </button>
@@ -535,7 +414,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
     </div>
   );
 };
-
 
 enum Tab {
   LESSON = 'lesson',
@@ -553,7 +431,6 @@ enum LessonTopic {
   IMPRESSIONISM = 'impressionism', TWELVE_TONE = 'twelve_tone', PITCH_CLASS_SETS = 'pitch_class_sets', MICROTONALITY = 'microtonality', SPECTRALISM = 'spectralism', MINIMALISM = 'minimalism', BITONALITY = 'bitonality', ALEATORIC = 'aleatoric', NEGATIVE_HARMONY = 'negative_harmony', NEO_RIEMANNIAN = 'neo_riemannian', QUARTAL_HARMONY = 'quartal_harmony', OVERTONE_SERIES = 'overtone_series',
 }
 
-// ... (BackgroundParticles, useAmbience, etc. remain the same)
 const BackgroundParticles: React.FC = () => {
   const particles = useMemo(() => Array.from({ length: 15 }).map((_, i) => ({
     id: i,
@@ -594,8 +471,8 @@ const BackgroundParticles: React.FC = () => {
   );
 };
 
-// --- Procedural Ambience Hook ---
 const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) => {
+    // ... (same as before)
     const audioCtxRef = useRef<AudioContext | null>(null);
     const nodesRef = useRef<any[]>([]);
     
@@ -690,7 +567,6 @@ const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) =>
 
 
 const App: React.FC = () => {
-  // ... (Rest of App.tsx logic remains the same)
   const [showSplash, setShowSplash] = useState(true); 
   const [isAppVisible, setIsAppVisible] = useState(false); 
   const [activeTab, setActiveTab] = useState<Tab>(Tab.LESSON);
@@ -698,11 +574,9 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
   
-  // --- User & Auth State ---
   const [user, setUser] = useState<UserProfile | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // --- Global User Settings ---
   const [userSettings, setUserSettings] = useState<UserSettings>({
       themeColor: 'amber',
       customColor: '', 
@@ -711,21 +585,18 @@ const App: React.FC = () => {
       ambience: 'off'
   });
 
-  // --- Achievement System ---
   const [achievements, setAchievements] = useState<Achievement[]>(INITIAL_ACHIEVEMENTS);
   const [completedLessons, setCompletedLessons] = useState<string[]>([]);
   const [unlockedToast, setUnlockedToast] = useState<Achievement | null>(null);
 
-  // Subscription States
   const [isPro, setIsPro] = useState<boolean>(false);
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   
   const [openGroupIndex, setOpenGroupIndex] = useState<number | null>(0);
 
-  // Activate Ambience
   useAmbience(userSettings.ambience, userSettings.volume / 100);
 
-  // Load User Data
+  // ... (useEffect hooks same as before) ...
   useEffect(() => {
     const storedUser = localStorage.getItem('pt_user');
     if (storedUser) setUser(JSON.parse(storedUser));
@@ -740,12 +611,10 @@ const App: React.FC = () => {
     if (savedAchievements) setAchievements(JSON.parse(savedAchievements));
   }, []);
 
-  // Save Progress & Check Achievements
   useEffect(() => {
       localStorage.setItem('pt_progress', JSON.stringify(completedLessons));
       localStorage.setItem('pt_achievements', JSON.stringify(achievements));
       
-      // Check logic
       const checkUnlock = (id: string, condition: boolean) => {
           setAchievements(prev => {
               const target = prev.find(a => a.id === id);
@@ -758,7 +627,6 @@ const App: React.FC = () => {
       };
 
       if (completedLessons.length >= 1) checkUnlock('first_lesson', true);
-      // Removed Scholar check
       if (isPro) checkUnlock('pro_member', true);
       
       const hour = new Date().getHours();
@@ -814,6 +682,7 @@ const App: React.FC = () => {
     return () => mainElement?.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // ... (lessons array same as before) ...
   const lessons = [
     { 
       title: "阶段一：识谱与节奏基础 (Foundations)",
@@ -829,7 +698,6 @@ const App: React.FC = () => {
         { id: LessonTopic.SIGHT_READING, icon: Eye, label: '视奏入门 (Sight Reading)', desc: '即时读谱能力' },
       ]
     },
-    // ... Other lessons
     { 
       title: "阶段二：音高与调性 (Pitch & Tonality)",
       description: "构建音乐的音高逻辑",
@@ -910,21 +778,35 @@ const App: React.FC = () => {
     }
   ];
 
-  // ... (getThemeClass, etc. remain the same)
-  const getThemeClass = (type: 'text' | 'bg' | 'border' | 'gradient' | 'hoverBg' | 'activeBg' | 'sidebarBg') => {
+  // --- Dynamic Color Styles Helper ---
+  // This helper generates inline styles for dynamic colors to ensure smooth transitions
+  // especially for custom colors which can't rely on pre-generated Tailwind classes.
+  const getThemeStyle = (type: 'text' | 'bg' | 'border' | 'gradient-from' | 'gradient-to' | 'activeBg' | 'sidebarBg') => {
       const { themeColor, customColor } = userSettings;
       
-      // Handle Custom Color
+      // If Custom Color
       if (themeColor === 'custom' && customColor) {
-          const hex = customColor;
-          
-          if (type === 'text') return `text-[${hex}]`; // Arbitrary value
-          if (type === 'bg') return `bg-[${hex}]`;
-          if (type === 'border') return `border-[${hex}]`;
-          if (type === 'gradient') return `from-[${hex}] to-[${hex}]/80`; 
-          if (type === 'hoverBg') return `hover:bg-[${hex}]/10`; 
-          if (type === 'activeBg') return `bg-[${hex}]/20`;
-          if (type === 'sidebarBg') return `bg-white`; 
+          if (type === 'text') return { color: customColor };
+          if (type === 'bg') return { backgroundColor: customColor };
+          if (type === 'activeBg') return { backgroundColor: `${customColor}20` }; // 20 hex alpha (~12%)
+          if (type === 'border') return { borderColor: customColor };
+          if (type === 'gradient-from') return { stopColor: customColor }; // For SVG gradients potentially, but here used for CSS vars? 
+          // Note: CSS gradients with inline styles are tricky. We'll use solid color for custom to be safe.
+          if (type === 'sidebarBg') return { backgroundColor: '#ffffff' };
+      }
+
+      // If Preset Color, return empty object (rely on Tailwind classes)
+      return {};
+  };
+
+  const getThemeClass = (type: 'text' | 'bg' | 'border' | 'gradient' | 'hoverBg' | 'activeBg' | 'sidebarBg') => {
+      const { themeColor } = userSettings;
+      
+      // If custom, return generic classes that will be overridden by style prop
+      if (themeColor === 'custom') {
+          if (type === 'gradient') return ''; // Disable gradient class
+          if (type === 'sidebarBg') return 'bg-white';
+          return ''; 
       }
 
       const map: Record<string, any> = {
@@ -943,13 +825,9 @@ const App: React.FC = () => {
   };
 
   const handleLessonSelect = (lessonId: LessonTopic | string, isProLesson: boolean) => {
-      // 1. Check Login
       if (!checkAccess(false)) return;
-
-      // 2. Check Pro
       if (!checkAccess(isProLesson)) return;
 
-      // 3. Mark Progress
       if (!completedLessons.includes(lessonId)) {
           setCompletedLessons(prev => [...prev, lessonId]);
       }
@@ -959,8 +837,7 @@ const App: React.FC = () => {
   };
 
   const renderLessonContent = () => {
-    // ... (renderLessonContent logic remains the same)
-    // Pass user settings to StartPage
+    // ... (same as before)
     if (activeLesson === LessonTopic.HOME) {
         return <StartPage 
             onNavigate={handleLessonSelect} 
@@ -972,30 +849,26 @@ const App: React.FC = () => {
             user={user}
             achievements={achievements}
             onLogout={handleLogout}
-            onUpdateProfile={handleUpdateProfile} // Pass updater
+            onUpdateProfile={handleUpdateProfile} 
         />;
     }
 
-    // Phase 1
     if (activeLesson === LessonTopic.SIGHT_READING) return <GenericLesson level="Level 1" title="视奏入门" subtitle="Sight Reading" sections={[{ title: "看在前面", content: "眼睛永远走在手前面。", icon: Eye }]} />
     if (activeLesson === LessonTopic.EAR_TRAINING) return <GenericLesson level="Level 2" title="练耳基础" subtitle="Ear Training" sections={[{ title: "音程色彩", content: "分辨大三度（快乐）和小三度（悲伤）。", icon: Mic2 }]} />
 
-    // Phase 5: Forms
     if (activeLesson === LessonTopic.FORM_BINARY_TERNARY) return <FormBinaryTernaryLesson />;
     if (activeLesson === LessonTopic.FORM_SONATA) return <FormSonataLesson />;
     if (activeLesson === LessonTopic.FORM_RONDO) return <FormRondoLesson />;
 
-    // Phase 6: Styles
     if (activeLesson === LessonTopic.STYLE_JAZZ_BASIC) return <JazzBasicsLesson />;
     if (activeLesson === LessonTopic.STYLE_POP) return <PopStylesLesson />;
 
-    // Standard Components
     return (
       <div key={activeLesson} className="max-w-5xl mx-auto w-full pb-20 relative z-10">
         {activeLesson === LessonTopic.SLUR && (
           <div className="space-y-8">
             <header className="mb-10 animate-slideUp">
-               <div className={`inline-block px-3 py-1 ${getThemeClass('activeBg')} ${getThemeClass('text')} rounded-full text-xs font-bold tracking-wider uppercase mb-3`}>Level 3 - Expression</div>
+               <div className={`inline-block px-3 py-1 ${getThemeClass('activeBg')} ${getThemeClass('text')} rounded-full text-xs font-bold tracking-wider uppercase mb-3 transition-colors duration-500`} style={{...getThemeStyle('activeBg'), ...getThemeStyle('text')}}>Level 3 - Expression</div>
                <h2 className="text-4xl md:text-5xl font-bold serif text-stone-900 mb-6 leading-tight">
                  连音线 <span className="text-stone-300 font-light">|</span> Slur
                </h2>
@@ -1007,7 +880,7 @@ const App: React.FC = () => {
             <section className="mt-16 animate-slideUp stagger-3">
                <div className="flex items-center gap-6 mb-8">
                  <div className="h-px bg-stone-200 flex-1"></div>
-                 <h2 className="text-2xl font-bold serif text-stone-800 flex items-center gap-2"><Activity size={24} className={getThemeClass('text')} /> 易混淆概念辨析</h2>
+                 <h2 className="text-2xl font-bold serif text-stone-800 flex items-center gap-2"><Activity size={24} className={`${getThemeClass('text')} transition-colors duration-500`} style={getThemeStyle('text')} /> 易混淆概念辨析</h2>
                  <div className="h-px bg-stone-200 flex-1"></div>
                </div>
                <SlurVsTie />
@@ -1015,7 +888,6 @@ const App: React.FC = () => {
           </div>
         )}
         
-        {/* Phase 1 */}
         {activeLesson === LessonTopic.CLEFS && <ClefsLesson />}
         {activeLesson === LessonTopic.ACCIDENTALS && <AccidentalsLesson />}
         {activeLesson === LessonTopic.RHYTHM && <TimeSignatureLesson />}
@@ -1024,7 +896,6 @@ const App: React.FC = () => {
         {activeLesson === LessonTopic.SYNCOPATION && <SyncopationLesson />}
         {activeLesson === LessonTopic.POLYRHYTHMS && <PolyrhythmsLesson />}
         
-        {/* Phase 2 */}
         {activeLesson === LessonTopic.INTERVALS && <IntervalsLesson />}
         {activeLesson === LessonTopic.CONSONANCE && <ConsonanceLesson />}
         {activeLesson === LessonTopic.SCALES && <ScalesLesson />}
@@ -1032,7 +903,6 @@ const App: React.FC = () => {
         {activeLesson === LessonTopic.ENHARMONICS && <EnharmonicsLesson />}
         {activeLesson === LessonTopic.MODES && <ModesLesson />}
         
-        {/* Phase 3 */}
         {activeLesson === LessonTopic.TEMPO && <TempoLesson />}
         {activeLesson === LessonTopic.DYNAMICS && <DynamicsLesson />}
         {activeLesson === LessonTopic.ARTICULATIONS && <ArticulationsLesson />}
@@ -1040,7 +910,6 @@ const App: React.FC = () => {
         {activeLesson === LessonTopic.RUBATO && <RubatoLesson />}
         {activeLesson === LessonTopic.ORNAMENTATION && <OrnamentationLesson />}
         
-        {/* Phase 4 */}
         {activeLesson === LessonTopic.CHORDS && <ChordsLesson />}
         {activeLesson === LessonTopic.INVERSIONS && <InversionsLesson />}
         {activeLesson === LessonTopic.ARPEGGIOS && <ArpeggiosLesson />}
@@ -1049,10 +918,8 @@ const App: React.FC = () => {
         {activeLesson === LessonTopic.CADENCES && <CadencesLesson />}
         {activeLesson === LessonTopic.COUNTERPOINT && <CounterpointLesson />}
         
-        {/* Phase 6 */}
         {activeLesson === LessonTopic.JAZZ_EXTENSIONS && <JazzExtensionsLesson />}
         
-        {/* Phase 7 */}
         {activeLesson === LessonTopic.IMPRESSIONISM && <ImpressionismLesson />}
         {activeLesson === LessonTopic.TWELVE_TONE && <TwelveToneLesson />}
         {activeLesson === LessonTopic.PITCH_CLASS_SETS && <PitchClassSetLesson />}
@@ -1105,7 +972,7 @@ const App: React.FC = () => {
       {/* Mobile Header */}
       <div className="md:hidden glass px-4 py-3 flex justify-between items-center z-50 sticky top-0 border-b border-stone-200/50">
          <div className="flex items-center gap-2">
-            <div className={`bg-gradient-to-tr ${getThemeClass('gradient')} p-1.5 rounded-lg text-white shadow-md transition-colors duration-500`}><Music size={18} /></div>
+            <div className={`bg-gradient-to-tr ${getThemeClass('gradient')} p-1.5 rounded-lg text-white shadow-md transition-colors duration-500`} style={{ backgroundColor: userSettings.themeColor === 'custom' ? userSettings.customColor : undefined }}><Music size={18} /></div>
             <span className="font-bold serif text-stone-900 tracking-tight">Piano Theory</span>
          </div>
          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-stone-600 hover:bg-stone-100 rounded-lg active:scale-95 transition-transform">
@@ -1115,7 +982,7 @@ const App: React.FC = () => {
 
       {/* Sidebar Navigation */}
       <aside className={`
-        fixed md:static inset-y-0 left-0 z-40 w-80 ${getThemeClass('sidebarBg')} border-r border-stone-200/60 flex flex-col backdrop-blur-xl md:backdrop-blur-none shadow-2xl md:shadow-none
+        fixed md:static inset-y-0 left-0 z-40 w-80 bg-white border-r border-stone-200/60 flex flex-col backdrop-blur-xl md:backdrop-blur-none shadow-2xl md:shadow-none
         ${isMobileMenuOpen ? 'sidebar-open-anim' : 'sidebar-closed-anim'}
         sidebar-desktop-reset transition-colors duration-500
       `}>
@@ -1123,7 +990,11 @@ const App: React.FC = () => {
             onClick={() => { setActiveLesson(LessonTopic.HOME); setIsMobileMenuOpen(false); }}
             className="p-8 hidden md:flex items-center gap-3 mb-2 cursor-pointer hover:opacity-80 transition-opacity"
         >
-           <div className={`bg-gradient-to-tr ${getThemeClass('gradient')} p-3 rounded-xl shadow-lg text-white transform hover:rotate-3 transition-transform duration-300`}>
+           {/* Sidebar Logo: Use solid background for smooth transition */}
+           <div 
+             className={`p-3 rounded-xl shadow-lg text-white transform hover:rotate-3 transition-all duration-500 ${userSettings.themeColor === 'custom' ? '' : getThemeClass('bg')}`} 
+             style={getThemeStyle('bg')}
+           >
              <Music size={26} strokeWidth={2.5} />
            </div>
            <div>
@@ -1170,7 +1041,7 @@ const App: React.FC = () => {
                         : 'text-stone-600 hover:bg-stone-50'
                     }`}
                 >
-                    <Layout size={18} className={`transition-colors duration-500 ${activeLesson === LessonTopic.HOME ? getThemeClass('text') : 'text-stone-400 group-hover:text-stone-600'}`} />
+                    <Layout size={18} className={`transition-colors duration-500 ${activeLesson === LessonTopic.HOME ? (userSettings.themeColor==='custom' ? 'text-white' : getThemeClass('text')) : 'text-stone-400 group-hover:text-stone-600'}`} style={activeLesson === LessonTopic.HOME ? {color: userSettings.customColor || undefined} : {}} />
                     <span className="font-bold text-sm">首页 (Dashboard)</span>
                 </button>
             </div>
@@ -1186,14 +1057,14 @@ const App: React.FC = () => {
                     className={`w-full px-4 py-3 flex items-center justify-between group rounded-xl transition-colors outline-none hover:bg-stone-50`}
                   >
                     <div className="text-left">
-                        <div className={`text-[11px] font-black uppercase tracking-wide flex items-center gap-2 transition-colors duration-300 ${isOpen ? getThemeClass('text') : 'text-stone-900'}`}>
+                        <div className={`text-[11px] font-black uppercase tracking-wide flex items-center gap-2 transition-colors duration-500 ${isOpen ? getThemeClass('text') : 'text-stone-900'}`} style={isOpen ? getThemeStyle('text') : {}}>
                             {group.title}
                             {(group as any).isPro && !isPro && <span className={`text-[9px] px-1.5 py-0.5 rounded ml-2 flex items-center gap-1 bg-stone-900 text-white`}><Lock size={8} /> PRO</span>}
-                            {(group as any).isPro && isPro && <span className={`${getThemeClass('bg')}/10 ${getThemeClass('text')} text-[9px] px-1.5 py-0.5 rounded ml-2 flex items-center gap-1 font-bold`}>UNLOCKED</span>}
+                            {(group as any).isPro && isPro && <span className={`${getThemeClass('bg')}/10 ${getThemeClass('text')} text-[9px] px-1.5 py-0.5 rounded ml-2 flex items-center gap-1 font-bold transition-colors duration-500`} style={{...getThemeStyle('activeBg'), ...getThemeStyle('text')}}>UNLOCKED</span>}
                         </div>
                         <div className="text-[10px] text-stone-400 mt-1 font-medium">{group.description}</div>
                     </div>
-                    <div className={`p-1.5 rounded-lg transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isOpen ? `${getThemeClass('bg')}/10 ${getThemeClass('text')} rotate-180` : 'text-stone-400 group-hover:bg-stone-200'}`}>
+                    <div className={`p-1.5 rounded-lg transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isOpen ? 'bg-stone-100 text-stone-900 rotate-180' : 'text-stone-400 group-hover:bg-stone-200'}`}>
                        <ChevronDown size={14} strokeWidth={3} />
                     </div>
                   </button>
@@ -1204,25 +1075,25 @@ const App: React.FC = () => {
                         <div className={`absolute left-6 top-0 bottom-2 w-px -z-10 bg-stone-100`}></div>
                         {group.items.map((lesson) => {
                             const isLocked = (group as any).isPro && !isPro;
-                            // Check Removed from Visuals
                             return (
                               <button
                                 key={lesson.id}
                                 onClick={() => handleLessonSelect(lesson.id, (group as any).isPro)}
-                                className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group relative ${
+                                className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-500 group relative ${
                                   activeLesson === lesson.id 
-                                  ? `${getThemeClass('activeBg')} ${getThemeClass('text').replace('text-','text-emerald-').replace('emerald','stone-900')} shadow-sm ring-1 ring-black/5 translate-x-1` 
+                                  ? `${getThemeClass('activeBg')} text-stone-900 shadow-sm ring-1 ring-black/5 translate-x-1` 
                                   : `text-stone-600 hover:bg-stone-50 hover:text-stone-900 hover:translate-x-1`
                                 }`}
+                                style={activeLesson === lesson.id ? getThemeStyle('activeBg') : {}}
                               >
-                                <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeLesson === lesson.id ? `${getThemeClass('bg')}/20 ${getThemeClass('text')}` : 'bg-white border border-stone-100 text-stone-400 group-hover:border-stone-200 group-hover:text-stone-500'}`}>
+                                <div className={`p-1.5 rounded-lg transition-all duration-500 ${activeLesson === lesson.id ? `${getThemeClass('bg')}/20 text-stone-900` : 'bg-white border border-stone-100 text-stone-400 group-hover:border-stone-200 group-hover:text-stone-500'}`} style={activeLesson === lesson.id ? {backgroundColor: userSettings.themeColor==='custom'?`${userSettings.customColor}40`:undefined, color: userSettings.themeColor==='custom'?userSettings.customColor:undefined} : {}}>
                                   <lesson.icon size={16} strokeWidth={activeLesson === lesson.id ? 2.5 : 2} />
                                 </div>
                                 <div className="flex-1 z-10 flex justify-between items-center">
                                   <div className={`font-bold text-[13px]`}>{lesson.label}</div>
                                   {isLocked && <Lock size={12} className="text-stone-300" />}
                                 </div>
-                                {activeLesson === lesson.id && <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${getThemeClass('bg')}`}></div>}
+                                {activeLesson === lesson.id && <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${getThemeClass('bg')}`} style={getThemeStyle('bg')}></div>}
                               </button>
                             )
                         })}
@@ -1299,13 +1170,12 @@ const App: React.FC = () => {
                 </div>
             </button>
           ) : (
-            <div className={`w-full ${getThemeClass('bg')}/10 border ${getThemeClass('border')} ${getThemeClass('text')} py-3 rounded-xl flex items-center justify-center gap-2 mb-4 cursor-default transition-all duration-500`}>
+            <div className={`w-full ${getThemeClass('bg')}/10 border ${getThemeClass('border')} ${getThemeClass('text')} py-3 rounded-xl flex items-center justify-center gap-2 mb-4 cursor-default transition-all duration-500`} style={{...getThemeStyle('activeBg'), ...getThemeStyle('border'), ...getThemeStyle('text')}}>
                 <Crown size={16} fill="currentColor" />
                 <span className="font-bold text-sm">Pro 会员已激活</span>
             </div>
           )}
           
-          {/* Ambience Status Mini */}
           {userSettings.ambience !== 'off' && (
               <div className="flex items-center justify-center gap-2 text-[10px] text-stone-400 mb-2 animate-pulse-soft">
                   <Headphones size={10} /> Ambience Active: {userSettings.ambience.toUpperCase()}
@@ -1332,7 +1202,7 @@ const App: React.FC = () => {
                         <h2 className="text-3xl font-bold serif text-stone-900">智能助教</h2>
                         <p className="text-stone-500 text-sm mt-1">基于 Gemini 2.5 Flash 模型</p>
                     </div>
-                    {isPro && <div className={`${getThemeClass('bg')}/10 ${getThemeClass('text')} px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border ${getThemeClass('border')} transition-colors duration-500`}><Crown size={12} fill="currentColor" /> Pro Unlocked</div>}
+                    {isPro && <div className={`${getThemeClass('bg')}/10 ${getThemeClass('text')} px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border ${getThemeClass('border')} transition-colors duration-500`} style={{...getThemeStyle('activeBg'), ...getThemeStyle('text'), ...getThemeStyle('border')}}><Crown size={12} fill="currentColor" /> Pro Unlocked</div>}
                   </header>
                   <div className="flex-1 bg-white rounded-3xl shadow-xl shadow-stone-200/50 border border-stone-200 overflow-hidden flex flex-col">
                      {!user ? (
