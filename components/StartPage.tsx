@@ -2,9 +2,9 @@
 // ... existing imports ...
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Lock, ArrowRight, Zap, Crown, ChevronRight, BookOpen, Headphones, Settings, Bell, Volume2, LogOut, ChevronLeft, Shield, Volume1, VolumeX, Clock, Trophy, Palette, Target, Flame, Sparkles, CloudRain, Coffee, Waves, Check, User as UserIcon, Plus, FileText, X, Mail, Edit2, Save, Image as ImageIcon, ZoomIn, RotateCw, Smartphone, Key, AlertTriangle, CheckCircle2, Fingerprint, RefreshCw, Music, UserCog, LayoutTemplate, Droplet, Sun, Moon, Sliders, Copy, Move, MousePointer2, LogIn } from 'lucide-react';
+import { Play, Lock, ArrowRight, Zap, Crown, ChevronRight, BookOpen, Headphones, Settings, Bell, Volume2, LogOut, ChevronLeft, Shield, Volume1, VolumeX, Clock, Trophy, Palette, Target, Flame, Sparkles, CloudRain, Coffee, Waves, Check, User as UserIcon, Plus, FileText, X, Mail, Edit2, Save, Image as ImageIcon, ZoomIn, RotateCw, Smartphone, Key, AlertTriangle, CheckCircle2, Fingerprint, RefreshCw, Music, UserCog, LayoutTemplate, Droplet, Sun, Moon, Sliders, Copy, Move, MousePointer2, LogIn, AlertCircle, Heart, Code, Star, Rocket } from 'lucide-react';
 
-// ... Types (UserProfile, UserSettings, etc. - keep existing) ...
+// ... (Keep existing interfaces: UserProfile, UserSettings, Achievement, LessonItem, LessonGroup, StartPageProps) ...
 export interface UserProfile {
     name: string;
     avatar: string;
@@ -50,6 +50,7 @@ interface StartPageProps {
   onNavigate: (lessonId: string, isProLesson: boolean) => void;
   lessons: LessonGroup[];
   isPro: boolean;
+  proPlan: 'monthly' | 'yearly' | null; // Added prop
   onUpgrade: () => void;
   userSettings: UserSettings;
   onUpdateSettings: (s: UserSettings) => void;
@@ -63,8 +64,7 @@ interface StartPageProps {
   studyMinutes: number;
 }
 
-// --- Robust Color Helpers (HSV <-> Hex) ---
-// ... (Keep existing helper functions hexToHsv, hsvToHex, isLightColor) ...
+// ... (Keep existing helpers: hexToHsv, hsvToHex, isLightColor) ...
 const hexToHsv = (hex: string) => {
     let r = 0, g = 0, b = 0;
     if (hex.length === 4) {
@@ -97,13 +97,10 @@ const hexToHsv = (hex: string) => {
 const hsvToHex = (h: number, s: number, v: number) => {
     const sDec = s / 100;
     const vDec = v / 100;
-    
     const fn = (n: number, k = (n + h / 60) % 6) => vDec - vDec * sDec * Math.max(Math.min(k, 4 - k, 1), 0);
-    
     const r = fn(5);
     const g = fn(3);
     const b = fn(1);
-
     const toHex = (x: number) => {
         const hex = Math.round(x * 255).toString(16);
         return hex.length === 1 ? '0' + hex : hex;
@@ -119,17 +116,15 @@ const isLightColor = (hex: string) => {
     return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 160; 
 };
 
-// ... (Keep existing ColorPickerModal, PrivacyModal, AccountSettingsModal, ProfileSettings) ...
+// ... (Keep existing ColorPickerModal, PrivacyModal, AccountSettingsModal, LogoutConfirmModal) ...
+// ... [Retain all existing modal components content exactly as they are] ...
+
 const ColorPickerModal: React.FC<{ isOpen: boolean, onClose: () => void, onApply: (color: string) => void, initialColor?: string }> = ({ isOpen, onClose, onApply, initialColor }) => {
-    // ... (Keep implementation identical to previous step) ...
-    // State
     const [hex, setHex] = useState(initialColor || '#f59e0b');
     const [hsv, setHsv] = useState({ h: 35, s: 100, v: 100 });
     const [activeTab, setActiveTab] = useState<'presets' | 'custom'>('custom'); 
     const [isVisible, setIsVisible] = useState(false);
     const [renderModal, setRenderModal] = useState(false);
-    
-    // Grid Logic
     const gridRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
 
@@ -233,151 +228,65 @@ const ColorPickerModal: React.FC<{ isOpen: boolean, onClose: () => void, onApply
                 className={`
                     bg-white w-full max-w-[340px] rounded-[2.5rem] shadow-2xl relative z-10 
                     flex flex-col border border-white/20 overflow-hidden transform-style-3d
-                    ${isVisible ? 'animate-modal-spring' : 'opacity-0 scale-90 translate-y-12'}
+                    ${isVisible ? 'animate-modal-spring' : 'opacity-0 scale-90 translate-y-12 opacity-0'}
                 `}
             >
-                
-                {/* --- 1. POSTER PREVIEW AREA --- */}
                 <div 
                     className="h-[220px] w-full relative flex flex-col p-6 transition-colors duration-300 shrink-0"
                     style={{ backgroundColor: hex }}
                 >
-                    {/* Shine Effect */}
                     {isVisible && (
                         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
                             <div className="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shine-once"></div>
                         </div>
                     )}
-
-                    {/* Noise Texture */}
                     <div className="absolute inset-0 opacity-10 pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")` }}></div>
-                    
-                    {/* Header */}
                     <div className="flex justify-between items-start relative z-10">
                         <div className={`flex flex-col ${posterText}`}>
                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-70">Color Studio</span>
                             <h2 className="text-xl font-serif font-bold leading-tight">主题配色</h2>
                         </div>
-                        <button 
-                            onClick={onClose} 
-                            className={`p-2 rounded-full ${isLight ? 'bg-black/5 hover:bg-black/10' : 'bg-white/10 hover:bg-white/20'} transition-colors ${posterText} active:scale-90 transform`}
-                        >
-                            <X size={18} />
-                        </button>
+                        <button onClick={onClose} className={`p-2 rounded-full ${isLight ? 'bg-black/5 hover:bg-black/10' : 'bg-white/10 hover:bg-white/20'} transition-colors ${posterText} active:scale-90 transform`}><X size={18} /></button>
                     </div>
-
-                    {/* Center Code */}
                     <div className="flex-1 flex flex-col justify-center items-center relative z-10">
-                        <div className={`text-5xl font-black tracking-tighter ${posterText} transition-colors duration-300 select-all font-sans drop-shadow-sm`}>
-                            {hex.toUpperCase()}
-                        </div>
-                        <div className={`text-xs font-mono font-bold mt-2 ${posterSubText} flex items-center gap-2`}>
-                            <span>H {Math.round(hsv.h)}°</span>
-                            <span className="opacity-30">|</span>
-                            <span>S {Math.round(hsv.s)}%</span>
-                            <span className="opacity-30">|</span>
-                            <span>B {Math.round(hsv.v)}%</span>
-                        </div>
+                        <div className={`text-5xl font-black tracking-tighter ${posterText} transition-colors duration-300 select-all font-sans drop-shadow-sm`}>{hex.toUpperCase()}</div>
+                        <div className={`text-xs font-mono font-bold mt-2 ${posterSubText} flex items-center gap-2`}><span>H {Math.round(hsv.h)}°</span><span className="opacity-30">|</span><span>S {Math.round(hsv.s)}%</span><span className="opacity-30">|</span><span>B {Math.round(hsv.v)}%</span></div>
                     </div>
-
-                    {/* Tabs Pill */}
                     <div className="relative z-10 flex justify-center translate-y-3">
                         <div className="bg-white p-1 rounded-full shadow-xl flex gap-1 border border-stone-100">
-                            <button 
-                                onClick={() => setActiveTab('custom')} 
-                                className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ${activeTab === 'custom' ? 'bg-stone-900 text-white shadow-md' : 'text-stone-500 hover:bg-stone-50'}`}
-                            >
-                                调色板
-                            </button>
-                            <button 
-                                onClick={() => setActiveTab('presets')} 
-                                className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ${activeTab === 'presets' ? 'bg-stone-900 text-white shadow-md' : 'text-stone-500 hover:bg-stone-50'}`}
-                            >
-                                推荐色
-                            </button>
+                            <button onClick={() => setActiveTab('custom')} className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ${activeTab === 'custom' ? 'bg-stone-900 text-white shadow-md' : 'text-stone-500 hover:bg-stone-50'}`}>调色板</button>
+                            <button onClick={() => setActiveTab('presets')} className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ${activeTab === 'presets' ? 'bg-stone-900 text-white shadow-md' : 'text-stone-500 hover:bg-stone-50'}`}>推荐色</button>
                         </div>
                     </div>
                 </div>
-
-                {/* --- 2. CONTROLS AREA (Sliding Viewport) --- */}
                 <div className="bg-white flex-1 flex flex-col relative z-0">
-                    
-                    {/* Viewport: Fixed height for stability during transition */}
                     <div className="relative w-full h-[320px] overflow-hidden">
-                        
-                        {/* Custom Tab Pane */}
-                        <div 
-                            className={`absolute inset-0 w-full h-full px-6 pt-10 pb-4 overflow-y-auto custom-scrollbar transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${activeTab === 'custom' ? 'translate-x-0 opacity-100' : '-translate-x-[30%] opacity-0 pointer-events-none'}`}
-                        >
+                        <div className={`absolute inset-0 w-full h-full px-6 pt-10 pb-4 overflow-y-auto custom-scrollbar transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${activeTab === 'custom' ? 'translate-x-0 opacity-100' : '-translate-x-[30%] opacity-0 pointer-events-none'}`}>
                             <div className="space-y-6">
-                                {/* HSB Grid */}
                                 <div className="w-full aspect-[2/1] rounded-2xl overflow-hidden shadow-inner border border-stone-200 cursor-crosshair touch-none relative group">
-                                    <div 
-                                        ref={gridRef}
-                                        className="absolute inset-0"
-                                        onPointerDown={handleGridPointer}
-                                        style={{
-                                            backgroundColor: `hsl(${hsv.h}, 100%, 50%)`,
-                                            backgroundImage: `
-                                                linear-gradient(to top, #000, transparent), 
-                                                linear-gradient(to right, #fff, transparent)
-                                            `
-                                        }}
-                                    >
-                                        <div 
-                                            className={`absolute w-5 h-5 rounded-full border-2 border-white shadow-[0_0_10px_rgba(0,0,0,0.3)] transform -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-transform duration-75 ease-out`}
-                                            style={{ 
-                                                left: `${hsv.s}%`, 
-                                                top: `${100 - hsv.v}%`,
-                                                backgroundColor: hex,
-                                                transform: `translate(-50%, -50%) scale(${isDragging ? 1.2 : 1})`
-                                            }}
-                                        ></div>
+                                    <div ref={gridRef} className="absolute inset-0" onPointerDown={handleGridPointer} style={{ backgroundColor: `hsl(${hsv.h}, 100%, 50%)`, backgroundImage: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)` }}>
+                                        <div className={`absolute w-5 h-5 rounded-full border-2 border-white shadow-[0_0_10px_rgba(0,0,0,0.3)] transform -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-transform duration-75 ease-out`} style={{ left: `${hsv.s}%`, top: `${100 - hsv.v}%`, backgroundColor: hex, transform: `translate(-50%, -50%) scale(${isDragging ? 1.2 : 1})` }}></div>
                                     </div>
                                 </div>
-
-                                {/* Hue Slider */}
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center gap-1 px-1">
-                                        Hue Spectrum
-                                    </label>
+                                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center gap-1 px-1">Hue Spectrum</label>
                                     <div className="relative h-6 w-full rounded-full overflow-hidden shadow-inner border border-stone-200 group">
-                                        <input 
-                                            type="range" min="0" max="360" value={hsv.h}
-                                            onChange={(e) => updateFromHsv(Number(e.target.value), hsv.s, hsv.v)}
-                                            className="absolute w-full h-full opacity-0 z-20 cursor-pointer"
-                                        />
+                                        <input type="range" min="0" max="360" value={hsv.h} onChange={(e) => updateFromHsv(Number(e.target.value), hsv.s, hsv.v)} className="absolute w-full h-full opacity-0 z-20 cursor-pointer" />
                                         <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)' }}></div>
-                                        <div 
-                                            className="absolute top-0 bottom-0 w-4 h-4 bg-white border-2 border-stone-100 rounded-full shadow-md pointer-events-none transform -translate-x-1/2 z-10 top-1 transition-transform group-active:scale-110"
-                                            style={{ left: `${(hsv.h / 360) * 100}%` }}
-                                        ></div>
+                                        <div className="absolute top-0 bottom-0 w-4 h-4 bg-white border-2 border-stone-100 rounded-full shadow-md pointer-events-none transform -translate-x-1/2 z-10 top-1 transition-transform group-active:scale-110" style={{ left: `${(hsv.h / 360) * 100}%` }}></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Presets Tab Pane */}
-                        <div 
-                            className={`absolute inset-0 w-full h-full px-6 pt-10 pb-4 overflow-y-auto custom-scrollbar transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${activeTab === 'presets' ? 'translate-x-0 opacity-100' : 'translate-x-[30%] opacity-0 pointer-events-none'}`}
-                        >
+                        <div className={`absolute inset-0 w-full h-full px-6 pt-10 pb-4 overflow-y-auto custom-scrollbar transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${activeTab === 'presets' ? 'translate-x-0 opacity-100' : 'translate-x-[30%] opacity-0 pointer-events-none'}`}>
                             <div className="space-y-6">
                                 {PRESET_GROUPS.map((group) => (
                                     <div key={group.title}>
                                         <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">{group.title}</h4>
                                         <div className="grid grid-cols-5 gap-3">
                                             {group.colors.map((c) => (
-                                                <button
-                                                    key={c}
-                                                    onClick={() => handlePresetClick(c)}
-                                                    className={`w-full aspect-square rounded-full shadow-sm transition-all duration-300 relative group border border-stone-100 ${hex.toLowerCase() === c.toLowerCase() ? 'scale-110 ring-2 ring-offset-2 ring-stone-900 z-10' : 'hover:scale-105'}`}
-                                                    style={{ backgroundColor: c }}
-                                                >
-                                                    {hex.toLowerCase() === c.toLowerCase() && (
-                                                        <div className="absolute inset-0 flex items-center justify-center animate-scale-in">
-                                                            <div className={`w-2 h-2 rounded-full ${isLightColor(c) ? 'bg-black' : 'bg-white'}`}></div>
-                                                        </div>
-                                                    )}
+                                                <button key={c} onClick={() => handlePresetClick(c)} className={`w-full aspect-square rounded-full shadow-sm transition-all duration-300 relative group border border-stone-100 ${hex.toLowerCase() === c.toLowerCase() ? 'scale-110 ring-2 ring-offset-2 ring-stone-900 z-10' : 'hover:scale-105'}`} style={{ backgroundColor: c }}>
+                                                    {hex.toLowerCase() === c.toLowerCase() && (<div className="absolute inset-0 flex items-center justify-center animate-scale-in"><div className={`w-2 h-2 rounded-full ${isLightColor(c) ? 'bg-black' : 'bg-white'}`}></div></div>)}
                                                 </button>
                                             ))}
                                         </div>
@@ -385,28 +294,19 @@ const ColorPickerModal: React.FC<{ isOpen: boolean, onClose: () => void, onApply
                                 ))}
                             </div>
                         </div>
-                    
                     </div>
-
-                    {/* Footer - Fixed */}
                     <div className="p-6 pt-0 bg-white relative z-20">
-                        <button 
-                            onClick={() => { onApply(hex); onClose(); }}
-                            className="w-full py-3.5 bg-stone-900 text-white rounded-xl font-bold text-sm shadow-xl hover:bg-stone-800 active:scale-95 transition-all flex items-center justify-center gap-2 group"
-                        >
-                            <span>确认应用</span>
-                            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                        <button onClick={() => { onApply(hex); onClose(); }} className="w-full py-3.5 bg-stone-900 text-white rounded-xl font-bold text-sm shadow-xl hover:bg-stone-800 active:scale-95 transition-all flex items-center justify-center gap-2 group">
+                            <span>确认应用</span><ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                         </button>
                     </div>
                 </div>
-
             </div>
         </div>,
         document.body
     );
 }
 
-// ... existing components PrivacyModal, AccountSettingsModal, ProfileSettings ...
 const PrivacyModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
     return (
@@ -436,6 +336,7 @@ const AccountSettingsModal: React.FC<{
     user: UserProfile | null;
     onUpdateProfile?: (p: UserProfile) => void;
 }> = ({ isOpen, onClose, user, onUpdateProfile }) => {
+    // ... (Keep existing implementation) ...
     const [isVisible, setIsVisible] = useState(false);
     const [renderModal, setRenderModal] = useState(false);
     const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile'); 
@@ -737,9 +638,132 @@ const AccountSettingsModal: React.FC<{
     );
 };
 
+const LogoutConfirmModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: () => void }> = ({ isOpen, onClose, onConfirm }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 animate-fadeIn">
+            <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={onClose}></div>
+            <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 relative z-10 shadow-2xl animate-scale-in flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-500 mb-6 animate-pulse-soft">
+                    <LogOut size={32} />
+                </div>
+                <h3 className="text-2xl font-bold text-stone-900 mb-2 font-serif">确定要离开吗？</h3>
+                <p className="text-stone-500 text-sm mb-8 leading-relaxed">
+                    退出登录后，您的未同步的本地进度可能会丢失。下次需要重新登录才能继续学习。
+                </p>
+                <div className="flex gap-3 w-full">
+                    <button 
+                        onClick={onClose} 
+                        className="flex-1 py-3 bg-stone-100 text-stone-600 font-bold rounded-xl hover:bg-stone-200 transition-colors"
+                    >
+                        取消 (Cancel)
+                    </button>
+                    <button 
+                        onClick={() => { onConfirm(); onClose(); }} 
+                        className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 shadow-lg transition-colors"
+                    >
+                        确认退出 (Logout)
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const AuthorModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+    if (!isOpen) return null;
+
+    // Generate static stars for consistent rendering
+    const stars = Array.from({ length: 40 }).map((_, i) => ({
+        id: i,
+        top: Math.random() * 100 + '%',
+        left: Math.random() * 100 + '%',
+        size: Math.random() * 2 + 1 + 'px',
+        opacity: Math.random() * 0.5 + 0.3,
+        animDuration: Math.random() * 3 + 2 + 's',
+        animDelay: Math.random() * 2 + 's'
+    }));
+    
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4 animate-fadeIn" onClick={onClose}>
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-[#020617]/80 backdrop-blur-sm transition-opacity"></div>
+            
+            {/* Modal Card */}
+            <div 
+                className="relative w-full max-w-sm bg-[#0f172a] rounded-[2rem] overflow-hidden shadow-2xl border border-white/10 animate-scale-in"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Background Effects */}
+                <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/50 to-[#020617]"></div>
+                
+                {/* The "Dots" / Stars */}
+                <div className="absolute inset-0 pointer-events-none">
+                    {stars.map(s => (
+                        <div 
+                            key={s.id}
+                            className="absolute rounded-full bg-white animate-pulse"
+                            style={{
+                                top: s.top,
+                                left: s.left,
+                                width: s.size,
+                                height: s.size,
+                                opacity: s.opacity,
+                                animationDuration: s.animDuration,
+                                animationDelay: s.animDelay
+                            }}
+                        ></div>
+                    ))}
+                </div>
+
+                {/* Content */}
+                <div className="relative z-10 flex flex-col items-center pt-16 pb-12 px-8 text-center">
+                    
+                    {/* Visual Anchor (Replacing Avatar) */}
+                    <div className="mb-6 relative">
+                        <div className="absolute inset-0 bg-blue-500 blur-[60px] opacity-20 animate-pulse-slow"></div>
+                        <Sparkles size={64} className="text-white/90 animate-float-slow relative z-10" strokeWidth={1} />
+                    </div>
+
+                    {/* Slogan */}
+                    <h2 className="text-2xl md:text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 mb-8 tracking-wide leading-snug drop-shadow-lg">
+                        愿此行，<br/>终抵群星
+                    </h2>
+
+                    {/* Info Block */}
+                    <div className="space-y-3">
+                        <h3 className="text-white/80 text-lg font-medium tracking-wide">辰言 Chenyan</h3>
+                        <div className="inline-block text-white/50 text-xs font-mono border border-white/10 bg-white/5 px-3 py-1 rounded-full backdrop-blur-sm">
+                            抖音: CMY_Chenyan
+                        </div>
+                    </div>
+
+                    {/* Footer Decorations */}
+                    <div className="mt-10 flex items-center gap-4 opacity-30 text-blue-200">
+                        <Star size={8} className="animate-spin-slow" />
+                        <span className="text-[10px] tracking-[0.3em] font-light">UNIVERSE</span>
+                        <Star size={8} className="animate-spin-slow" style={{animationDirection: 'reverse'}}/>
+                    </div>
+
+                </div>
+
+                {/* Close */}
+                <button 
+                    onClick={onClose}
+                    className="absolute top-4 right-4 p-2 text-white/20 hover:text-white transition-colors"
+                >
+                    <X size={20} />
+                </button>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
 const ProfileSettings: React.FC<{ 
   onBack: () => void; 
   isPro: boolean; 
+  proPlan: 'monthly' | 'yearly' | null;
   onUpgrade: () => void;
   settings: UserSettings;
   onUpdate: (s: UserSettings) => void;
@@ -747,13 +771,14 @@ const ProfileSettings: React.FC<{
   achievements: Achievement[];
   onLogout: () => void;
   onUpdateProfile?: (p: UserProfile) => void;
-}> = ({ onBack, isPro, onUpgrade, settings, onUpdate, user, achievements, onLogout, onUpdateProfile }) => {
-  // ... (Identical implementation to existing ProfileSettings, just ensuring correct context)
+}> = ({ onBack, isPro, proPlan, onUpgrade, settings, onUpdate, user, achievements, onLogout, onUpdateProfile }) => {
+  // ... (Identical implementation)
   const [lastVolume, setLastVolume] = useState(80); 
   const [notify, setNotify] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showSecurity, setShowSecurity] = useState(false); 
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Helper for Theme Colors
   const getThemeStyles = () => {
@@ -801,6 +826,7 @@ const ProfileSettings: React.FC<{
 
   return (
     <div className="max-w-2xl mx-auto pt-4 pb-12">
+      {/* ... (Keep existing modals) ... */}
       <ColorPickerModal 
         isOpen={showColorPicker} 
         onClose={() => setShowColorPicker(false)}
@@ -816,7 +842,13 @@ const ProfileSettings: React.FC<{
         onUpdateProfile={onUpdateProfile}
       />
 
-      {/* ... (rest of ProfileSettings UI) ... */}
+      <LogoutConfirmModal 
+        isOpen={showLogoutConfirm} 
+        onClose={() => setShowLogoutConfirm(false)} 
+        onConfirm={onLogout} 
+      />
+
+      {/* ... (Keep header and user card) ... */}
       <button onClick={onBack} className="flex items-center gap-2 text-stone-500 hover:text-stone-900 mb-6 font-bold transition-colors group">
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> 返回首页
       </button>
@@ -858,8 +890,9 @@ const ProfileSettings: React.FC<{
             )}
          </div>
       </div>
-
-      {/* --- NEW ACCOUNT SECURITY BUTTON --- */}
+      
+      {/* ... (Rest of ProfileSettings remains same) ... */}
+      {/* ... [Retain all other sections like Personalization, System Settings, etc. exactly as they were] ... */}
       <div className="flex items-center justify-end mb-4 mt-8">
           <button 
             onClick={() => setShowSecurity(true)}
@@ -870,22 +903,47 @@ const ProfileSettings: React.FC<{
             <ChevronRight size={12} className="text-stone-300 group-hover:translate-x-1 transition-transform"/>
           </button>
       </div>
-      
-      {/* Achievements Grid */}
-      <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4 px-2 mt-8">我的成就 (Achievements)</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+
+      <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4 px-2 mt-8 flex items-center gap-2">
+          <Trophy size={16} /> 荣誉殿堂
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {achievements.map((ach) => (
-              <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${ach.unlocked ? 'bg-white border-amber-200 shadow-sm' : 'bg-stone-50 border-stone-100 opacity-60 grayscale'}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl mb-2 ${ach.unlocked ? 'bg-amber-100' : 'bg-stone-200'}`}>
+              <div 
+                key={ach.id} 
+                className={`relative p-5 rounded-2xl border flex items-center gap-5 overflow-hidden transition-all duration-300 group
+                    ${ach.unlocked 
+                        ? 'bg-gradient-to-br from-white to-stone-50 border-stone-200 shadow-sm hover:shadow-md hover:border-amber-200' 
+                        : 'bg-stone-50 border-stone-100 opacity-60 grayscale'
+                    }`}
+              >
+                  {/* Decorative Background */}
+                  {ach.unlocked && <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-amber-100/50 to-transparent rounded-bl-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>}
+
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm shrink-0 relative z-10 transition-transform duration-300 group-hover:scale-110 ${ach.unlocked ? 'bg-amber-100 text-amber-600' : 'bg-stone-200 text-stone-400'}`}>
                       {ach.icon}
+                      {!ach.unlocked && <div className="absolute inset-0 flex items-center justify-center bg-black/10 rounded-2xl backdrop-blur-[1px]"><Lock size={16} className="text-white"/></div>}
                   </div>
-                  <div className="font-bold text-stone-900 text-xs mb-1">{ach.title}</div>
-                  <div className="text-[10px] text-stone-500 leading-tight">{ach.desc}</div>
+                  
+                  <div className="flex-1 relative z-10">
+                      <div className="flex justify-between items-start mb-1">
+                          <div className={`font-bold text-base ${ach.unlocked ? 'text-stone-900' : 'text-stone-500'}`}>{ach.title}</div>
+                          {ach.unlocked && <div className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">UNLOCKED</div>}
+                      </div>
+                      <div className="text-xs text-stone-500 leading-tight mb-3">{ach.desc}</div>
+                      
+                      {/* Progress Bar */}
+                      <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-1000 ease-out ${ach.unlocked ? 'bg-amber-500' : 'bg-stone-300'}`}
+                            style={{ width: `${(ach.progress / ach.maxProgress) * 100}%` }}
+                          ></div>
+                      </div>
+                  </div>
               </div>
           ))}
       </div>
 
-      {/* Subscription Card */}
       <div 
         className={`p-8 rounded-3xl border mb-8 relative overflow-hidden transition-all duration-700 ${isPro ? 'bg-stone-900 text-white border-stone-800 shadow-2xl' : `bg-gradient-to-br from-stone-50 to-orange-50 border-amber-200`}`}
         style={(!isPro && theme.isCustom) ? { borderColor: theme.hex + '40', background: `linear-gradient(to bottom right, ${theme.hex}10, white)` } : {}}
@@ -894,7 +952,7 @@ const ProfileSettings: React.FC<{
               <div>
                   <div className={`text-xs font-bold uppercase tracking-widest mb-2 ${isPro ? 'text-stone-400' : 'text-stone-500'}`}>当前状态</div>
                   <div className={`text-3xl font-serif font-bold flex items-center gap-3 ${isPro ? 'text-white' : 'text-stone-900'}`}>
-                      {isPro ? 'Pro Member' : '免费版'}
+                      {isPro ? (proPlan === 'yearly' ? '年度会员 Pro' : '月度会员 Pro') : '免费版'}
                       {isPro && <Crown size={24} className="text-amber-400" fill="currentColor" />}
                   </div>
                   <p className={`text-xs mt-2 ${isPro ? 'text-stone-400' : 'text-stone-600'}`}>
@@ -911,12 +969,8 @@ const ProfileSettings: React.FC<{
           <div className={`absolute -right-10 -bottom-20 w-64 h-64 rounded-full blur-3xl pointer-events-none animate-pulse-slow transition-colors duration-700 ${isPro ? 'bg-amber-500/20' : 'bg-amber-400/20'}`}></div>
       </div>
 
-      {/* --- Personalization Section --- */}
-      {/* ... (Kept existing Personalization code) ... */}
-      <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4 px-2">个性化 (Personalization)</h3>
+      <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4 px-2">个性化</h3>
       <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm mb-8">
-          
-          {/* Theme Color Selector */}
           <div className="w-full p-5 border-b border-stone-100 flex items-center justify-between">
               <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-xl bg-stone-50 text-stone-500 flex items-center justify-center`}>
@@ -937,8 +991,6 @@ const ProfileSettings: React.FC<{
                           ></button>
                       )
                   })}
-                  
-                  {/* Custom Color Button */}
                   <button 
                     onClick={() => {
                         if (!isPro) { onUpgrade(); return; }
@@ -953,7 +1005,6 @@ const ProfileSettings: React.FC<{
               </div>
           </div>
 
-          {/* Daily Goal Selector */}
           <div className="w-full p-5 border-b border-stone-100 flex flex-col gap-4">
               <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-xl bg-stone-50 text-stone-500 flex items-center justify-center`}>
@@ -976,7 +1027,6 @@ const ProfileSettings: React.FC<{
               </div>
           </div>
 
-          {/* Ambience Selector */}
           <div className="w-full p-5 border-b border-stone-100 flex flex-col gap-4">
               <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-xl bg-stone-50 text-stone-500 flex items-center justify-center`}>
@@ -1007,12 +1057,7 @@ const ProfileSettings: React.FC<{
                           >
                               <amb.icon size={16} />
                               <span className="text-[10px] font-bold">{amb.label}</span>
-                              
-                              {locked && (
-                                  <div className="absolute top-1 right-1">
-                                      <Lock size={10} className="text-stone-300" />
-                                  </div>
-                              )}
+                              {locked && <div className="absolute top-1 right-1"><Lock size={10} className="text-stone-300" /></div>}
                           </button>
                       )
                   })}
@@ -1020,12 +1065,8 @@ const ProfileSettings: React.FC<{
           </div>
       </div>
 
-      {/* --- System Settings --- */}
-      {/* ... (Kept existing System Settings code) ... */}
-      <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4 px-2">系统设置 (System)</h3>
+      <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4 px-2">系统设置</h3>
       <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm mb-8">
-          
-          {/* Enhanced Volume Control */}
           <div className="w-full p-6 border-b border-stone-100 hover:bg-stone-50 transition-colors">
               <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
@@ -1071,7 +1112,6 @@ const ProfileSettings: React.FC<{
               </div>
           </div>
 
-          {/* Notifications Toggle */}
           <div className="w-full flex items-center justify-between p-6 hover:bg-stone-50 transition-colors cursor-pointer" onClick={() => setNotify(!notify)}>
               <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-500 ${notify ? `${theme.isCustom ? '' : theme.lightBg} ${theme.isCustom ? '' : theme.text}` : 'bg-stone-100 text-stone-400'}`} style={notify && theme.isCustom ? { backgroundColor: theme.hex + '20', color: theme.hex } : {}}>
@@ -1085,7 +1125,7 @@ const ProfileSettings: React.FC<{
           </div>
       </div>
 
-      <button onClick={onLogout} className="w-full p-4 rounded-2xl border border-stone-200 text-stone-400 font-bold hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors flex items-center justify-center gap-2 mb-4">
+      <button onClick={() => setShowLogoutConfirm(true)} className="w-full p-4 rounded-2xl border border-stone-200 text-stone-400 font-bold hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors flex items-center justify-center gap-2 mb-4">
           <LogOut size={18} /> 退出登录
       </button>
 
@@ -1101,9 +1141,28 @@ const ProfileSettings: React.FC<{
   )
 }
 
-const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpgrade, userSettings, onUpdateSettings, user, achievements, onLogout, onUpdateProfile, completedLessons, onLoginRequest, lastActiveLessonId, studyMinutes }) => {
+const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, proPlan, onUpgrade, userSettings, onUpdateSettings, user, achievements, onLogout, onUpdateProfile, completedLessons, onLoginRequest, lastActiveLessonId, studyMinutes }) => {
   const [showProfile, setShowProfile] = useState(false);
+  const [showAuthorModal, setShowAuthorModal] = useState(false);
+  const versionClickRef = useRef(0);
+  const versionClickTimeoutRef = useRef<number | null>(null);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleVersionClick = () => {
+    versionClickRef.current += 1;
+    
+    if (versionClickTimeoutRef.current) window.clearTimeout(versionClickTimeoutRef.current);
+    
+    if (versionClickRef.current >= 5) {
+        setShowAuthorModal(true);
+        versionClickRef.current = 0;
+    } else {
+        versionClickTimeoutRef.current = window.setTimeout(() => {
+            versionClickRef.current = 0;
+        }, 500); 
+    }
+  };
 
   const getThemeTextClass = () => {
       const { themeColor, customColor } = userSettings;
@@ -1119,17 +1178,13 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
   }
 
   // --- LOGIC: Find Lesson to Display ---
-  // Priority: 1. Last active lesson (user explicitly clicked), 2. First uncompleted, 3. Fallback
   const activeLessonData = useMemo(() => {
-      // 1. Try last active
       if (lastActiveLessonId) {
           for (const group of lessons) {
               const found = group.items.find(i => i.id === lastActiveLessonId);
               if (found) return { group, item: found, isLastActive: true };
           }
       }
-
-      // 2. Fallback to first uncompleted
       for (const group of lessons) {
           for (const item of group.items) {
               if (!completedLessons.includes(item.id)) {
@@ -1137,8 +1192,6 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
               }
           }
       }
-      
-      // 3. Fallback to very last
       const lastGroup = lessons[lessons.length-1];
       return { group: lastGroup, item: lastGroup.items[lastGroup.items.length-1], isLastActive: false };
   }, [lessons, completedLessons, lastActiveLessonId]);
@@ -1177,6 +1230,8 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
 
   return (
     <>
+    <AuthorModal isOpen={showAuthorModal} onClose={() => setShowAuthorModal(false)} />
+    
     <div className={`relative w-full h-full`}>
         <div className={`w-full max-w-[1600px] mx-auto pb-12 font-sans relative transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] origin-top ${showProfile ? 'scale-90 opacity-50 blur-[2px] pointer-events-none select-none' : 'scale-100 opacity-100'}`}>
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 animate-slideUp">
@@ -1194,6 +1249,11 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                             欢迎来到 Piano Theory
                         </h1>
                     )}
+                </div>
+                
+                {/* The clickable version badge for the easter egg */}
+                <div onClick={handleVersionClick} className="px-3 py-1 bg-stone-100 rounded-full text-xs font-bold text-stone-500 absolute top-0 right-0 md:relative md:top-auto md:right-auto cursor-pointer active:scale-95 transition-transform select-none">
+                    v2.4.0
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
@@ -1227,7 +1287,7 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                                 {user ? '个人中心' : '点击登录'}
                             </div>
                             <div className="text-[10px] text-stone-400 flex items-center gap-1">
-                                {user ? (isPro ? 'Pro 会员' : '免费版') : 'Guest'} <Settings size={10} />
+                                {user ? (isPro ? (proPlan === 'monthly' ? '月度会员' : '年度会员') : '免费版') : 'Guest'} <Settings size={10} />
                             </div>
                         </div>
                     </button>
@@ -1442,6 +1502,7 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, onUpg
                  <ProfileSettings 
                     onBack={() => setShowProfile(false)} 
                     isPro={isPro} 
+                    proPlan={proPlan}
                     onUpgrade={onUpgrade} 
                     settings={userSettings} 
                     onUpdate={onUpdateSettings} 

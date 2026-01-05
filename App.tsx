@@ -1,7 +1,7 @@
 
 // ... existing imports ...
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BookOpen, Music, MessageCircle, Clock, Activity, Volume2, Ruler, LayoutGrid, Sparkles, Menu, X, ChevronRight, Hash, PauseCircle, Gauge, AlignCenterVertical, Disc, RefreshCw, Waves, Zap, Flower2, Wind, Hourglass, StopCircle, Layers, MoveRight, ChevronDown, Palette, MousePointerClick, ArrowUp, Music3, ArrowLeftRight, GitMerge, Calculator, SplitSquareHorizontal, Infinity, CloudFog, Ear, Route, Crown, Check, Lock, CreditCard, Ticket, Star, Zap as ZapIcon, Dices, FlipHorizontal, AudioWaveform, AlignVerticalSpaceAround, Network, Divide, Radar, Radio, Clock as ClockIcon, Eye, Grid, ListMusic, Mic2, Piano, Layout, Headphones, Coffee, User as UserIcon, LogIn, Upload, Camera, Trophy, Image as ImageIcon, ZoomIn, RotateCw, Move, Mail, Save } from 'lucide-react';
+import { BookOpen, Music, MessageCircle, Clock, Activity, Volume2, Ruler, LayoutGrid, Sparkles, Menu, X, ChevronRight, Hash, PauseCircle, Gauge, AlignCenterVertical, Disc, RefreshCw, Waves, Zap, Flower2, Wind, Hourglass, StopCircle, Layers, MoveRight, ChevronDown, Palette, MousePointerClick, ArrowUp, Music3, ArrowLeftRight, GitMerge, Calculator, SplitSquareHorizontal, Infinity, CloudFog, Ear, Route, Crown, Check, Lock, CreditCard, Ticket, Star, Zap as ZapIcon, Dices, FlipHorizontal, AudioWaveform, AlignVerticalSpaceAround, Network, Divide, Radar, Radio, Clock as ClockIcon, Eye, Grid, ListMusic, Mic2, Piano, Layout, Headphones, Coffee, User as UserIcon, LogIn, Upload, Camera, Trophy, Image as ImageIcon, ZoomIn, RotateCw, Move, Mail, Save, BadgeCheck, ShieldCheck, Users } from 'lucide-react';
 // ... rest of imports ...
 import Explanation from './components/Explanation';
 import SlurVsTie from './components/SlurVsTie';
@@ -54,9 +54,7 @@ import GenericLesson from './components/GenericLesson';
 import SplashScreen from './components/SplashScreen';
 import StartPage, { UserSettings, UserProfile, Achievement } from './components/StartPage'; 
 
-// ... (AuthModal, SubscriptionModal, etc. retained) ...
-// (Keeping existing helper components like INITIAL_ACHIEVEMENTS, AchievementToast, AuthModal, SubscriptionModal for brevity, assuming they are unchanged from previous context. 
-// If I were to output the full file I would include them, but `App` logic is the focus here.)
+// ... (Keeping existing helper components like INITIAL_ACHIEVEMENTS, AchievementToast, AuthModal for brevity) ...
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
     { id: 'first_lesson', title: '初入琴房', desc: '完成你的第 1 个课程', icon: '🎵', unlocked: false, progress: 0, maxProgress: 1 },
@@ -65,6 +63,7 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [
     { id: 'master', title: '理论大师', desc: '解锁所有高级课程', icon: '🎓', unlocked: false, progress: 0, maxProgress: 10 },
 ];
 
+// ... (AchievementToast, AuthModal remain unchanged) ...
 const AchievementToast: React.FC<{ achievement: Achievement | null, onClose: () => void }> = ({ achievement, onClose }) => {
     const [visible, setVisible] = useState(false);
     useEffect(() => {
@@ -85,14 +84,9 @@ const AchievementToast: React.FC<{ achievement: Achievement | null, onClose: () 
     )
 }
 
-// ... (AuthModal & SubscriptionModal components here - assumed unchanged) ...
-// For the purpose of this update, assume AuthModal and SubscriptionModal are defined as before. 
-// I will include placeholder definitions to ensure the code compiles if this was a fresh file, 
-// but in a patch scenario I would rely on existing content.
-// RE-INCLUDING FULL COMPONENT DEFINITIONS TO BE SAFE:
-
 interface AuthModalProps { isOpen: boolean; onClose: () => void; onLogin: (profile: UserProfile) => void; }
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
+    // ... (Keep existing implementation) ...
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [selectedAvatar, setSelectedAvatar] = useState('🎹');
@@ -117,8 +111,282 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => { setCustomAvatar(reader.result as string); setZoom(1); setRotation(0); setPosition({ x: 0, y: 0 }); }; reader.readAsDataURL(file); } };
     return ( <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}> <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={handleClose}></div> <div className={`bg-white w-full max-w-md rounded-[2rem] p-8 relative z-10 shadow-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) transform ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-12 opacity-0'}`}> <button onClick={handleClose} className="absolute top-4 right-4 p-2 text-stone-400 hover:bg-stone-100 rounded-full transition-colors"><X size={20}/></button> <div className="text-center mb-6"> <h2 className="text-2xl font-serif font-bold text-stone-900">欢迎加入</h2> <p className="text-stone-500 text-sm mt-1">创建您的音乐档案</p> </div> <form onSubmit={handleSubmit} className="space-y-6"> <div> <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">昵称 (Nickname)</label> <div className="relative"> <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="例如: Chopin Lover" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all" autoFocus /> <UserIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" /> </div> </div> <div> <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">设置密码 (Password)</label> <div className="relative"> <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="设置登录密码" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all" /> <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" /> </div> </div> <div> <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 text-center">头像设置</label> {customAvatar ? ( <div className="flex flex-col items-center mb-4 animate-fadeIn"> <div className="relative w-40 h-40 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-4 cursor-move bg-stone-100" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}> <img src={customAvatar} alt="Avatar Preview" className="w-full h-full object-cover origin-center pointer-events-none" style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)` }} /> <div className="absolute inset-0 border border-white/20 rounded-full pointer-events-none"></div> </div> <div className="w-full space-y-3 bg-stone-50 p-4 rounded-xl border border-stone-100"> <div className="flex items-center gap-3"> <ZoomIn size={14} className="text-stone-400 shrink-0"/> <input type="range" min="0.5" max="3" step="0.1" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800" /> </div> <div className="flex items-center gap-3"> <RotateCw size={14} className="text-stone-400 shrink-0"/> <input type="range" min="-180" max="180" step="5" value={rotation} onChange={(e) => setRotation(parseFloat(e.target.value))} className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800" /> </div> </div> <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs text-stone-400 hover:text-stone-600 underline mt-2">更换图片</button> </div> ) : ( <div className="flex justify-center gap-3 flex-wrap mb-4"> {defaultAvatars.map(emoji => ( <button key={emoji} type="button" onClick={() => setSelectedAvatar(emoji)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${selectedAvatar === emoji ? 'bg-stone-900 text-white shadow-md scale-110' : 'bg-stone-50 hover:bg-stone-100 text-stone-600'}`}>{emoji}</button> ))} </div> )} {!customAvatar && ( <div className="flex justify-center"> <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} /> <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-stone-300 text-stone-500 hover:border-stone-400 hover:text-stone-800 hover:bg-stone-50 transition-all"> <Camera size={14} /> <span>上传自定义图片</span> </button> </div> )} </div> <button type="submit" disabled={!name.trim() || !password.trim()} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-stone-800 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"> <LogIn size={18} /> 进入 </button> </form> </div> </div> ) };
 
-interface SubscriptionModalProps { isOpen: boolean; onClose: () => void; onSuccess: () => void; themeColor: string; customColor?: string; }
-const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, onSuccess, themeColor, customColor }) => { const [inviteCode, setInviteCode] = useState(''); const [error, setError] = useState(''); const [isSuccess, setIsSuccess] = useState(false); const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly'); const [isVisible, setIsVisible] = useState(false); const [isAnimating, setIsAnimating] = useState(false); useEffect(() => { if (isOpen) { setIsVisible(true); setInviteCode(''); setError(''); setIsSuccess(false); setTimeout(() => setIsAnimating(true), 10); } else { setIsAnimating(false); const timer = setTimeout(() => setIsVisible(false), 300); return () => clearTimeout(timer); } }, [isOpen]); if (!isVisible) return null; const handleVerify = () => { if (inviteCode === '8888') { setIsSuccess(true); setTimeout(() => { onSuccess(); }, 1000); } else { setError('无效的邀请码。请重试。'); } }; const handlePurchase = () => { setIsSuccess(true); setTimeout(() => { onSuccess(); }, 1000); }; const modalBg = 'bg-stone-900 text-white'; return ( <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ${isAnimating ? 'opacity-100' : 'opacity-0'}`}> <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-sm" onClick={onClose}></div> <div className={`bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative overflow-hidden transform transition-all duration-300 border border-stone-200 flex flex-col md:flex-row ${isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}> {!isSuccess && ( <div className={`md:w-5/12 p-8 flex flex-col relative overflow-hidden ${modalBg}`}> <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div> <div className="relative z-10 flex-1"> <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/10 bg-white/10`}> <Crown size={24} className="text-amber-400" fill="currentColor" /> </div> <h2 className="text-3xl font-bold font-serif mb-2">Piano Theory <span className="text-amber-400">Pro</span></h2> <p className="text-white/60 text-sm mb-8">解锁大师级特权，定义你的音乐人格。</p> <ul className="space-y-4"> <li className="flex items-start gap-3"> <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div> <span className="text-sm font-medium">解锁 <strong>Level 5-7 大师课程</strong></span> </li> <li className="flex items-start gap-3"> <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div> <span className="text-sm font-medium">无限次 <strong>AI 助教</strong> 对话</span> </li> <li className="flex items-start gap-3"> <div className={`mt-0.5 p-1 rounded-full bg-white/10`}><Check size={12} className="text-white" /></div> <span className="text-sm font-medium"><strong>自定义</strong> 主题色彩</span> </li> </ul> </div> </div> )} <div className={`md:w-7/12 bg-white p-8 flex flex-col overflow-y-auto max-h-[80vh] custom-scrollbar relative transition-all duration-500 ${isSuccess ? 'w-full md:w-full bg-stone-950 text-white' : ''}`}> <button onClick={onClose} className={`absolute top-4 right-4 p-2 rounded-full transition-colors z-20 ${isSuccess ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}><X size={20} /></button> {!isSuccess ? ( <> <h3 className="text-lg font-bold text-stone-900 mb-6">选择订阅计划</h3> <div className="grid gap-4 mb-8"> <button onClick={() => setSelectedPlan('yearly')} className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'yearly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}> <div className={`absolute -top-3 left-4 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm bg-stone-900`}>BEST VALUE</div> <div><div className="font-bold text-stone-900">年度会员</div><div className="text-xs text-stone-500">¥19.00 / 月</div></div> <div className="text-right"><div className="text-2xl font-bold text-stone-900">¥228</div><div className="text-[10px] text-stone-400 line-through">¥348</div></div> </button> <button onClick={() => setSelectedPlan('monthly')} className={`relative p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${selectedPlan === 'monthly' ? `border-stone-900 bg-stone-50 shadow-md` : 'border-stone-200 hover:border-stone-300'}`}> <div><div className="font-bold text-stone-900">月度会员</div><div className="text-xs text-stone-500">灵活订阅</div></div> <div className="text-right"><div className="text-2xl font-bold text-stone-900">¥29</div></div> </button> </div> <button onClick={handlePurchase} className={`w-full bg-black text-white py-4 rounded-xl font-bold shadow-xl hover:bg-stone-800 transition-all mb-6 flex items-center justify-center gap-2 active:scale-95`}> <CreditCard size={18} /> 立即订阅 </button> <div className="border-t border-stone-100 pt-6"> <div className="flex gap-2"> <input id="invite-input" type="text" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value); setError(''); }} placeholder="输入兑换代码" className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2 text-stone-900 focus:outline-none focus:ring-2 text-sm font-mono tracking-wider uppercase" /> <button onClick={handleVerify} disabled={!inviteCode} className="bg-white border border-stone-200 text-stone-600 px-4 rounded-xl font-bold hover:bg-stone-50 transition-colors text-sm">兑换</button> </div> {error && <p className="text-red-500 text-xs mt-2 font-medium animate-pulse">{error}</p>} </div> </> ) : ( <div className="flex-1 flex flex-col items-center justify-center text-center py-8 relative z-10 w-full h-full min-h-[400px]"> <div className="absolute inset-0 overflow-hidden pointer-events-none"> <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] bg-amber-500/20 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 animate-pulse-slow"></div> {Array.from({length:20}).map((_,i) => ( <div key={i} className="absolute w-1 h-1 bg-amber-300 rounded-full animate-float-particle" style={{ left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*2}s` }}></div> ))} </div> <div className="relative mb-8 z-10"> <div className="w-40 h-28 bg-gradient-to-tr from-amber-200 via-amber-400 to-amber-200 rounded-2xl shadow-2xl animate-card-flip flex items-center justify-center transform preserve-3d border border-white/20"> <div className="absolute inset-0 bg-black/10 rounded-2xl"></div> <Crown size={48} className="text-stone-900 drop-shadow-sm" fill="currentColor" /> <div className="absolute bottom-3 left-0 w-full text-center text-[10px] font-black tracking-[0.3em] text-stone-900 uppercase">Pro Member</div> </div> <div className="absolute -inset-4 bg-amber-500/30 blur-xl -z-10 animate-pulse"></div> </div> <h2 className="text-5xl font-serif font-bold text-white mb-2 animate-slide-up-fade" style={{ animationDelay: '0.2s' }}>Welcome to <span className="text-amber-400">Pro</span></h2> <p className="text-white/60 mb-8 animate-slide-up-fade" style={{ animationDelay: '0.4s' }}>所有特权已解锁，开启您的大师之旅。</p> <button onClick={onClose} className="bg-white text-stone-900 px-12 py-4 rounded-full font-bold shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 transition-all animate-slide-up-fade flex items-center gap-2 group mt-4 hover:bg-amber-50"> <span>进入 Pro 空间</span> <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" /> </button> </div> )} </div> </div> </div> ); };
+interface SubscriptionModalProps { 
+    isOpen: boolean; 
+    onClose: () => void; 
+    onSuccess: (plan: 'monthly' | 'yearly') => void; 
+    themeColor: string; 
+    customColor?: string; 
+}
+
+// Extracted PremiumCard Component to prevent re-renders
+const PremiumCard: React.FC<{ selectedPlan: 'monthly' | 'yearly' }> = ({ selectedPlan }) => (
+    <div className="relative group perspective-[1000px]">
+        <div className="w-64 h-40 bg-gradient-to-br from-stone-900 via-stone-800 to-stone-950 rounded-2xl shadow-2xl relative overflow-hidden transform transition-all duration-[1200ms] animate-card-entrance border border-white/10 flex flex-col justify-between p-5">
+            {/* Shine Effect */}
+            <div className="absolute inset-0 pointer-events-none opacity-40 bg-gradient-to-tr from-transparent via-white/10 to-transparent -translate-x-[150%] animate-shine-slow"></div>
+            {/* Texture */}
+            <div className="absolute inset-0 opacity-30 mix-blend-overlay" style={{ backgroundImage: 'radial-gradient(circle at 100% 0%, #fbbf24 0%, transparent 40%), url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.85\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\' opacity=\'0.2\'/%3E%3C/svg%3E")' }}></div>
+            {/* Content */}
+            <div className="flex justify-between items-start z-10">
+                <div className="flex items-center gap-2 text-amber-400">
+                    <div className="p-1 bg-amber-400/20 rounded backdrop-blur-sm"><Crown size={14} fill="currentColor"/></div>
+                    <span className="font-bold text-[10px] tracking-[0.2em] uppercase">Pro Member</span>
+                </div>
+                <div className="text-white/20 font-mono text-[9px]">ID: 888888</div>
+            </div>
+            <div className="z-10 relative">
+                <div className="absolute -top-8 -right-8 w-24 h-24 bg-amber-500/20 rounded-full blur-2xl"></div>
+                <div className="text-lg font-serif font-bold text-white mb-0.5">Piano Theory</div>
+                <div className="text-amber-400/80 text-[9px] font-medium tracking-wide uppercase flex items-center gap-1">
+                    <Sparkles size={8} /> {selectedPlan === 'yearly' ? 'Yearly Access' : 'Monthly Access'}
+                </div>
+            </div>
+        </div>
+        {/* Glow behind card */}
+        <div className="absolute -inset-2 bg-amber-500/30 blur-xl -z-10 rounded-full animate-pulse-slow opacity-60"></div>
+    </div>
+);
+
+const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, onSuccess, themeColor, customColor }) => { 
+    const [inviteCode, setInviteCode] = useState(''); 
+    const [error, setError] = useState(''); 
+    const [isSuccess, setIsSuccess] = useState(false); 
+    const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly'); 
+    const [isVisible, setIsVisible] = useState(false); 
+    const [isAnimating, setIsAnimating] = useState(false); 
+
+    // Generate random particles for success effect
+    const particles = useMemo(() => Array.from({ length: 40 }).map((_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        y: Math.random() * 100 + 10,
+        size: Math.random() * 6 + 3,
+        duration: Math.random() * 1.5 + 1.5,
+        delay: Math.random() * 0.5,
+        type: Math.random() > 0.6 ? 'circle' : (Math.random() > 0.5 ? 'square' : 'star'),
+        color: ['#fbbf24', '#f59e0b', '#d97706', '#ffffff'][Math.floor(Math.random() * 4)]
+    })), []);
+
+    useEffect(() => { 
+        if (isOpen) { 
+            setIsVisible(true); 
+            setInviteCode(''); 
+            setError(''); 
+            setIsSuccess(false); 
+            setTimeout(() => setIsAnimating(true), 10); 
+        } else { 
+            setIsAnimating(false); 
+            const timer = setTimeout(() => setIsVisible(false), 500); 
+            return () => clearTimeout(timer); 
+        } 
+    }, [isOpen]); 
+
+    if (!isVisible) return null; 
+
+    const handleSuccess = () => {
+        setIsSuccess(true);
+        setTimeout(() => onSuccess(selectedPlan), 1000);
+    };
+
+    const handleVerify = () => { 
+        if (inviteCode === '8888') { 
+            handleSuccess();
+        } else { 
+            setError('无效的邀请码。请重试。'); 
+        } 
+    }; 
+
+    const handlePurchase = () => { 
+        handleSuccess();
+    }; 
+
+    return ( 
+        <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-all duration-500 ${isAnimating ? 'backdrop-blur-md bg-stone-900/60' : 'backdrop-blur-none bg-transparent'}`}> 
+            <div className="absolute inset-0" onClick={onClose}></div> 
+            <style>{`
+                @keyframes cardEntrance {
+                    0% { opacity: 0; transform: rotateY(90deg) rotateX(10deg) scale(0.8) translateY(20px); }
+                    100% { opacity: 1; transform: rotateY(0deg) rotateX(0deg) scale(1) translateY(0); }
+                }
+                .animate-card-entrance { animation: cardEntrance 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                @keyframes floatUpParticle {
+                    0% { transform: translateY(0) rotate(0deg) scale(0); opacity: 0; }
+                    20% { opacity: 1; transform: translateY(-20px) rotate(45deg) scale(1); }
+                    100% { transform: translateY(-150px) rotate(180deg) scale(0); opacity: 0; }
+                }
+                .animate-float-up-particle { animation: floatUpParticle ease-out forwards; }
+                @keyframes shineSlow {
+                    0% { transform: translateX(-150%) skewX(-15deg); }
+                    100% { transform: translateX(200%) skewX(-15deg); }
+                }
+                .animate-shine-slow { animation: shineSlow 4s infinite ease-in-out; }
+            `}</style>
+
+            <div 
+                className={`
+                    bg-white shadow-2xl relative overflow-hidden flex
+                    transition-all duration-[800ms] cubic-bezier(0.16, 1, 0.3, 1)
+                    ${isSuccess ? 'w-[360px] h-[500px] rounded-[2.5rem]' : 'w-[800px] h-[520px] rounded-[2rem]'}
+                    ${isAnimating ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-8 opacity-0'}
+                `}
+            > 
+                <button onClick={onClose} className={`absolute top-5 right-5 p-2 rounded-full z-50 transition-colors ${isSuccess ? 'text-white/30 hover:bg-white/10' : 'text-stone-400 hover:bg-stone-100'}`}><X size={20} /></button>
+
+                {/* LEFT PANEL */}
+                <div className={`relative bg-stone-900 text-white overflow-hidden flex-shrink-0 transition-all duration-[800ms] cubic-bezier(0.16, 1, 0.3, 1) ${isSuccess ? 'w-0' : 'w-[38%]'}`}>
+                    <div className={`w-[300px] h-full flex flex-col p-8 relative transition-opacity duration-300 ${isSuccess ? 'opacity-0' : 'opacity-100'}`}> {/* Fixed width container */}
+                        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#fbbf24 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+                        <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-amber-500/20 rounded-full blur-[60px]"></div>
+                        
+                        <div className="relative z-10 flex-1 flex flex-col justify-center">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 w-fit mb-6 text-[10px] font-bold uppercase tracking-wider text-amber-400 shadow-sm">
+                                <Sparkles size={10} fill="currentColor" /> Pro Access
+                            </div>
+                            <h2 className="text-3xl font-serif font-bold mb-4 leading-tight">Unlock <br/><span className="text-amber-400">Mastery</span></h2>
+                            <div className="space-y-4 mb-8"> 
+                                {["全套高级乐理课程","AI 智能助教无限对话","高清图谱与音频示例","专属 Pro 身份徽章"].map((item, i) => (
+                                    <div key={i} className="flex items-center gap-3 text-sm font-medium text-stone-300"> 
+                                        <div className="w-5 h-5 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-amber-500 shrink-0"><Check size={10} strokeWidth={4} /></div> 
+                                        <span>{item}</span> 
+                                    </div> 
+                                ))}
+                            </div>
+                            <div className="mt-auto pt-6 border-t border-white/10">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex -space-x-2">
+                                        {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-stone-700 border-2 border-stone-900 flex items-center justify-center"><UserIcon size={12} className="text-stone-500"/></div>)}
+                                    </div>
+                                    <div className="text-[10px] text-stone-400 leading-tight">
+                                        <strong className="text-white block">10,000+ 学员</strong> 已加入 Pro 计划
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* RIGHT PANEL */}
+                <div className={`relative flex-1 flex flex-col transition-all duration-[800ms] cubic-bezier(0.16, 1, 0.3, 1) ${isSuccess ? 'bg-stone-950' : 'bg-white'}`}>
+                    {!isSuccess ? ( 
+                        <div className="flex-1 p-8 flex flex-col h-full animate-fadeIn relative"> 
+                            <h3 className="text-xl font-bold text-stone-900 mb-6 font-serif flex items-center gap-2">选择订阅计划 <span className="text-xs bg-stone-100 text-stone-500 px-2 py-1 rounded-md font-sans font-normal ml-auto">限时特惠</span></h3>
+                            <div className="space-y-3 mb-auto"> 
+                                <button onClick={() => setSelectedPlan('yearly')} className={`w-full p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden group ${selectedPlan === 'yearly' ? 'border-stone-900 bg-stone-50 shadow-md' : 'border-stone-100 hover:border-stone-300 hover:bg-stone-50'}`}> 
+                                    {selectedPlan === 'yearly' && <div className="absolute top-0 right-0 w-16 h-16 bg-stone-900 rotate-45 transform translate-x-8 -translate-y-8 z-10"><Check size={14} className="text-white absolute bottom-1 left-6 -rotate-45" strokeWidth={4}/></div>}
+                                    <div className="flex justify-between items-center mb-1">
+                                        <div className="font-bold text-stone-900 text-base">年度会员</div>
+                                        <div className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded">省 35%</div>
+                                    </div>
+                                    <div className="flex items-end gap-1">
+                                        <span className="text-2xl font-bold text-stone-900">¥228</span>
+                                        <span className="text-xs text-stone-400 mb-1 line-through">¥348</span>
+                                        <span className="text-xs text-stone-500 mb-1 ml-auto">¥19.00 / 月</span>
+                                    </div>
+                                </button> 
+                                <button onClick={() => setSelectedPlan('monthly')} className={`w-full p-4 rounded-xl border-2 text-left transition-all relative group ${selectedPlan === 'monthly' ? 'border-stone-900 bg-stone-50 shadow-md' : 'border-stone-100 hover:border-stone-300 hover:bg-stone-50'}`}> 
+                                    <div className="flex justify-between items-center mb-1"><div className="font-bold text-stone-900 text-base">月度会员</div></div>
+                                    <div className="flex items-end gap-1">
+                                        <span className="text-2xl font-bold text-stone-900">¥29</span>
+                                        <span className="text-xs text-stone-500 mb-1 ml-auto">灵活订阅，随时取消</span>
+                                    </div>
+                                </button> 
+                            </div> 
+                            <div className="mt-6 space-y-4"> 
+                                <div className="relative">
+                                    <input type="text" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value); setError(''); }} placeholder="输入兑换代码..." className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 transition-all font-mono uppercase placeholder-stone-400" /> 
+                                    <button onClick={handleVerify} disabled={!inviteCode} className="absolute right-2 top-2 bottom-2 px-3 bg-white border border-stone-200 rounded-lg text-xs font-bold text-stone-600 hover:bg-stone-50 disabled:opacity-50 transition-colors">兑换</button>
+                                </div>
+                                {error && <p className="text-red-500 text-xs font-bold animate-pulse px-1">{error}</p>} 
+                                <button onClick={handlePurchase} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold text-base shadow-xl hover:bg-stone-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"> 
+                                    <CreditCard size={18} className="text-amber-400 group-hover:rotate-12 transition-transform"/> 立即开通
+                                </button> 
+                                <div className="flex items-center justify-center gap-4 text-[10px] text-stone-400 font-medium">
+                                    <span className="flex items-center gap-1"><ShieldCheck size={12}/> SSL 安全支付</span>
+                                    <span className="flex items-center gap-1"><RefreshCw size={12}/> 7天无理由退款</span>
+                                </div>
+                            </div> 
+                        </div> 
+                    ) : ( 
+                        <div className="flex-1 flex flex-col items-center justify-center relative w-full h-full overflow-hidden p-6"> 
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-stone-800 via-stone-950 to-black opacity-80"></div>
+                            {particles.map((p) => (
+                                <div key={p.id} className={`absolute animate-float-up-particle opacity-0 ${p.type === 'circle' ? 'rounded-full' : (p.type === 'square' ? 'rounded-none' : 'clip-path-star')}`} style={{ left: `${p.x}%`, width: p.size, height: p.size, backgroundColor: p.color, animationDuration: `${p.duration}s`, animationDelay: `${p.delay}s`, top: '100%', clipPath: p.type === 'star' ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' : undefined }}></div>
+                            ))}
+                            <div className="relative z-10 flex flex-col items-center w-full">
+                                <div className="mb-8 scale-110"><PremiumCard selectedPlan={selectedPlan} /></div>
+                                <div className="text-center space-y-2 animate-slideUpFade" style={{ animationDelay: '0.6s' }}>
+                                    <h2 className="text-2xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-200 to-amber-400">Welcome Aboard</h2>
+                                    <p className="text-stone-400 text-xs font-medium">所有特权已激活，尽情享受吧。</p>
+                                </div>
+                                <button onClick={onClose} className="mt-8 bg-white text-stone-900 px-8 py-3 rounded-full font-bold shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 group animate-slideUpFade text-sm" style={{ animationDelay: '0.8s' }}> 
+                                    <span>进入 Pro 空间</span> <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" /> 
+                                </button> 
+                            </div>
+                        </div> 
+                    )} 
+                </div> 
+            </div> 
+        </div> 
+    ); 
+};
+
+// ... (LogoutOverlay Component added here)
+const LogoutOverlay = () => (
+    <div className="fixed inset-0 z-[200] bg-stone-950 flex flex-col items-center justify-center animate-fadeIn duration-500">
+        <div className="relative">
+            <div className="absolute inset-0 bg-amber-500/20 blur-3xl rounded-full animate-pulse-slow"></div>
+            <div className="w-24 h-24 bg-stone-900 border border-stone-800 rounded-[2rem] flex items-center justify-center shadow-2xl relative z-10 mb-8 animate-bounce-gentle">
+                <Music size={40} className="text-amber-500" />
+            </div>
+        </div>
+        <h2 className="text-3xl font-serif text-white font-bold mb-2 animate-slideUp">Goodbye</h2>
+        <p className="text-stone-500 animate-slideUp" style={{animationDelay: '0.1s'}}>期待您的下一次练习</p>
+        <div className="mt-8 w-48 h-1 bg-stone-900 rounded-full overflow-hidden">
+            <div className="h-full bg-amber-500 animate-progress-fast"></div>
+        </div>
+        <style>{`
+            @keyframes progressFast { from { width: 0%; } to { width: 100%; } }
+            .animate-progress-fast { animation: progressFast 1.2s ease-out forwards; }
+        `}</style>
+    </div>
+);
+
+// Welcome Overlay for Login
+const WelcomeOverlay: React.FC<{ user: UserProfile | null }> = ({ user }) => {
+    return (
+        <div className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center animate-fadeIn duration-500">
+            <div className="absolute inset-0 bg-gradient-to-br from-stone-50 via-amber-50 to-orange-50 opacity-50"></div>
+            
+            <div className="relative z-10 flex flex-col items-center text-center p-8">
+                {/* Avatar with Glow */}
+                <div className="relative mb-8 animate-scale-in">
+                    <div className="absolute inset-0 bg-amber-400 rounded-full blur-xl opacity-30 animate-pulse-slow"></div>
+                    <div className="w-32 h-32 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-stone-100 flex items-center justify-center text-5xl relative z-10">
+                        {user?.isCustomAvatar ? (
+                            <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                            user?.avatar || <UserIcon size={48} className="text-stone-400" />
+                        )}
+                    </div>
+                </div>
+
+                <h2 className="text-4xl md:text-5xl font-serif font-bold text-stone-900 mb-3 animate-slideUp" style={{ animationDelay: '0.2s' }}>
+                    Welcome, <span className="text-amber-600">{user?.name}</span>
+                </h2>
+                <p className="text-stone-500 font-medium tracking-wide animate-slideUp" style={{ animationDelay: '0.3s' }}>
+                    正在为你准备专属课程...
+                </p>
+
+                {/* Loading Indicator */}
+                <div className="mt-12 w-16 h-16 relative flex items-center justify-center animate-slideUp" style={{ animationDelay: '0.4s' }}>
+                    <div className="absolute inset-0 border-4 border-stone-200 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-amber-500 rounded-full border-t-transparent animate-spin"></div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 enum Tab {
   LESSON = 'lesson',
@@ -274,6 +542,10 @@ const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) =>
 const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true); 
   const [isAppVisible, setIsAppVisible] = useState(false); 
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // New state for logout animation
+  const [isLoggingIn, setIsLoggingIn] = useState(false); // New state for login animation
+  const [tempUserProfile, setTempUserProfile] = useState<UserProfile | null>(null); // For Welcome Overlay
+
   const [activeTab, setActiveTab] = useState<Tab>(Tab.LESSON);
   const [activeLesson, setActiveLesson] = useState<LessonTopic>(LessonTopic.HOME); 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -295,6 +567,7 @@ const App: React.FC = () => {
   const [unlockedToast, setUnlockedToast] = useState<Achievement | null>(null);
 
   const [isPro, setIsPro] = useState<boolean>(false);
+  const [proPlan, setProPlan] = useState<'monthly' | 'yearly' | null>(null); // New State
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   
   const [openGroupIndex, setOpenGroupIndex] = useState<number | null>(0);
@@ -312,6 +585,9 @@ const App: React.FC = () => {
     
     const savedPro = localStorage.getItem('pianoTheoryPro');
     if (savedPro === 'true') setIsPro(true);
+
+    const savedPlan = localStorage.getItem('pianoTheoryProPlan');
+    if (savedPlan) setProPlan(savedPlan as any);
 
     const savedProgress = localStorage.getItem('pt_progress');
     if (savedProgress) setCompletedLessons(JSON.parse(savedProgress));
@@ -368,9 +644,16 @@ const App: React.FC = () => {
 
 
   const handleLogin = (profile: UserProfile) => {
-      setUser(profile);
-      localStorage.setItem('pt_user', JSON.stringify(profile));
       setShowAuthModal(false);
+      setTempUserProfile(profile);
+      setIsLoggingIn(true);
+      
+      setTimeout(() => {
+          setUser(profile);
+          localStorage.setItem('pt_user', JSON.stringify(profile));
+          setIsLoggingIn(false);
+          setTempUserProfile(null);
+      }, 2500); // 2.5s login animation
   };
 
   const handleUpdateProfile = (profile: UserProfile) => {
@@ -379,17 +662,26 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-      setUser(null);
-      setIsPro(false);
-      localStorage.removeItem('pt_user');
-      localStorage.removeItem('pianoTheoryPro');
-      setUserSettings(prev => ({ ...prev, themeColor: 'amber', customColor: '' })); 
-      setActiveLesson(LessonTopic.HOME);
+      setIsLoggingOut(true);
+      // Wait for animation to finish
+      setTimeout(() => {
+          setUser(null);
+          setIsPro(false);
+          setProPlan(null);
+          localStorage.removeItem('pt_user');
+          localStorage.removeItem('pianoTheoryPro');
+          localStorage.removeItem('pianoTheoryProPlan');
+          setUserSettings(prev => ({ ...prev, themeColor: 'amber', customColor: '' })); 
+          setActiveLesson(LessonTopic.HOME);
+          setIsLoggingOut(false);
+      }, 1500);
   };
 
-  const handleProSuccess = () => {
+  const handleProSuccess = (plan: 'monthly' | 'yearly') => {
     setIsPro(true);
+    setProPlan(plan);
     localStorage.setItem('pianoTheoryPro', 'true');
+    localStorage.setItem('pianoTheoryProPlan', plan);
   };
 
   const checkAccess = (isProFeature: boolean) => {
@@ -511,8 +803,7 @@ const App: React.FC = () => {
   ];
 
   // --- Dynamic Color Styles Helper ---
-  // This helper generates inline styles for dynamic colors to ensure smooth transitions
-  // especially for custom colors which can't rely on pre-generated Tailwind classes.
+  // ... (keep helper functions)
   const getThemeStyle = (type: 'text' | 'bg' | 'border' | 'gradient-from' | 'gradient-to' | 'activeBg' | 'sidebarBg') => {
       const { themeColor, customColor } = userSettings;
       
@@ -579,6 +870,7 @@ const App: React.FC = () => {
             onNavigate={handleLessonSelect} 
             lessons={lessons} 
             isPro={isPro} 
+            proPlan={proPlan} // Pass new prop
             onUpgrade={() => setShowSubscribeModal(true)} 
             userSettings={userSettings}
             onUpdateSettings={setUserSettings}
@@ -676,6 +968,27 @@ const App: React.FC = () => {
     );
   };
 
+  // --- LOGOUT ANIMATION OVERLAY ---
+  const LogoutOverlay = () => (
+    <div className="fixed inset-0 z-[200] bg-stone-950 flex flex-col items-center justify-center animate-fadeIn duration-500">
+        <div className="relative">
+            <div className="absolute inset-0 bg-amber-500/20 blur-3xl rounded-full animate-pulse-slow"></div>
+            <div className="w-24 h-24 bg-stone-900 border border-stone-800 rounded-[2rem] flex items-center justify-center shadow-2xl relative z-10 mb-8 animate-bounce-gentle">
+                <Music size={40} className="text-amber-500" />
+            </div>
+        </div>
+        <h2 className="text-3xl font-serif text-white font-bold mb-2 animate-slideUp">Goodbye</h2>
+        <p className="text-stone-500 animate-slideUp" style={{animationDelay: '0.1s'}}>期待您的下一次练习</p>
+        <div className="mt-8 w-48 h-1 bg-stone-900 rounded-full overflow-hidden">
+            <div className="h-full bg-amber-500 animate-progress-fast"></div>
+        </div>
+        <style>{`
+            @keyframes progressFast { from { width: 0%; } to { width: 100%; } }
+            .animate-progress-fast { animation: progressFast 1.2s ease-out forwards; }
+        `}</style>
+    </div>
+  );
+
   return (
     <>
     <style>{`
@@ -691,7 +1004,11 @@ const App: React.FC = () => {
         onFinish={() => setShowSplash(false)} 
       />
     )}
-    <div className={`h-screen flex flex-col md:flex-row bg-[#FAFAF9] overflow-hidden font-sans transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isAppVisible ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-95 blur-sm'}`}>
+    
+    {isLoggingOut && <LogoutOverlay />}
+    {isLoggingIn && <WelcomeOverlay user={tempUserProfile} />}
+
+    <div className={`h-screen flex flex-col md:flex-row bg-[#FAFAF9] overflow-hidden font-sans transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isAppVisible && !isLoggingOut && !isLoggingIn ? 'opacity-100 scale-100 blur-0' : (isLoggingOut || isLoggingIn ? 'opacity-50 scale-95 blur-sm' : 'opacity-0 scale-95 blur-sm')}`}>
       
       <AuthModal 
         isOpen={showAuthModal}
@@ -912,7 +1229,7 @@ const App: React.FC = () => {
           ) : (
             <div className={`w-full ${getThemeClass('bg')}/10 border ${getThemeClass('border')} ${getThemeClass('text')} py-3 rounded-xl flex items-center justify-center gap-2 mb-4 cursor-default transition-all duration-500`} style={{...getThemeStyle('activeBg'), ...getThemeStyle('border'), ...getThemeStyle('text')}}>
                 <Crown size={16} fill="currentColor" />
-                <span className="font-bold text-sm">Pro 会员已激活</span>
+                <span className="font-bold text-sm">Pro {proPlan === 'monthly' ? '月度' : '年度'}会员</span>
             </div>
           )}
           
