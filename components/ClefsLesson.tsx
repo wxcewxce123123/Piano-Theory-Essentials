@@ -141,12 +141,14 @@ const ClefsLesson: React.FC = () => {
                             x1="40" y1={115 + y} x2="560" y2={115 + y} 
                             stroke={activeMode === 'treble' && i === 3 ? '#d97706' : '#78716c'} 
                             strokeWidth={activeMode === 'treble' && i === 3 ? 3 : 1.5}
+                            className="transition-all duration-300"
                         />
                     ))}
                     
                     {/* Clef */}
                     <text
-                        x="75" y="193" // Adjusted for Group Transform (115 + 78 = 193)
+                        x="75" y="155"
+                        dominantBaseline="central"
                         fontSize="75"
                         fontFamily="'Noto Music', 'Bravura', 'Times New Roman', serif"
                         fill={activeMode === 'treble' ? "#1c1917" : "#57534e"}
@@ -155,23 +157,36 @@ const ClefsLesson: React.FC = () => {
                         𝄞
                     </text>
 
-                    {/* G Line Label */}
+                    {/* REDESIGNED G NOTE ANIMATION */}
                     {activeMode === 'treble' && (
-                        <text x="30" y="180" textAnchor="end" fontSize="12" fontWeight="bold" fill="#d97706" className="animate-fadeIn">G Line</text>
-                    )}
-
-                    {/* Interactive Note G (If Treble Mode) */}
-                    {activeMode === 'treble' && (
-                        <g className="animate-fadeIn">
-                            {/* G is on line 4 (Y=175 relative to canvas 0, or 60 relative to group 115) */}
-                            {/* Actually Y=115+60 = 175 */}
-                            <circle cx="140" cy="175" r="12" fill="none" stroke="#d97706" strokeWidth="2" strokeDasharray="4 2" className="animate-spin-slow" />
-                            <g className="animate-bounce-gentle">
-                                <ellipse cx="220" cy="175" rx="10" ry="8" transform="rotate(-15 220 175)" fill="#1c1917" />
-                                {/* Stem UP (Right side) */}
-                                <line x1="229" y1="175" x2="229" y2="115" stroke="#1c1917" strokeWidth="2" />
+                        <g>
+                            {/* 1. The Reference Point (Spiral Center) */}
+                            <circle cx="75" cy="175" r="5" fill="#d97706" className="animate-ping-slow" />
+                            <circle cx="75" cy="175" r="3" fill="white" />
+                            
+                            {/* 2. The Tracking Line */}
+                            <line 
+                                x1="85" y1="175" x2="240" y2="175" 
+                                stroke="#d97706" strokeWidth="2" strokeDasharray="4 2"
+                                className="animate-draw-line"
+                            />
+                            
+                            {/* 3. The Note G4 */}
+                            <g className="animate-pop-in" style={{ animationDelay: '0.4s' }}>
+                                {/* Note Head */}
+                                <ellipse cx="240" cy="175" rx="11" ry="8" transform="rotate(-15 240 175)" fill="#1c1917" stroke="#d97706" strokeWidth="2" />
+                                {/* Stem UP */}
+                                <line x1="249" y1="175" x2="249" y2="115" stroke="#1c1917" strokeWidth="2" />
+                                
+                                {/* Target Reticle Effect */}
+                                <circle cx="240" cy="175" r="20" fill="none" stroke="#d97706" strokeWidth="1" className="animate-ping" opacity="0.3" />
+                                
+                                {/* Label Tag */}
+                                <g transform="translate(265, 175)">
+                                    <path d="M0,0 L10,-12 L60,-12 A4,4 0 0 1 64,-8 L64,8 A4,4 0 0 1 60,12 L10,12 Z" fill="#d97706" />
+                                    <text x="36" y="4" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">G (Sol)</text>
+                                </g>
                             </g>
-                            <text x="260" y="180" fill="#d97706" fontSize="16" fontWeight="bold" fontFamily="serif">G (Sol)</text>
                         </g>
                     )}
                 </g>
@@ -193,12 +208,14 @@ const ClefsLesson: React.FC = () => {
                             x1="40" y1={255 + y} x2="560" y2={255 + y} 
                             stroke={activeMode === 'bass' && i === 1 ? '#4f46e5' : '#78716c'} 
                             strokeWidth={activeMode === 'bass' && i === 1 ? 3 : 1.5}
+                            className="transition-all duration-300"
                         />
                     ))}
 
                     {/* Clef */}
                     <text
-                        x="75" y="283" // Adjusted (255 + 28 = 283)
+                        x="75" y="295"
+                        dominantBaseline="central"
                         fontSize="75"
                         fontFamily="'Noto Music', 'Bravura', 'Times New Roman', serif"
                         fill={activeMode === 'bass' ? "#1c1917" : "#57534e"}
@@ -207,22 +224,36 @@ const ClefsLesson: React.FC = () => {
                         𝄢
                     </text>
 
-                    {/* F Line Label */}
+                    {/* REDESIGNED F NOTE ANIMATION */}
                     {activeMode === 'bass' && (
-                        <text x="30" y="280" textAnchor="end" fontSize="12" fontWeight="bold" fill="#4f46e5" className="animate-fadeIn">F Line</text>
-                    )}
+                        <g>
+                            {/* 1. The Reference Point (Between Dots) */}
+                            <circle cx="75" cy="275" r="5" fill="#4f46e5" className="animate-ping-slow" />
+                            <circle cx="75" cy="275" r="3" fill="white" />
 
-                    {/* Interactive Note F (If Bass Mode) */}
-                    {activeMode === 'bass' && (
-                        <g className="animate-fadeIn">
-                            {/* F is on line 2 (Y=20 relative to group start, 255+20=275) */}
-                            <circle cx="140" cy="275" r="16" fill="none" stroke="#4f46e5" strokeWidth="2" strokeDasharray="4 2" className="animate-pulse" />
-                            <g className="animate-bounce-gentle">
-                                <ellipse cx="220" cy="275" rx="10" ry="8" transform="rotate(-15 220 275)" fill="#1c1917" />
-                                {/* Stem DOWN (Left side) */}
-                                <line x1="211" y1="275" x2="211" y2="335" stroke="#1c1917" strokeWidth="2" />
+                            {/* 2. The Tracking Line */}
+                            <line 
+                                x1="85" y1="275" x2="240" y2="275" 
+                                stroke="#4f46e5" strokeWidth="2" strokeDasharray="4 2"
+                                className="animate-draw-line"
+                            />
+
+                            {/* 3. The Note F3 */}
+                            <g className="animate-pop-in" style={{ animationDelay: '0.4s' }}>
+                                {/* Note Head */}
+                                <ellipse cx="240" cy="275" rx="11" ry="8" transform="rotate(-15 240 275)" fill="#1c1917" stroke="#4f46e5" strokeWidth="2" />
+                                {/* Stem DOWN */}
+                                <line x1="231" y1="275" x2="231" y2="335" stroke="#1c1917" strokeWidth="2" />
+                                
+                                {/* Target Reticle Effect */}
+                                <circle cx="240" cy="275" r="20" fill="none" stroke="#4f46e5" strokeWidth="1" className="animate-ping" opacity="0.3" />
+
+                                {/* Label Tag */}
+                                <g transform="translate(265, 275)">
+                                    <path d="M0,0 L10,-12 L60,-12 A4,4 0 0 1 64,-8 L64,8 A4,4 0 0 1 60,12 L10,12 Z" fill="#4f46e5" />
+                                    <text x="36" y="4" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">F (Fa)</text>
+                                </g>
                             </g>
-                            <text x="260" y="280" fill="#4f46e5" fontSize="16" fontWeight="bold" fontFamily="serif">F (Fa)</text>
                         </g>
                     )}
                 </g>
@@ -237,19 +268,30 @@ const ClefsLesson: React.FC = () => {
                         transformOrigin: 'center'
                     }}
                 >
+                    {/* Connecting Brackets (Visualizing the Bridge) */}
+                    {activeMode === 'middleC' && (
+                        <>
+                            <path d="M 220 195 L 220 225 L 220 255" stroke="#10b981" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" className="animate-pulse" />
+                            <circle cx="220" cy="195" r="2" fill="#10b981" />
+                            <circle cx="220" cy="255" r="2" fill="#10b981" />
+                        </>
+                    )}
+
                     {/* Ledger Line */}
                     <line x1="200" y1="225" x2="240" y2="225" stroke="#10b981" strokeWidth="3" />
                     
                     {/* Note C */}
-                    <g className="animate-pulse-soft">
-                        <ellipse cx="220" cy="225" rx="10" ry="8" transform="rotate(-15 220 225)" fill="#10b981" />
+                    <g className="animate-pop-in">
+                        <ellipse cx="220" cy="225" rx="11" ry="8" transform="rotate(-15 220 225)" fill="#10b981" />
                         {/* Stem UP */}
                         <line x1="229" y1="225" x2="229" y2="165" stroke="#10b981" strokeWidth="2" />
-                        <text x="260" y="230" fill="#10b981" fontSize="16" fontWeight="bold" fontFamily="serif">Middle C</text>
+                        
+                        {/* Floating Label */}
+                        <g transform="translate(250, 225)" className="animate-float">
+                            <rect x="0" y="-12" width="80" height="24" rx="12" fill="white" stroke="#10b981" strokeWidth="2" />
+                            <text x="40" y="5" textAnchor="middle" fill="#10b981" fontSize="12" fontWeight="bold">Middle C</text>
+                        </g>
                     </g>
-                    
-                    {/* Guideline connecting staves */}
-                    <line x1="220" y1="195" x2="220" y2="255" stroke="#10b981" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
                 </g>
 
                 {/* Passive Middle C marker for Neutral Mode */}
@@ -432,8 +474,10 @@ const ClefsLesson: React.FC = () => {
         @keyframes spin { from { transform: rotate(0deg); transform-origin: 94px 175px; } to { transform: rotate(360deg); transform-origin: 94px 175px; } }
         .animate-bounce-gentle { animation: bounceGentle 2s infinite ease-in-out; }
         @keyframes bounceGentle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-        .animate-draw-line { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw 1.5s forwards ease-out; }
+        .animate-draw-line { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw 1s forwards ease-out; }
         @keyframes draw { to { stroke-dashoffset: 0; } }
+        .animate-ping-slow { animation: pingSlow 2s infinite cubic-bezier(0, 0, 0.2, 1); }
+        @keyframes pingSlow { 75%, 100% { transform: scale(2); opacity: 0; } }
       `}</style>
     </div>
   );

@@ -116,8 +116,7 @@ const isLightColor = (hex: string) => {
     return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 160; 
 };
 
-// ... (Keep existing ColorPickerModal, PrivacyModal, AccountSettingsModal, LogoutConfirmModal) ...
-// ... [Retain all existing modal components content exactly as they are] ...
+// ... (Keep existing ColorPickerModal, PrivacyModal, AccountSettingsModal, LogoutConfirmModal, AuthorModal, ProfileSettings) ...
 
 const ColorPickerModal: React.FC<{ isOpen: boolean, onClose: () => void, onApply: (color: string) => void, initialColor?: string }> = ({ isOpen, onClose, onApply, initialColor }) => {
     const [hex, setHex] = useState(initialColor || '#f59e0b');
@@ -487,7 +486,6 @@ const AccountSettingsModal: React.FC<{
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-white custom-scrollbar">
-                    {/* ... (Keep profile tab identical) ... */}
                     {activeTab === 'profile' && (
                         <div className="space-y-6 animate-fadeIn">
                             <div className="bg-stone-50 p-6 rounded-2xl border border-stone-100">
@@ -673,7 +671,6 @@ const LogoutConfirmModal: React.FC<{ isOpen: boolean; onClose: () => void; onCon
 const AuthorModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
 
-    // Generate static stars for consistent rendering
     const stars = Array.from({ length: 40 }).map((_, i) => ({
         id: i,
         top: Math.random() * 100 + '%',
@@ -686,18 +683,12 @@ const AuthorModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
     
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4 animate-fadeIn" onClick={onClose}>
-            {/* Backdrop */}
             <div className="absolute inset-0 bg-[#020617]/80 backdrop-blur-sm transition-opacity"></div>
-            
-            {/* Modal Card */}
             <div 
                 className="relative w-full max-w-sm bg-[#0f172a] rounded-[2rem] overflow-hidden shadow-2xl border border-white/10 animate-scale-in"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Background Effects */}
                 <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/50 to-[#020617]"></div>
-                
-                {/* The "Dots" / Stars */}
                 <div className="absolute inset-0 pointer-events-none">
                     {stars.map(s => (
                         <div 
@@ -715,39 +706,26 @@ const AuthorModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                         ></div>
                     ))}
                 </div>
-
-                {/* Content */}
                 <div className="relative z-10 flex flex-col items-center pt-16 pb-12 px-8 text-center">
-                    
-                    {/* Visual Anchor (Replacing Avatar) */}
                     <div className="mb-6 relative">
                         <div className="absolute inset-0 bg-blue-500 blur-[60px] opacity-20 animate-pulse-slow"></div>
                         <Sparkles size={64} className="text-white/90 animate-float-slow relative z-10" strokeWidth={1} />
                     </div>
-
-                    {/* Slogan */}
                     <h2 className="text-2xl md:text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 mb-8 tracking-wide leading-snug drop-shadow-lg">
                         愿此行，<br/>终抵群星
                     </h2>
-
-                    {/* Info Block */}
                     <div className="space-y-3">
                         <h3 className="text-white/80 text-lg font-medium tracking-wide">辰言 Chenyan</h3>
                         <div className="inline-block text-white/50 text-xs font-mono border border-white/10 bg-white/5 px-3 py-1 rounded-full backdrop-blur-sm">
                             抖音: CMY_Chenyan
                         </div>
                     </div>
-
-                    {/* Footer Decorations */}
                     <div className="mt-10 flex items-center gap-4 opacity-30 text-blue-200">
                         <Star size={8} className="animate-spin-slow" />
                         <span className="text-[10px] tracking-[0.3em] font-light">UNIVERSE</span>
                         <Star size={8} className="animate-spin-slow" style={{animationDirection: 'reverse'}}/>
                     </div>
-
                 </div>
-
-                {/* Close */}
                 <button 
                     onClick={onClose}
                     className="absolute top-4 right-4 p-2 text-white/20 hover:text-white transition-colors"
@@ -772,7 +750,6 @@ const ProfileSettings: React.FC<{
   onLogout: () => void;
   onUpdateProfile?: (p: UserProfile) => void;
 }> = ({ onBack, isPro, proPlan, onUpgrade, settings, onUpdate, user, achievements, onLogout, onUpdateProfile }) => {
-  // ... (Identical implementation)
   const [lastVolume, setLastVolume] = useState(80); 
   const [notify, setNotify] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -780,7 +757,6 @@ const ProfileSettings: React.FC<{
   const [showSecurity, setShowSecurity] = useState(false); 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Helper for Theme Colors
   const getThemeStyles = () => {
       if (settings.themeColor === 'custom' && settings.customColor) {
           return { isCustom: true, hex: settings.customColor };
@@ -826,7 +802,6 @@ const ProfileSettings: React.FC<{
 
   return (
     <div className="max-w-2xl mx-auto pt-4 pb-12">
-      {/* ... (Keep existing modals) ... */}
       <ColorPickerModal 
         isOpen={showColorPicker} 
         onClose={() => setShowColorPicker(false)}
@@ -834,21 +809,18 @@ const ProfileSettings: React.FC<{
         initialColor={settings.themeColor === 'custom' ? settings.customColor : undefined}
       />
       <PrivacyModal isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} />
-      
       <AccountSettingsModal 
         isOpen={showSecurity} 
         onClose={() => setShowSecurity(false)} 
         user={user}
         onUpdateProfile={onUpdateProfile}
       />
-
       <LogoutConfirmModal 
         isOpen={showLogoutConfirm} 
         onClose={() => setShowLogoutConfirm(false)} 
         onConfirm={onLogout} 
       />
 
-      {/* ... (Keep header and user card) ... */}
       <button onClick={onBack} className="flex items-center gap-2 text-stone-500 hover:text-stone-900 mb-6 font-bold transition-colors group">
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> 返回首页
       </button>
@@ -860,10 +832,8 @@ const ProfileSettings: React.FC<{
           </div>
       </div>
 
-      {/* User Card */}
       <div className="bg-white p-6 rounded-3xl border border-stone-100 shadow-xl shadow-stone-200/50 mb-6 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden group">
          <div className="absolute top-0 right-0 w-32 h-32 bg-stone-50 rounded-full -mr-10 -mt-10 pointer-events-none transition-transform group-hover:scale-150 duration-700"></div>
-         
          <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl border-4 border-stone-100 shadow-inner shrink-0 relative z-10 overflow-hidden transition-colors duration-500 ${!user?.isCustomAvatar ? (theme.isCustom ? '' : theme.lightBg) : 'bg-stone-100'}`} style={theme.isCustom ? { backgroundColor: theme.hex + '20' } : {}}>
             {user?.isCustomAvatar ? (
                 <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -871,11 +841,9 @@ const ProfileSettings: React.FC<{
                 user ? user.avatar : <UserIcon size={32} className="text-stone-400"/>
             )}
          </div>
-
          <div className="flex-1 text-center md:text-left relative z-10">
             <h3 className="text-2xl font-bold text-stone-900">{user ? user.name : '访客 (Guest)'}</h3>
             <p className="text-stone-500 text-sm mt-1">{user ? `${user.level} 学员` : '请登录以保存进度'}</p>
-            
             {user && (
                 <div className="flex justify-center md:justify-start gap-4 mt-4">
                     <div className="flex items-center gap-1.5 bg-stone-50 px-3 py-1.5 rounded-lg border border-stone-100">
@@ -891,8 +859,6 @@ const ProfileSettings: React.FC<{
          </div>
       </div>
       
-      {/* ... (Rest of ProfileSettings remains same) ... */}
-      {/* ... [Retain all other sections like Personalization, System Settings, etc. exactly as they were] ... */}
       <div className="flex items-center justify-end mb-4 mt-8">
           <button 
             onClick={() => setShowSecurity(true)}
@@ -917,22 +883,17 @@ const ProfileSettings: React.FC<{
                         : 'bg-stone-50 border-stone-100 opacity-60 grayscale'
                     }`}
               >
-                  {/* Decorative Background */}
                   {ach.unlocked && <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-amber-100/50 to-transparent rounded-bl-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>}
-
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm shrink-0 relative z-10 transition-transform duration-300 group-hover:scale-110 ${ach.unlocked ? 'bg-amber-100 text-amber-600' : 'bg-stone-200 text-stone-400'}`}>
                       {ach.icon}
                       {!ach.unlocked && <div className="absolute inset-0 flex items-center justify-center bg-black/10 rounded-2xl backdrop-blur-[1px]"><Lock size={16} className="text-white"/></div>}
                   </div>
-                  
                   <div className="flex-1 relative z-10">
                       <div className="flex justify-between items-start mb-1">
                           <div className={`font-bold text-base ${ach.unlocked ? 'text-stone-900' : 'text-stone-500'}`}>{ach.title}</div>
                           {ach.unlocked && <div className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">UNLOCKED</div>}
                       </div>
                       <div className="text-xs text-stone-500 leading-tight mb-3">{ach.desc}</div>
-                      
-                      {/* Progress Bar */}
                       <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
                           <div 
                             className={`h-full rounded-full transition-all duration-1000 ease-out ${ach.unlocked ? 'bg-amber-500' : 'bg-stone-300'}`}
@@ -965,7 +926,6 @@ const ProfileSettings: React.FC<{
                   </button>
               )}
           </div>
-          
           <div className={`absolute -right-10 -bottom-20 w-64 h-64 rounded-full blur-3xl pointer-events-none animate-pulse-slow transition-colors duration-700 ${isPro ? 'bg-amber-500/20' : 'bg-amber-400/20'}`}></div>
       </div>
 
@@ -1083,7 +1043,6 @@ const ProfileSettings: React.FC<{
                       </div>
                   </div>
               </div>
-              
               <div className="relative h-12 flex items-center group cursor-pointer">
                   <div className="absolute w-full h-4 bg-stone-200 rounded-full overflow-hidden">
                       <div 
@@ -1091,7 +1050,6 @@ const ProfileSettings: React.FC<{
                         style={{ width: `${settings.volume}%`, backgroundColor: (settings.volume > 0 && theme.isCustom) ? theme.hex : undefined }}
                       ></div>
                   </div>
-                  
                   <input 
                     type="range" 
                     min="0" max="100" 
@@ -1099,7 +1057,6 @@ const ProfileSettings: React.FC<{
                     onChange={(e) => onUpdate({ ...settings, volume: Number(e.target.value) })}
                     className="absolute w-full h-full opacity-0 cursor-pointer z-10"
                   />
-
                   <div 
                     className="absolute h-8 w-8 bg-white border-4 rounded-full shadow-md pointer-events-none transition-all duration-500 ease-out flex items-center justify-center z-0"
                     style={{ 
@@ -1111,7 +1068,6 @@ const ProfileSettings: React.FC<{
                   </div>
               </div>
           </div>
-
           <div className="w-full flex items-center justify-between p-6 hover:bg-stone-50 transition-colors cursor-pointer" onClick={() => setNotify(!notify)}>
               <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-500 ${notify ? `${theme.isCustom ? '' : theme.lightBg} ${theme.isCustom ? '' : theme.text}` : 'bg-stone-100 text-stone-400'}`} style={notify && theme.isCustom ? { backgroundColor: theme.hex + '20', color: theme.hex } : {}}>
@@ -1234,11 +1190,16 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, proPl
     
     <div className={`relative w-full h-full`}>
         <div className={`w-full max-w-[1600px] mx-auto pb-12 font-sans relative transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] origin-top ${showProfile ? 'scale-90 opacity-50 blur-[2px] pointer-events-none select-none' : 'scale-100 opacity-100'}`}>
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 animate-slideUp">
+            <header className="flex flex-col md:flex-row justify-between items-end gap-6 mb-8 animate-slideUp">
                 <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]"></span>
-                        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">仪表盘</span>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]"></span>
+                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">仪表盘</span>
+                        </div>
+                        <div onClick={handleVersionClick} className="px-2 py-0.5 bg-stone-100 rounded-md text-[10px] font-bold text-stone-400 cursor-pointer hover:bg-stone-200 active:scale-95 transition-all select-none">
+                            v2.4.0
+                        </div>
                     </div>
                     {user ? (
                         <h1 className="text-3xl md:text-4xl font-serif font-medium text-stone-900 leading-tight">
@@ -1250,22 +1211,19 @@ const StartPage: React.FC<StartPageProps> = ({ onNavigate, lessons, isPro, proPl
                         </h1>
                     )}
                 </div>
-                
-                {/* The clickable version badge for the easter egg */}
-                <div onClick={handleVersionClick} className="px-3 py-1 bg-stone-100 rounded-full text-xs font-bold text-stone-500 absolute top-0 right-0 md:relative md:top-auto md:right-auto cursor-pointer active:scale-95 transition-transform select-none">
-                    v2.4.0
-                </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     {user && (
                         <div className="hidden lg:flex gap-3">
                             <div className="bg-white px-4 py-2 rounded-full border border-stone-200 shadow-sm flex items-center gap-3 cursor-default hover:shadow-md transition-shadow">
                                 <div className={`p-1.5 rounded-full transition-colors duration-500 ${userSettings.themeColor === 'custom' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600'}`} style={userSettings.themeColor === 'custom' && userSettings.customColor ? { backgroundColor: userSettings.customColor } : {}}>
-                                    <Zap size={14} fill="currentColor" />
+                                    <Clock size={14} />
                                 </div>
                                 <div>
-                                    <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">连胜</div>
-                                    <div className="text-sm font-bold text-stone-900 leading-none">3 天</div>
+                                    <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">在线时长</div>
+                                    <div className="text-sm font-bold text-stone-900 leading-none">
+                                        {studyMinutes < 60 ? `${studyMinutes} 分钟` : `${Math.floor(studyMinutes/60)}小时 ${studyMinutes%60}分`}
+                                    </div>
                                 </div>
                             </div>
                         </div>

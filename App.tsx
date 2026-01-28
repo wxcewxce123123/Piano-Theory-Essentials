@@ -54,8 +54,6 @@ import GenericLesson from './components/GenericLesson';
 import SplashScreen from './components/SplashScreen';
 import StartPage, { UserSettings, UserProfile, Achievement } from './components/StartPage'; 
 
-// ... (Keeping existing helper components like INITIAL_ACHIEVEMENTS, AchievementToast, AuthModal for brevity) ...
-
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
     { id: 'first_lesson', title: '初入琴房', desc: '完成你的第 1 个课程', icon: '🎵', unlocked: false, progress: 0, maxProgress: 1 },
     { id: 'pro_member', title: '尊贵会员', desc: '成为 Pro 用户', icon: '👑', unlocked: false, progress: 0, maxProgress: 1 },
@@ -63,26 +61,60 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [
     { id: 'master', title: '理论大师', desc: '解锁所有高级课程', icon: '🎓', unlocked: false, progress: 0, maxProgress: 10 },
 ];
 
-// ... (AchievementToast, AuthModal remain unchanged) ...
 const AchievementToast: React.FC<{ achievement: Achievement | null, onClose: () => void }> = ({ achievement, onClose }) => {
     const [visible, setVisible] = useState(false);
+    
     useEffect(() => {
         if (achievement) {
-            setVisible(true);
-            const timer = setTimeout(() => { setVisible(false); setTimeout(onClose, 500); }, 3000);
+            setVisible(true); // Trigger enter animation
+            
+            // Auto hide
+            const timer = setTimeout(() => { 
+                setVisible(false); // Trigger exit animation
+                setTimeout(onClose, 600); // Wait for exit animation
+            }, 3500);
             return () => clearTimeout(timer);
         }
     }, [achievement, onClose]);
+
     if (!achievement) return null;
+
     return (
-        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 transform ${visible ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0'}`}>
-            <div className="bg-stone-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-stone-700 min-w-[300px]">
-                <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-2xl animate-bounce">{achievement.icon}</div>
-                <div><div className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-1">Achievement Unlocked</div><div className="font-bold text-lg leading-none">{achievement.title}</div></div>
+        <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[150] transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-24 opacity-0 scale-90'}`}>
+            <div className="relative bg-white/95 backdrop-blur-xl text-stone-900 px-6 py-4 rounded-[2rem] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.2)] flex items-center gap-5 border border-stone-100 ring-1 ring-stone-900/5 min-w-[340px] max-w-[90vw] overflow-hidden">
+                
+                {/* Shine Animation */}
+                <div className="absolute inset-0 w-full h-full overflow-hidden rounded-[2rem] pointer-events-none">
+                    <div className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shine" style={{ animationDuration: '1.5s' }}></div>
+                </div>
+
+                {/* Icon */}
+                <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-amber-400 rounded-full opacity-20 animate-pulse-soft"></div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full shadow-inner border-2 border-white flex items-center justify-center text-2xl relative z-10">
+                        {achievement.icon}
+                    </div>
+                    <div className="absolute -top-1 -right-1 text-amber-500 z-20 animate-bounce">
+                        <Star size={14} fill="currentColor" />
+                    </div>
+                </div>
+
+                {/* Text */}
+                <div className="flex-1 min-w-0 relative z-10">
+                    <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Achievement Unlocked</span>
+                    </div>
+                    <div className="font-serif font-bold text-lg leading-tight truncate text-stone-900">
+                        {achievement.title}
+                    </div>
+                    <div className="text-xs text-stone-500 truncate font-medium mt-0.5">
+                        {achievement.desc}
+                    </div>
+                </div>
             </div>
         </div>
-    )
-}
+    );
+};
 
 interface AuthModalProps { isOpen: boolean; onClose: () => void; onLogin: (profile: UserProfile) => void; }
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
@@ -967,27 +999,6 @@ const App: React.FC = () => {
       </div>
     );
   };
-
-  // --- LOGOUT ANIMATION OVERLAY ---
-  const LogoutOverlay = () => (
-    <div className="fixed inset-0 z-[200] bg-stone-950 flex flex-col items-center justify-center animate-fadeIn duration-500">
-        <div className="relative">
-            <div className="absolute inset-0 bg-amber-500/20 blur-3xl rounded-full animate-pulse-slow"></div>
-            <div className="w-24 h-24 bg-stone-900 border border-stone-800 rounded-[2rem] flex items-center justify-center shadow-2xl relative z-10 mb-8 animate-bounce-gentle">
-                <Music size={40} className="text-amber-500" />
-            </div>
-        </div>
-        <h2 className="text-3xl font-serif text-white font-bold mb-2 animate-slideUp">Goodbye</h2>
-        <p className="text-stone-500 animate-slideUp" style={{animationDelay: '0.1s'}}>期待您的下一次练习</p>
-        <div className="mt-8 w-48 h-1 bg-stone-900 rounded-full overflow-hidden">
-            <div className="h-full bg-amber-500 animate-progress-fast"></div>
-        </div>
-        <style>{`
-            @keyframes progressFast { from { width: 0%; } to { width: 100%; } }
-            .animate-progress-fast { animation: progressFast 1.2s ease-out forwards; }
-        `}</style>
-    </div>
-  );
 
   return (
     <>
