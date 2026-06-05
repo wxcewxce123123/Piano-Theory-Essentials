@@ -185,7 +185,7 @@ const NegativeHarmonyLesson: React.FC = () => {
           <div className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm card-hover">
               <h3 className="text-xl font-bold text-stone-900 mb-4">Jacob Collier 的秘密武器</h3>
               <p className="text-stone-600 text-sm leading-relaxed">
-                  负面和声能让你的编曲听起来既熟悉又陌生。它保留了原曲的和声功能（紧张->解决），但换了一套全新的色彩。就像把一张照片的底片拿出来看一样。
+                  负面和声能让你的编曲听起来既熟悉又陌生。它保留了原曲的和声功能（紧张 → 解决），但换了一套全新的色彩。就像把一张照片的底片拿出来看一样。
               </p>
           </div>
       </div>

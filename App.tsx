@@ -2,6 +2,7 @@
 // ... existing imports ...
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BookOpen, Music, MessageCircle, Clock, Activity, Volume2, Ruler, LayoutGrid, Sparkles, Menu, X, ChevronRight, Hash, PauseCircle, Gauge, AlignCenterVertical, Disc, RefreshCw, Waves, Zap, Flower2, Wind, Hourglass, StopCircle, Layers, MoveRight, ChevronDown, Palette, MousePointerClick, ArrowUp, Music3, ArrowLeftRight, GitMerge, Calculator, SplitSquareHorizontal, Infinity, CloudFog, Ear, Route, Crown, Check, Lock, CreditCard, Ticket, Star, Zap as ZapIcon, Dices, FlipHorizontal, AudioWaveform, AlignVerticalSpaceAround, Network, Divide, Radar, Radio, Clock as ClockIcon, Eye, Grid, ListMusic, Mic2, Piano, Layout, Headphones, Coffee, User as UserIcon, LogIn, Upload, Camera, Trophy, Image as ImageIcon, ZoomIn, RotateCw, Move, Mail, Save, BadgeCheck, ShieldCheck, Users } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 // ... rest of imports ...
 import Explanation from './components/Explanation';
 import SlurVsTie from './components/SlurVsTie';
@@ -49,6 +50,8 @@ import FormSonataLesson from './components/FormSonataLesson';
 import FormRondoLesson from './components/FormRondoLesson';
 import JazzBasicsLesson from './components/JazzBasicsLesson';
 import PopStylesLesson from './components/PopStylesLesson';
+import SightReadingLesson from './components/SightReadingLesson';
+import SymbolDictionary from './components/SymbolDictionary';
 import AITutor from './components/AITutor';
 import GenericLesson from './components/GenericLesson';
 import SplashScreen from './components/SplashScreen';
@@ -62,63 +65,63 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [
 ];
 
 const AchievementToast: React.FC<{ achievement: Achievement | null, onClose: () => void }> = ({ achievement, onClose }) => {
-    const [visible, setVisible] = useState(false);
-    
     useEffect(() => {
         if (achievement) {
-            setVisible(true); // Trigger enter animation
-            
-            // Auto hide
-            const timer = setTimeout(() => { 
-                setVisible(false); // Trigger exit animation
-                setTimeout(onClose, 600); // Wait for exit animation
-            }, 3500);
+            const timer = setTimeout(onClose, 3500);
             return () => clearTimeout(timer);
         }
     }, [achievement, onClose]);
 
-    if (!achievement) return null;
-
     return (
-        <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[150] transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-24 opacity-0 scale-90'}`}>
-            <div className="relative bg-white/95 backdrop-blur-xl text-stone-900 px-6 py-4 rounded-[2rem] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.2)] flex items-center gap-5 border border-stone-100 ring-1 ring-stone-900/5 min-w-[340px] max-w-[90vw] overflow-hidden">
-                
-                {/* Shine Animation */}
-                <div className="absolute inset-0 w-full h-full overflow-hidden rounded-[2rem] pointer-events-none">
-                    <div className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shine" style={{ animationDuration: '1.5s' }}></div>
-                </div>
+        <AnimatePresence>
+            {achievement && (
+                <motion.div 
+                    initial={{ opacity: 0, y: -50, scale: 0.8 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -50, scale: 0.8 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className="fixed top-8 left-1/2 -translate-x-1/2 z-[150]"
+                >
+                    <div className="relative bg-white/95 backdrop-blur-xl text-stone-900 px-6 py-4 rounded-[2rem] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.2)] flex items-center gap-5 border border-stone-100 ring-1 ring-stone-900/5 min-w-[340px] max-w-[90vw] overflow-hidden">
+                        
+                        {/* Shine Animation */}
+                        <div className="absolute inset-0 w-full h-full overflow-hidden rounded-[2rem] pointer-events-none">
+                            <div className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shine" style={{ animationDuration: '1.5s' }}></div>
+                        </div>
 
-                {/* Icon */}
-                <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
-                    <div className="absolute inset-0 bg-amber-400 rounded-full opacity-20 animate-pulse-soft"></div>
-                    <div className="absolute inset-0 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full shadow-inner border-2 border-white flex items-center justify-center text-2xl relative z-10">
-                        {achievement.icon}
-                    </div>
-                    <div className="absolute -top-1 -right-1 text-amber-500 z-20 animate-bounce">
-                        <Star size={14} fill="currentColor" />
-                    </div>
-                </div>
+                        {/* Icon */}
+                        <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+                            <div className="absolute inset-0 bg-amber-400 rounded-full opacity-20 animate-pulse-soft"></div>
+                            <div className="absolute inset-0 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full shadow-inner border-2 border-white flex items-center justify-center text-2xl relative z-10">
+                                {achievement.icon}
+                            </div>
+                            <div className="absolute -top-1 -right-1 text-amber-500 z-20 animate-bounce">
+                                <Star size={14} fill="currentColor" />
+                            </div>
+                        </div>
 
-                {/* Text */}
-                <div className="flex-1 min-w-0 relative z-10">
-                    <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Achievement Unlocked</span>
+                        {/* Text */}
+                        <div className="flex-1 min-w-0 relative z-10">
+                            <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Achievement Unlocked</span>
+                            </div>
+                            <div className="font-serif font-bold text-lg leading-tight truncate text-stone-900">
+                                {achievement.title}
+                            </div>
+                            <div className="text-xs text-stone-500 truncate font-medium mt-0.5">
+                                {achievement.desc}
+                            </div>
+                        </div>
                     </div>
-                    <div className="font-serif font-bold text-lg leading-tight truncate text-stone-900">
-                        {achievement.title}
-                    </div>
-                    <div className="text-xs text-stone-500 truncate font-medium mt-0.5">
-                        {achievement.desc}
-                    </div>
-                </div>
-            </div>
-        </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };
 
-interface AuthModalProps { isOpen: boolean; onClose: () => void; onLogin: (profile: UserProfile) => void; }
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
-    // ... (Keep existing implementation) ...
+// Full-Screen Mandatory Authentication & Registration Experience with hyper-detailed animated interactions
+const MandatoryAuthScreen: React.FC<{ onLogin: (profile: UserProfile) => void }> = ({ onLogin }) => {
+    const [isLoginTab, setIsLoginTab] = useState(false); // Default to registration ("欢迎加入") for a magnificent onboarding welcome
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [selectedAvatar, setSelectedAvatar] = useState('🎹');
@@ -128,20 +131,633 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStart = useRef({ x: 0, y: 0 });
-    const [renderModal, setRenderModal] = useState(false);
-    const [isVisible, setIsVisible] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    useEffect(() => { if (isOpen) { setRenderModal(true); const t = setTimeout(() => setIsVisible(true), 50); return () => clearTimeout(t); } else { setIsVisible(false); const t = setTimeout(() => setRenderModal(false), 300); return () => clearTimeout(t); } }, [isOpen]);
-    const handleMouseDown = (e: React.MouseEvent) => { setIsDragging(true); dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y }; };
-    const handleMouseMove = (e: React.MouseEvent) => { if (!isDragging) return; setPosition({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y }); };
+    const [showPassword, setShowPassword] = useState(false);
+
+    // Synthesis loading state
+    const [isSynthesizing, setIsSynthesizing] = useState(false);
+    const [synthProgress, setSynthProgress] = useState(0);
+    const [synthChecked, setSynthChecked] = useState(false);
+
+    // Live typing music notes popping animation
+    const [typingNotes, setTypingNotes] = useState<{ id: number; char: string; left: number; delay: number }[]>([]);
+    const noteIdRef = useRef(0);
+
+    const handleNameChange = (val: string) => {
+        setName(val);
+        // Spawn floating note character periodically when typing
+        if (val.length > 0) {
+            const chars = ['♪', '♫', '♩', '♬', '∮', '♭', '♯'];
+            const randomChar = chars[Math.floor(Math.random() * chars.length)];
+            const id = noteIdRef.current++;
+            const newNote = {
+                id,
+                char: randomChar,
+                left: Math.random() * 80 + 10, // random percentage bounds
+                delay: Math.random() * 0.1
+            };
+            setTypingNotes(prev => [...prev, newNote]);
+            // Auto clean up after animation finishes to prevent DOM bloat
+            setTimeout(() => {
+                setTypingNotes(prev => prev.filter(n => n.id !== id));
+            }, 1200);
+        }
+    };
+
+    const handleMouseDown = (e: React.MouseEvent) => { 
+        setIsDragging(true); 
+        dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y }; 
+    };
+    const handleMouseMove = (e: React.MouseEvent) => { 
+        if (!isDragging) return; 
+        setPosition({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y }); 
+    };
     const handleMouseUp = () => setIsDragging(false);
-    if (!renderModal) return null;
-    const defaultAvatars = ['🎹', '🎵', '🎼', '🎻', '🎷', '🎸', '🎺', '🥁'];
-    const getCroppedImage = () => { if (!customAvatar) return selectedAvatar; const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const img = new Image(); img.src = customAvatar; canvas.width = 200; canvas.height = 200; if (ctx) { ctx.fillStyle = '#f5f5f4'; ctx.fillRect(0, 0, 200, 200); ctx.translate(100, 100); ctx.translate(position.x, position.y); ctx.rotate((rotation * Math.PI) / 180); ctx.scale(zoom, zoom); const size = Math.min(img.width, img.height); ctx.drawImage(img, -100, -100, 200, 200); return canvas.toDataURL('image/jpeg'); } return customAvatar; };
-    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if(!name.trim() || !password.trim()) return; const finalAvatar = customAvatar ? getCroppedImage() : selectedAvatar; setIsVisible(false); setTimeout(() => { onLogin({ name: name, avatar: finalAvatar, level: 'Level 1', isGuest: false, isCustomAvatar: !!customAvatar }); onClose(); }, 300); };
-    const handleClose = () => { setIsVisible(false); setTimeout(onClose, 300); };
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => { setCustomAvatar(reader.result as string); setZoom(1); setRotation(0); setPosition({ x: 0, y: 0 }); }; reader.readAsDataURL(file); } };
-    return ( <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}> <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={handleClose}></div> <div className={`bg-white w-full max-w-md rounded-[2rem] p-8 relative z-10 shadow-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) transform ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-12 opacity-0'}`}> <button onClick={handleClose} className="absolute top-4 right-4 p-2 text-stone-400 hover:bg-stone-100 rounded-full transition-colors"><X size={20}/></button> <div className="text-center mb-6"> <h2 className="text-2xl font-serif font-bold text-stone-900">欢迎加入</h2> <p className="text-stone-500 text-sm mt-1">创建您的音乐档案</p> </div> <form onSubmit={handleSubmit} className="space-y-6"> <div> <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">昵称 (Nickname)</label> <div className="relative"> <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="例如: Chopin Lover" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all" autoFocus /> <UserIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" /> </div> </div> <div> <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">设置密码 (Password)</label> <div className="relative"> <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="设置登录密码" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 pl-10 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all" /> <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" /> </div> </div> <div> <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 text-center">头像设置</label> {customAvatar ? ( <div className="flex flex-col items-center mb-4 animate-fadeIn"> <div className="relative w-40 h-40 rounded-full overflow-hidden border-4 border-stone-100 shadow-inner mb-4 cursor-move bg-stone-100" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}> <img src={customAvatar} alt="Avatar Preview" className="w-full h-full object-cover origin-center pointer-events-none" style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)` }} /> <div className="absolute inset-0 border border-white/20 rounded-full pointer-events-none"></div> </div> <div className="w-full space-y-3 bg-stone-50 p-4 rounded-xl border border-stone-100"> <div className="flex items-center gap-3"> <ZoomIn size={14} className="text-stone-400 shrink-0"/> <input type="range" min="0.5" max="3" step="0.1" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800" /> </div> <div className="flex items-center gap-3"> <RotateCw size={14} className="text-stone-400 shrink-0"/> <input type="range" min="-180" max="180" step="5" value={rotation} onChange={(e) => setRotation(parseFloat(e.target.value))} className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-800" /> </div> </div> <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs text-stone-400 hover:text-stone-600 underline mt-2">更换图片</button> </div> ) : ( <div className="flex justify-center gap-3 flex-wrap mb-4"> {defaultAvatars.map(emoji => ( <button key={emoji} type="button" onClick={() => setSelectedAvatar(emoji)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${selectedAvatar === emoji ? 'bg-stone-900 text-white shadow-md scale-110' : 'bg-stone-50 hover:bg-stone-100 text-stone-600'}`}>{emoji}</button> ))} </div> )} {!customAvatar && ( <div className="flex justify-center"> <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} /> <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-stone-300 text-stone-500 hover:border-stone-400 hover:text-stone-800 hover:bg-stone-50 transition-all"> <Camera size={14} /> <span>上传自定义图片</span> </button> </div> )} </div> <button type="submit" disabled={!name.trim() || !password.trim()} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-stone-800 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"> <LogIn size={18} /> 进入 </button> </form> </div> </div> ) };
+
+    const defaultAvatars = ['🎹', '🎵', '🎼', '🎻', '🎷', '🎸', '🎺', '🥁', '👑', '🌟', '🕊️', '🦉'];
+    
+    // Synth audio engine for interactive tactile keys with rich grand piano string modeling
+    const playPianoKeySound = (freq: number) => {
+        try {
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            const now = ctx.currentTime;
+            
+            // Master dynamic volume envelope with natural physical piano decay profile
+            const masterGain = ctx.createGain();
+            masterGain.gain.setValueAtTime(0.0, now);
+            masterGain.gain.linearRampToValueAtTime(0.24, now + 0.005); // immediate transient strike
+            masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.8); // elegant acoustic ringout
+            
+            // Lowpass resonance sweep for dynamic warmth and tone filtration
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1600, now);
+            filter.frequency.exponentialRampToValueAtTime(380, now + 0.82);
+            
+            // Grand piano string overtone model utilizing multiple harmonic wave layers
+            const partials = [
+                { ratio: 1.0, gain: 0.75, decay: 1.0 },      // Fundamental string frequency (C4, etc)
+                { ratio: 2.0016, gain: 0.38, decay: 0.65 },  // Octave overtone with slight natural inharmonic tuner stretch
+                { ratio: 3.0035, gain: 0.18, decay: 0.44 },  // Fifth partial above octave
+                { ratio: 4.0075, gain: 0.11, decay: 0.28 },  // Second octave partial
+                { ratio: 5.0120, gain: 0.04, decay: 0.16 },  // Warm major third partial
+            ];
+
+            const oscillators: OscillatorNode[] = [];
+            const partialGains: GainNode[] = [];
+
+            partials.forEach(p => {
+                const osc = ctx.createOscillator();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq * p.ratio, now);
+                
+                const pGain = ctx.createGain();
+                pGain.gain.setValueAtTime(p.gain, now);
+                pGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.6 * p.decay);
+                
+                osc.connect(pGain);
+                pGain.connect(filter);
+                osc.start(now);
+                oscillators.push(osc);
+                partialGains.push(pGain);
+            });
+
+            // "Hammer Strike Transient": replicates the sharp percussion shock from a wooden hammer strike hitting metal strings
+            const hammer = ctx.createOscillator();
+            hammer.type = 'sine';
+            hammer.frequency.setValueAtTime(freq * 6.33, now); // percussive tone
+            
+            const hammerGain = ctx.createGain();
+            hammerGain.gain.setValueAtTime(0.35, now);
+            hammerGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.025); // super-fast mechanical decay (25ms)
+            
+            hammer.connect(hammerGain);
+            hammerGain.connect(filter);
+            hammer.start(now);
+            
+            filter.connect(masterGain);
+            masterGain.connect(ctx.destination);
+
+            // Complete lifecycle cleanup
+            const duration = 2000;
+            setTimeout(() => {
+                try {
+                     oscillators.forEach(osc => { osc.stop(); osc.disconnect(); });
+                     partialGains.forEach(g => g.disconnect());
+                     hammer.stop();
+                     hammer.disconnect();
+                     hammerGain.disconnect();
+                     filter.disconnect();
+                     masterGain.disconnect();
+                     ctx.close();
+                } catch (err) {}
+            }, duration);
+        } catch(e){}
+    };
+
+    const pianoKeys = [
+        { note: 'C4', freq: 261.63, label: 'C' },
+        { note: 'D4', freq: 293.66, label: 'D' },
+        { note: 'E4', freq: 329.63, label: 'E' },
+        { note: 'F4', freq: 349.23, label: 'F' },
+        { note: 'G4', freq: 392.00, label: 'G' },
+        { note: 'A4', freq: 440.00, label: 'A' },
+        { note: 'B4', freq: 493.88, label: 'B' }
+    ];
+
+    const getCroppedImage = () => { 
+        if (!customAvatar) return selectedAvatar; 
+        const canvas = document.createElement('canvas'); 
+        const ctx = canvas.getContext('2d'); 
+        const img = new Image(); 
+        img.src = customAvatar; 
+        canvas.width = 200; 
+        canvas.height = 200; 
+        if (ctx) { 
+            ctx.fillStyle = '#1c1917'; // warm stone background
+            ctx.fillRect(0, 0, 200, 200); 
+            ctx.translate(100, 100); 
+            ctx.translate(position.x, position.y); 
+            ctx.rotate((rotation * Math.PI) / 180); 
+            ctx.scale(zoom, zoom); 
+            ctx.drawImage(img, -100, -100, 200, 200); 
+            return canvas.toDataURL('image/jpeg'); 
+        } 
+        return customAvatar; 
+    };
+    
+    const triggerSynthesisFlow = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name.trim() || !password.trim()) return;
+
+        // Custom high-tech Synthesis loading animation
+        setIsSynthesizing(true);
+        setSynthProgress(0);
+        setSynthChecked(false);
+
+        // Sound effect sweep arpeggio
+        playPianoKeySound(261.63); // C4
+        setTimeout(() => playPianoKeySound(329.63), 150); // E4
+        setTimeout(() => playPianoKeySound(392.00), 300); // G4
+        setTimeout(() => playPianoKeySound(523.25), 450); // C5 harmonic sound check
+
+        const interval = setInterval(() => {
+            setSynthProgress(prev => {
+                if (prev >= 100) {
+                    clearInterval(interval);
+                    setSynthChecked(true);
+                    
+                    // Success pitch sequence
+                    setTimeout(() => playPianoKeySound(783.99), 100); 
+                    setTimeout(() => playPianoKeySound(1046.50), 250); 
+
+                    setTimeout(() => {
+                        const finalAvatar = customAvatar ? getCroppedImage() : selectedAvatar; 
+                        onLogin({ 
+                            name: name.trim(), 
+                            avatar: finalAvatar, 
+                            level: 'Level 1', 
+                            isGuest: false, 
+                            isCustomAvatar: !!customAvatar 
+                        }); 
+                    }, 800);
+                    return 100;
+                }
+                return prev + Math.floor(Math.random() * 8) + 6;
+            });
+        }, 80);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { 
+        const file = e.target.files?.[0]; 
+        if (file) { 
+            const reader = new FileReader(); 
+            reader.onloadend = () => { 
+                setCustomAvatar(reader.result as string); 
+                setZoom(1); 
+                setRotation(0); 
+                setPosition({ x: 0, y: 0 }); 
+            }; 
+            reader.readAsDataURL(file); 
+        } 
+    };
+
+    const installDemoUser = () => {
+        // Play charming visual typewriter chord
+        playPianoKeySound(329.63); 
+        setTimeout(() => playPianoKeySound(392.00), 120);
+        setTimeout(() => playPianoKeySound(440.00), 240);
+
+        setName('');
+        setPassword('');
+        const demoName = 'Classic Mozart';
+        const demoPass = 'sonatafacile';
+        
+        let idx = 0;
+        const typeInterval = setInterval(() => {
+            if (idx < demoName.length) {
+                handleNameChange(demoName.substring(0, idx + 1));
+                idx++;
+            } else {
+                clearInterval(typeInterval);
+                setPassword(demoPass);
+            }
+        }, 60);
+    };
+
+    // Diagnostics message calculated from current progress percent
+    const getSynthMessage = () => {
+        if (synthProgress < 25) return '正在检索钢琴声学矩阵结构...';
+        if (synthProgress < 75) return '正在建立高阶多重采样音符关联...';
+        return '完美合成，正在载入键盘组件...';
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950 px-4 overflow-hidden select-none">
+            {/* Custom styles for typing notes animations to be clean and high performing */}
+            <style>{`
+                @keyframes floatUpNote {
+                    0% { transform: translateY(0) scale(0.6) rotate(0deg); opacity: 0; }
+                    20% { opacity: 0.9; }
+                    100% { transform: translateY(-130px) scale(1.2) rotate(36deg); opacity: 0; }
+                }
+                .floating-typing-note {
+                    animation: floatUpNote 1.2s cubic-bezier(0.21, 1.02, 0.43, 1.01) forwards;
+                }
+            `}</style>
+            
+            {/* Ambient Concert Hall Dark Lights Glowing */}
+            <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-amber-500/10 blur-[150px] rounded-full pointer-events-none"></div>
+            <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-stone-500/10 blur-[150px] rounded-full pointer-events-none"></div>
+
+            <motion.div 
+                layout="position"
+                transition={{ type: "spring", stiffness: 180, damping: 24 }}
+                className="w-full max-w-xl bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-6 md:p-8 relative z-15 shadow-2xl overflow-hidden flex flex-col justify-between max-h-[96vh]"
+            >
+                
+                {/* Upper Status Header */}
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-2">
+                        <div className="bg-amber-400 p-1.5 rounded-lg text-stone-950 shadow-md">
+                            <Piano size={16} />
+                        </div>
+                        <span className="font-serif font-black text-white text-sm tracking-widest uppercase">Piano Studio</span>
+                    </div>
+                    <button 
+                        type="button"
+                        onClick={installDemoUser}
+                        className="text-[10px] uppercase font-mono tracking-widest font-bold bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border border-amber-400/30 px-3 py-1.5 rounded-xl transition-all duration-300"
+                    >
+                        ⚡ 极速体验 Demo
+                    </button>
+                </div>
+
+                <AnimatePresence mode="wait">
+                    {isSynthesizing ? (
+                        /* Cinematic Profile Synthesis Screen */
+                        <motion.div 
+                            key="loader"
+                            initial={{ opacity: 0, scale: 0.92, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                            className="flex-1 flex flex-col items-center justify-center py-10 text-center"
+                        >
+                            <div className="relative w-36 h-36 mb-6 flex items-center justify-center">
+                                {/* Double Orbit Ring Scanner */}
+                                <div className="absolute inset-0 rounded-full border-4 border-dashed border-white/5 animate-[spin_12s_linear_infinite]" />
+                                <div className="absolute inset-2 rounded-full border-2 border-dashed border-amber-400/30 animate-[spin_6s_linear_infinite_reverse]" />
+                                
+                                {/* Dynamic Scanning bar */}
+                                <div className="absolute inset-0 rounded-full border-t-4 border-amber-400/80 animate-[spin_1.5s_linear_infinite]" />
+
+                                <div className="z-10 flex flex-col items-center justify-center">
+                                    <span className="text-3xl font-mono font-black text-white">{synthProgress}%</span>
+                                    <span className="text-[9px] text-stone-400 font-mono tracking-widest uppercase mt-1">Matrix Calc</span>
+                                </div>
+                            </div>
+
+                            <AnimatePresence mode="wait">
+                                {synthChecked ? (
+                                    <motion.div 
+                                        key="success-prompt"
+                                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        className="flex flex-col items-center gap-2"
+                                    >
+                                        <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-stone-950 shadow-lg mb-2">
+                                            <Check size={20} strokeWidth={3} />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white font-serif">配置完毕，欢迎演奏！</h3>
+                                        <p className="text-xs text-emerald-400 font-mono">SYNTHESIS SUCCESSFUL</p>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key={synthProgress}
+                                        initial={{ opacity: 0, y: 5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -5 }}
+                                        className="h-10 text-xs text-amber-300/80 font-mono tracking-wide max-w-sm"
+                                    >
+                                        {getSynthMessage()}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
+                    ) : (
+                        /* Beautiful Login/Onboarding Form Screen */
+                        <motion.div 
+                            key="auth-form"
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -15 }}
+                            transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                            className="flex-1 flex flex-col overflow-y-auto pr-1 select-none"
+                        >
+                            {/* Title block with elegant slide transitions */}
+                            <div className="mb-6 relative min-h-[76px] flex flex-col justify-center">
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={isLoginTab ? 'login-header' : 'register-header'}
+                                        initial={{ opacity: 0, y: -12 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 12 }}
+                                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                                    >
+                                        <h1 className="text-2xl md:text-3xl font-serif font-black text-stone-55 tracking-tight leading-none">
+                                            {isLoginTab ? '音律快捷登录' : '创建音乐档案'}
+                                        </h1>
+                                        <p className="text-xs text-stone-400 font-medium tracking-wide mt-2">
+                                            {isLoginTab ? '琴键跃动，唤醒专属于您的钢琴理论伴侣' : '设置个性化音乐属性，开启一段充满仪式感的钢琴探索之旅'}
+                                        </p>
+                                    </motion.div>
+                                </AnimatePresence>
+                            </div>
+
+                            {/* Deluxe Sliding Tab Control */}
+                            <div className="relative bg-stone-900 border border-white/10 rounded-2xl p-1 mb-6 flex h-12 items-center">
+                                <button 
+                                    type="button"
+                                    onClick={() => { setIsLoginTab(false); playPianoKeySound(261.63); }}
+                                    className={`relative flex-1 py-2.5 text-center text-xs font-bold transition-all duration-300 h-full flex items-center justify-center rounded-xl z-10 ${!isLoginTab ? 'text-white font-black' : 'text-stone-400 hover:text-white'}`}
+                                >
+                                    {!isLoginTab && (
+                                        <motion.div 
+                                            layoutId="activeTabGlow"
+                                            className="absolute inset-0 bg-white/[0.08] border border-white/10 rounded-xl z-0"
+                                            transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10">🎵 注册新音乐档案</span>
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => { setIsLoginTab(true); playPianoKeySound(392.00); }}
+                                    className={`relative flex-1 py-2.5 text-center text-xs font-bold transition-all duration-300 h-full flex items-center justify-center rounded-xl z-10 ${isLoginTab ? 'text-white font-black' : 'text-stone-400 hover:text-white'}`}
+                                >
+                                    {isLoginTab && (
+                                        <motion.div 
+                                            layoutId="activeTabGlow"
+                                            className="absolute inset-0 bg-white/[0.08] border border-white/10 rounded-xl z-0"
+                                            transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10">🔑 成员快捷登录</span>
+                                </button>
+                            </div>
+
+                            <form onSubmit={triggerSynthesisFlow} className="space-y-4">
+                                {/* Name Input Container with relative popping notes animation */}
+                                <div className="relative">
+                                    <label className="block text-[10px] font-bold text-stone-300 uppercase tracking-widest mb-1.5 ml-1 font-mono">昵称 / Identifier</label>
+                                    <div className="relative overflow-visible">
+                                        {/* Typing notes spawning sandbox */}
+                                        <div className="absolute inset-x-0 -top-8 h-8 pointer-events-none overflow-visible">
+                                            {typingNotes.map(n => (
+                                                <span 
+                                                    key={n.id}
+                                                    className="absolute floating-typing-note text-amber-300 text-sm font-bold opacity-0"
+                                                    style={{ left: `${n.left}%`, animationDelay: `${n.delay}s` }}
+                                                >
+                                                    {n.char}
+                                                </span>
+                                            ))}
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            value={name} 
+                                            onChange={e => handleNameChange(e.target.value)} 
+                                            placeholder={isLoginTab ? "输入音乐档案大名" : "例如: 肖邦小传人"} 
+                                            className="w-full bg-stone-900/50 border border-white/10 rounded-xl px-4 py-3 pl-10 text-sm font-black text-stone-50 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-stone-900 transition-all font-serif" 
+                                            required
+                                            autoFocus 
+                                        />
+                                        <UserIcon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                                    </div>
+                                </div>
+
+                                {/* Password Input with hide/show toggle */}
+                                <div className="relative">
+                                    <label className="block text-[10px] font-bold text-stone-300 uppercase tracking-widest mb-1.5 ml-1 font-mono">密匙 / Password</label>
+                                    <div className="relative">
+                                        <input 
+                                            type={showPassword ? "text" : "password"} 
+                                            value={password} 
+                                            onChange={e => setPassword(e.target.value)} 
+                                            placeholder="输入登录安全密码" 
+                                            className="w-full bg-stone-900/50 border border-white/10 rounded-xl px-4 py-3 pl-10 text-sm font-bold text-stone-50 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-stone-900 transition-all" 
+                                            required
+                                        />
+                                        <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-white transition-colors"
+                                        >
+                                            <Eye size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Intelligent, super smooth slider transition for Avatar list */}
+                                <AnimatePresence initial={false}>
+                                    {!isLoginTab && (
+                                        <motion.div 
+                                            key="avatar-section-wrapper"
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ 
+                                                opacity: 1, 
+                                                height: "auto",
+                                                transition: {
+                                                    height: { type: "spring", stiffness: 220, damping: 25 },
+                                                    opacity: { duration: 0.25, delay: 0.05 }
+                                                }
+                                            }}
+                                            exit={{ 
+                                                opacity: 0, 
+                                                height: 0,
+                                                transition: {
+                                                    height: { type: "spring", stiffness: 220, damping: 25 },
+                                                    opacity: { duration: 0.15 }
+                                                }
+                                            }}
+                                            className="pt-2 overflow-hidden"
+                                        >
+                                            <span className="block text-[10px] font-bold text-stone-300 uppercase tracking-widest mb-2 ml-1 text-center font-mono">自定义声学档案头像 Avatar</span>
+                                            
+                                            <AnimatePresence mode="wait">
+                                                {customAvatar ? (
+                                                    <motion.div 
+                                                        key="cropper-editor"
+                                                        initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                        exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                                                        transition={{ duration: 0.22 }}
+                                                        className="flex flex-col items-center bg-stone-900/30 p-3 rounded-2xl border border-white/5"
+                                                    >
+                                                        <div 
+                                                            className="relative w-28 h-28 rounded-full overflow-hidden border-2 border-amber-400/50 shadow-inner cursor-move bg-stone-800"
+                                                            onMouseDown={handleMouseDown} 
+                                                            onMouseMove={handleMouseMove} 
+                                                            onMouseUp={handleMouseUp} 
+                                                            onMouseLeave={handleMouseUp}
+                                                        >
+                                                            <img 
+                                                                src={customAvatar} 
+                                                                alt="Custom Avatar Preview" 
+                                                                className="w-full h-full object-cover origin-center pointer-events-none" 
+                                                                style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)` }} 
+                                                            />
+                                                        </div>
+                                                        <div className="w-full mt-3 space-y-2 text-stone-300">
+                                                            <div className="flex items-center gap-2">
+                                                                <ZoomIn size={12} className="text-stone-400 shrink-0" />
+                                                                <input 
+                                                                    type="range" 
+                                                                    min="0.5" 
+                                                                    max="3" 
+                                                                    step="0.1" 
+                                                                    value={zoom} 
+                                                                    onChange={e => setZoom(parseFloat(e.target.value))} 
+                                                                    className="w-full h-1 bg-stone-800 rounded-lg appearance-none cursor-pointer accent-amber-400" 
+                                                                />
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <RotateCw size={12} className="text-stone-400 shrink-0" />
+                                                                <input 
+                                                                    type="range" 
+                                                                    min="-180" 
+                                                                    max="180" 
+                                                                    step="5" 
+                                                                    value={rotation} 
+                                                                    onChange={e => setRotation(parseFloat(e.target.value))} 
+                                                                    className="w-full h-1 bg-stone-800 rounded-lg appearance-none cursor-pointer accent-amber-400" 
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => fileInputRef.current?.click()} 
+                                                            className="text-[10px] text-amber-300 hover:underline mt-2 font-mono font-bold tracking-wider"
+                                                        >
+                                                            更换照片 CHANGE IMAGE
+                                                        </button>
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.div 
+                                                        key="emoji-and-upload-grid"
+                                                        initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                        exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                                                        transition={{ duration: 0.22 }}
+                                                    >
+                                                        <div className="flex justify-center gap-2 flex-wrap mb-3.5">
+                                                            {defaultAvatars.map(emoji => (
+                                                                <button 
+                                                                    key={emoji} 
+                                                                    type="button" 
+                                                                    onClick={() => { setSelectedAvatar(emoji); playPianoKeySound(349.23); }} 
+                                                                    className={`w-9 h-9 rounded-xl text-lg flex items-center justify-center transition-all ${selectedAvatar === emoji ? 'bg-amber-400 text-stone-950 shadow-md scale-110 font-bold border-2 border-stone-50' : 'bg-white/5 hover:bg-white/15 text-stone-300'}`}
+                                                                >
+                                                                    {emoji}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <div className="flex justify-center">
+                                                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => fileInputRef.current?.click()} 
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] uppercase font-mono font-bold border border-dashed border-white/20 text-stone-400 hover:border-amber-400 hover:text-white hover:bg-white/5 transition-all"
+                                                            >
+                                                                <Camera size={12} /> <span>上传自定义头像 / Upload Avatar</span>
+                                                            </button>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                {/* Submit button with animated label text */}
+                                <div className="pt-2 relative">
+                                    <button 
+                                        type="submit" 
+                                        disabled={!name.trim() || !password.trim()} 
+                                        className="w-full py-3.5 bg-amber-400 disabled:bg-stone-800 disabled:text-stone-500 font-serif font-black text-stone-950 rounded-xl relative overflow-hidden shadow-lg shadow-amber-400/10 hover:shadow-amber-400/30 hover:scale-[1.01] active:scale-95 transition-all text-sm flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed group"
+                                    >
+                                        <LogIn size={15} className="group-hover:translate-x-0.5 transition-transform shrink-0" />
+                                        <div className="relative h-5 overflow-hidden flex items-center justify-center">
+                                            <AnimatePresence mode="wait">
+                                                <motion.span
+                                                    key={isLoginTab ? 'btn-login' : 'btn-register'}
+                                                    initial={{ opacity: 0, y: -6 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: 6 }}
+                                                    transition={{ duration: 0.18, ease: "easeInOut" }}
+                                                    className="whitespace-nowrap"
+                                                >
+                                                    {isLoginTab ? '快捷登录进入 Studio' : '音律同步，配置专属档案'}
+                                                </motion.span>
+                                            </AnimatePresence>
+                                        </div>
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Bottom Interactive Piano keyboard for beautiful micro animations & acoustic awareness */}
+                <div className="mt-6 border-t border-white/10 pt-4 flex flex-col gap-2">
+                    <div className="flex justify-between items-center px-1">
+                        <span className="text-[9px] text-stone-400 font-mono tracking-widest uppercase">🎼 实感和弦试音 (Hover & Tap to Play)</span>
+                        <span className="text-[8px] bg-white/5 text-stone-400 font-mono border border-white/5 px-2 py-0.5 rounded-md">Sine Oscillator Synth</span>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1 h-12">
+                        {pianoKeys.map(k => (
+                            <button
+                                key={k.note}
+                                type="button"
+                                onMouseEnter={() => playPianoKeySound(k.freq)}
+                                onClick={() => playPianoKeySound(k.freq)}
+                                className="group/key bg-white hover:bg-stone-100 rounded-b-lg flex flex-col justify-end items-center pb-1 shadow-inner relative transition-all active:h-11 active:pb-0.5"
+                            >
+                                <span className="text-[10px] font-black text-stone-800 font-mono scale-90 group-hover/key:scale-110 group-hover/key:text-amber-500 transition-all">{k.label}</span>
+                                <div className="absolute top-0 inset-x-0 h-1 bg-stone-300 group-hover/key:bg-amber-400 rounded-b" />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+            </motion.div>
+        </div>
+    );
+};
 
 interface SubscriptionModalProps { 
     isOpen: boolean; 
@@ -185,8 +801,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
     const [error, setError] = useState(''); 
     const [isSuccess, setIsSuccess] = useState(false); 
     const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly'); 
-    const [isVisible, setIsVisible] = useState(false); 
-    const [isAnimating, setIsAnimating] = useState(false); 
 
     // Generate random particles for success effect
     const particles = useMemo(() => Array.from({ length: 40 }).map((_, i) => ({
@@ -202,23 +816,15 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 
     useEffect(() => { 
         if (isOpen) { 
-            setIsVisible(true); 
             setInviteCode(''); 
             setError(''); 
             setIsSuccess(false); 
-            setTimeout(() => setIsAnimating(true), 10); 
-        } else { 
-            setIsAnimating(false); 
-            const timer = setTimeout(() => setIsVisible(false), 500); 
-            return () => clearTimeout(timer); 
-        } 
+        }
     }, [isOpen]); 
-
-    if (!isVisible) return null; 
 
     const handleSuccess = () => {
         setIsSuccess(true);
-        setTimeout(() => onSuccess(selectedPlan), 1000);
+        setTimeout(() => onSuccess(selectedPlan), 1500);
     };
 
     const handleVerify = () => { 
@@ -234,195 +840,268 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
     }; 
 
     return ( 
-        <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 transition-all duration-500 ${isAnimating ? 'backdrop-blur-md bg-stone-900/60' : 'backdrop-blur-none bg-transparent'}`}> 
-            <div className="absolute inset-0" onClick={onClose}></div> 
-            <style>{`
-                @keyframes cardEntrance {
-                    0% { opacity: 0; transform: rotateY(90deg) rotateX(10deg) scale(0.8) translateY(20px); }
-                    100% { opacity: 1; transform: rotateY(0deg) rotateX(0deg) scale(1) translateY(0); }
-                }
-                .animate-card-entrance { animation: cardEntrance 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                @keyframes floatUpParticle {
-                    0% { transform: translateY(0) rotate(0deg) scale(0); opacity: 0; }
-                    20% { opacity: 1; transform: translateY(-20px) rotate(45deg) scale(1); }
-                    100% { transform: translateY(-150px) rotate(180deg) scale(0); opacity: 0; }
-                }
-                .animate-float-up-particle { animation: floatUpParticle ease-out forwards; }
-                @keyframes shineSlow {
-                    0% { transform: translateX(-150%) skewX(-15deg); }
-                    100% { transform: translateX(200%) skewX(-15deg); }
-                }
-                .animate-shine-slow { animation: shineSlow 4s infinite ease-in-out; }
-            `}</style>
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4"> 
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onClose}
+                        className="absolute inset-0 bg-stone-900/60 backdrop-blur-md"
+                    />
+                    <style>{`
+                        @keyframes floatUpParticle {
+                            0% { transform: translateY(0) rotate(0deg) scale(0); opacity: 0; }
+                            20% { opacity: 1; transform: translateY(-20px) rotate(45deg) scale(1); }
+                            100% { transform: translateY(-150px) rotate(180deg) scale(0); opacity: 0; }
+                        }
+                        .animate-float-up-particle { animation: floatUpParticle ease-out forwards; }
+                    `}</style>
 
-            <div 
-                className={`
-                    bg-white shadow-2xl relative overflow-hidden flex
-                    transition-all duration-[800ms] cubic-bezier(0.16, 1, 0.3, 1)
-                    ${isSuccess ? 'w-[360px] h-[500px] rounded-[2.5rem]' : 'w-[800px] h-[520px] rounded-[2rem]'}
-                    ${isAnimating ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-8 opacity-0'}
-                `}
-            > 
-                <button onClick={onClose} className={`absolute top-5 right-5 p-2 rounded-full z-50 transition-colors ${isSuccess ? 'text-white/30 hover:bg-white/10' : 'text-stone-400 hover:bg-stone-100'}`}><X size={20} /></button>
+                    <motion.div 
+                        layout
+                        initial={{ scale: 0.9, opacity: 0, y: 50, rotateX: 10 }}
+                        animate={{ scale: 1, opacity: 1, y: 0, rotateX: 0 }}
+                        exit={{ scale: 0.9, opacity: 0, y: 50, rotateX: 10 }}
+                        transition={{ 
+                            layout: { type: "spring", stiffness: 300, damping: 30 },
+                            opacity: { duration: 0.3 }
+                        }}
+                        className={`
+                            bg-white shadow-2xl relative overflow-hidden flex
+                            ${isSuccess ? 'w-[360px] h-[500px] rounded-[2.5rem]' : 'w-[800px] h-[520px] rounded-[2rem]'}
+                        `}
+                    > 
+                        <button onClick={onClose} className={`absolute top-5 right-5 p-2 rounded-full z-50 transition-colors ${isSuccess ? 'text-white/30 hover:bg-white/10' : 'text-stone-400 hover:bg-stone-100'}`}><X size={20} /></button>
 
-                {/* LEFT PANEL */}
-                <div className={`relative bg-stone-900 text-white overflow-hidden flex-shrink-0 transition-all duration-[800ms] cubic-bezier(0.16, 1, 0.3, 1) ${isSuccess ? 'w-0' : 'w-[38%]'}`}>
-                    <div className={`w-[300px] h-full flex flex-col p-8 relative transition-opacity duration-300 ${isSuccess ? 'opacity-0' : 'opacity-100'}`}> {/* Fixed width container */}
-                        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#fbbf24 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
-                        <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-amber-500/20 rounded-full blur-[60px]"></div>
-                        
-                        <div className="relative z-10 flex-1 flex flex-col justify-center">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 w-fit mb-6 text-[10px] font-bold uppercase tracking-wider text-amber-400 shadow-sm">
-                                <Sparkles size={10} fill="currentColor" /> Pro Access
+                        {/* LEFT PANEL */}
+                        <motion.div 
+                            layout="position"
+                            className={`relative bg-stone-900 text-white overflow-hidden flex-shrink-0 ${isSuccess ? 'w-0' : 'w-[38%]'}`}
+                            style={{ opacity: isSuccess ? 0 : 1 }}
+                        >
+                            <div className={`w-[300px] h-full flex flex-col p-8 relative`}> {/* Fixed width container */}
+                                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#fbbf24 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+                                <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-amber-500/20 rounded-full blur-[60px]"></div>
+                                
+                                <div className="relative z-10 flex-1 flex flex-col justify-center">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 w-fit mb-6 text-[10px] font-bold uppercase tracking-wider text-amber-400 shadow-sm">
+                                        <Sparkles size={10} fill="currentColor" /> Pro Access
+                                    </div>
+                                    <h2 className="text-3xl font-serif font-bold mb-4 leading-tight">Unlock <br/><span className="text-amber-400">Mastery</span></h2>
+                                    <div className="space-y-4 mb-8"> 
+                                        {["全套高级乐理课程","AI 智能助教无限对话","高清图谱与音频示例","专属 Pro 身份徽章"].map((item, i) => (
+                                            <div key={i} className="flex items-center gap-3 text-sm font-medium text-stone-300"> 
+                                                <div className="w-5 h-5 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-amber-500 shrink-0"><Check size={10} strokeWidth={4} /></div> 
+                                                <span>{item}</span> 
+                                            </div> 
+                                        ))}
+                                    </div>
+                                    <div className="mt-auto pt-6 border-t border-white/10">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex -space-x-2">
+                                                {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-stone-700 border-2 border-stone-900 flex items-center justify-center"><UserIcon size={12} className="text-stone-500"/></div>)}
+                                            </div>
+                                            <div className="text-[10px] text-stone-400 leading-tight">
+                                                <strong className="text-white block">10,000+ 学员</strong> 已加入 Pro 计划
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <h2 className="text-3xl font-serif font-bold mb-4 leading-tight">Unlock <br/><span className="text-amber-400">Mastery</span></h2>
-                            <div className="space-y-4 mb-8"> 
-                                {["全套高级乐理课程","AI 智能助教无限对话","高清图谱与音频示例","专属 Pro 身份徽章"].map((item, i) => (
-                                    <div key={i} className="flex items-center gap-3 text-sm font-medium text-stone-300"> 
-                                        <div className="w-5 h-5 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-amber-500 shrink-0"><Check size={10} strokeWidth={4} /></div> 
-                                        <span>{item}</span> 
+                        </motion.div>
+
+                        {/* RIGHT PANEL */}
+                        <motion.div 
+                            layout="position"
+                            className={`relative flex-1 flex flex-col ${isSuccess ? 'bg-stone-950' : 'bg-white'}`}
+                        >
+                            {!isSuccess ? ( 
+                                <motion.div 
+                                    initial={{ opacity: 0 }} 
+                                    animate={{ opacity: 1 }} 
+                                    exit={{ opacity: 0 }}
+                                    className="flex-1 p-8 flex flex-col h-full relative"
+                                > 
+                                    <h3 className="text-xl font-bold text-stone-900 mb-6 font-serif flex items-center gap-2">选择订阅计划 <span className="text-xs bg-stone-100 text-stone-500 px-2 py-1 rounded-md font-sans font-normal ml-auto">限时特惠</span></h3>
+                                    <div className="space-y-3 mb-auto"> 
+                                        <button onClick={() => setSelectedPlan('yearly')} className={`w-full p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden group ${selectedPlan === 'yearly' ? 'border-stone-900 bg-stone-50 shadow-md' : 'border-stone-100 hover:border-stone-300 hover:bg-stone-50'}`}> 
+                                            {selectedPlan === 'yearly' && <div className="absolute top-0 right-0 w-16 h-16 bg-stone-900 rotate-45 transform translate-x-8 -translate-y-8 z-10"><Check size={14} className="text-white absolute bottom-1 left-6 -rotate-45" strokeWidth={4}/></div>}
+                                            <div className="flex justify-between items-center mb-1">
+                                                <div className="font-bold text-stone-900 text-base">年度会员</div>
+                                                <div className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded">省 35%</div>
+                                            </div>
+                                            <div className="flex items-end gap-1">
+                                                <span className="text-2xl font-bold text-stone-900">¥228</span>
+                                                <span className="text-xs text-stone-400 mb-1 line-through">¥348</span>
+                                                <span className="text-xs text-stone-500 mb-1 ml-auto">¥19.00 / 月</span>
+                                            </div>
+                                        </button> 
+                                        <button onClick={() => setSelectedPlan('monthly')} className={`w-full p-4 rounded-xl border-2 text-left transition-all relative group ${selectedPlan === 'monthly' ? 'border-stone-900 bg-stone-50 shadow-md' : 'border-stone-100 hover:border-stone-300 hover:bg-stone-50'}`}> 
+                                            <div className="flex justify-between items-center mb-1"><div className="font-bold text-stone-900 text-base">月度会员</div></div>
+                                            <div className="flex items-end gap-1">
+                                                <span className="text-2xl font-bold text-stone-900">¥29</span>
+                                                <span className="text-xs text-stone-500 mb-1 ml-auto">灵活订阅，随时取消</span>
+                                            </div>
+                                        </button> 
                                     </div> 
-                                ))}
-                            </div>
-                            <div className="mt-auto pt-6 border-t border-white/10">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex -space-x-2">
-                                        {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-stone-700 border-2 border-stone-900 flex items-center justify-center"><UserIcon size={12} className="text-stone-500"/></div>)}
+                                    <div className="mt-6 space-y-4"> 
+                                        <div className="relative">
+                                            <input type="text" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value); setError(''); }} placeholder="输入兑换代码..." className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 transition-all font-mono uppercase placeholder-stone-400" /> 
+                                            <button onClick={handleVerify} disabled={!inviteCode} className="absolute right-2 top-2 bottom-2 px-3 bg-white border border-stone-200 rounded-lg text-xs font-bold text-stone-600 hover:bg-stone-50 disabled:opacity-50 transition-colors">兑换</button>
+                                        </div>
+                                        {error && <p className="text-red-500 text-xs font-bold animate-pulse px-1">{error}</p>} 
+                                        <button onClick={handlePurchase} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold text-base shadow-xl hover:bg-stone-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"> 
+                                            <CreditCard size={18} className="text-amber-400 group-hover:rotate-12 transition-transform"/> 立即开通
+                                        </button> 
+                                        <div className="flex items-center justify-center gap-4 text-[10px] text-stone-400 font-medium">
+                                            <span className="flex items-center gap-1"><ShieldCheck size={12}/> SSL 安全支付</span>
+                                            <span className="flex items-center gap-1"><RefreshCw size={12}/> 7天无理由退款</span>
+                                        </div>
+                                    </div> 
+                                </motion.div> 
+                            ) : ( 
+                                <motion.div 
+                                    initial={{ opacity: 0 }} 
+                                    animate={{ opacity: 1 }} 
+                                    className="flex-1 flex flex-col items-center justify-center relative w-full h-full overflow-hidden p-6"
+                                > 
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-stone-800 via-stone-950 to-black opacity-80"></div>
+                                    {particles.map((p) => (
+                                        <div key={p.id} className={`absolute animate-float-up-particle opacity-0 ${p.type === 'circle' ? 'rounded-full' : (p.type === 'square' ? 'rounded-none' : 'clip-path-star')}`} style={{ left: `${p.x}%`, width: p.size, height: p.size, backgroundColor: p.color, animationDuration: `${p.duration}s`, animationDelay: `${p.delay}s`, top: '100%', clipPath: p.type === 'star' ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' : undefined }}></div>
+                                    ))}
+                                    <div className="relative z-10 flex flex-col items-center w-full">
+                                        <div className="mb-8 scale-110"><PremiumCard selectedPlan={selectedPlan} /></div>
+                                        <div className="text-center space-y-2 animate-slideUpFade" style={{ animationDelay: '0.6s' }}>
+                                            <h2 className="text-2xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-200 to-amber-400">Welcome Aboard</h2>
+                                            <p className="text-stone-400 text-xs font-medium">所有特权已激活，尽情享受吧。</p>
+                                        </div>
+                                        <button onClick={onClose} className="mt-8 bg-white text-stone-900 px-8 py-3 rounded-full font-bold shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 group animate-slideUpFade text-sm" style={{ animationDelay: '0.8s' }}> 
+                                            <span>进入 Pro 空间</span> <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" /> 
+                                        </button> 
                                     </div>
-                                    <div className="text-[10px] text-stone-400 leading-tight">
-                                        <strong className="text-white block">10,000+ 学员</strong> 已加入 Pro 计划
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* RIGHT PANEL */}
-                <div className={`relative flex-1 flex flex-col transition-all duration-[800ms] cubic-bezier(0.16, 1, 0.3, 1) ${isSuccess ? 'bg-stone-950' : 'bg-white'}`}>
-                    {!isSuccess ? ( 
-                        <div className="flex-1 p-8 flex flex-col h-full animate-fadeIn relative"> 
-                            <h3 className="text-xl font-bold text-stone-900 mb-6 font-serif flex items-center gap-2">选择订阅计划 <span className="text-xs bg-stone-100 text-stone-500 px-2 py-1 rounded-md font-sans font-normal ml-auto">限时特惠</span></h3>
-                            <div className="space-y-3 mb-auto"> 
-                                <button onClick={() => setSelectedPlan('yearly')} className={`w-full p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden group ${selectedPlan === 'yearly' ? 'border-stone-900 bg-stone-50 shadow-md' : 'border-stone-100 hover:border-stone-300 hover:bg-stone-50'}`}> 
-                                    {selectedPlan === 'yearly' && <div className="absolute top-0 right-0 w-16 h-16 bg-stone-900 rotate-45 transform translate-x-8 -translate-y-8 z-10"><Check size={14} className="text-white absolute bottom-1 left-6 -rotate-45" strokeWidth={4}/></div>}
-                                    <div className="flex justify-between items-center mb-1">
-                                        <div className="font-bold text-stone-900 text-base">年度会员</div>
-                                        <div className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded">省 35%</div>
-                                    </div>
-                                    <div className="flex items-end gap-1">
-                                        <span className="text-2xl font-bold text-stone-900">¥228</span>
-                                        <span className="text-xs text-stone-400 mb-1 line-through">¥348</span>
-                                        <span className="text-xs text-stone-500 mb-1 ml-auto">¥19.00 / 月</span>
-                                    </div>
-                                </button> 
-                                <button onClick={() => setSelectedPlan('monthly')} className={`w-full p-4 rounded-xl border-2 text-left transition-all relative group ${selectedPlan === 'monthly' ? 'border-stone-900 bg-stone-50 shadow-md' : 'border-stone-100 hover:border-stone-300 hover:bg-stone-50'}`}> 
-                                    <div className="flex justify-between items-center mb-1"><div className="font-bold text-stone-900 text-base">月度会员</div></div>
-                                    <div className="flex items-end gap-1">
-                                        <span className="text-2xl font-bold text-stone-900">¥29</span>
-                                        <span className="text-xs text-stone-500 mb-1 ml-auto">灵活订阅，随时取消</span>
-                                    </div>
-                                </button> 
-                            </div> 
-                            <div className="mt-6 space-y-4"> 
-                                <div className="relative">
-                                    <input type="text" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value); setError(''); }} placeholder="输入兑换代码..." className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 transition-all font-mono uppercase placeholder-stone-400" /> 
-                                    <button onClick={handleVerify} disabled={!inviteCode} className="absolute right-2 top-2 bottom-2 px-3 bg-white border border-stone-200 rounded-lg text-xs font-bold text-stone-600 hover:bg-stone-50 disabled:opacity-50 transition-colors">兑换</button>
-                                </div>
-                                {error && <p className="text-red-500 text-xs font-bold animate-pulse px-1">{error}</p>} 
-                                <button onClick={handlePurchase} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold text-base shadow-xl hover:bg-stone-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"> 
-                                    <CreditCard size={18} className="text-amber-400 group-hover:rotate-12 transition-transform"/> 立即开通
-                                </button> 
-                                <div className="flex items-center justify-center gap-4 text-[10px] text-stone-400 font-medium">
-                                    <span className="flex items-center gap-1"><ShieldCheck size={12}/> SSL 安全支付</span>
-                                    <span className="flex items-center gap-1"><RefreshCw size={12}/> 7天无理由退款</span>
-                                </div>
-                            </div> 
-                        </div> 
-                    ) : ( 
-                        <div className="flex-1 flex flex-col items-center justify-center relative w-full h-full overflow-hidden p-6"> 
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-stone-800 via-stone-950 to-black opacity-80"></div>
-                            {particles.map((p) => (
-                                <div key={p.id} className={`absolute animate-float-up-particle opacity-0 ${p.type === 'circle' ? 'rounded-full' : (p.type === 'square' ? 'rounded-none' : 'clip-path-star')}`} style={{ left: `${p.x}%`, width: p.size, height: p.size, backgroundColor: p.color, animationDuration: `${p.duration}s`, animationDelay: `${p.delay}s`, top: '100%', clipPath: p.type === 'star' ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' : undefined }}></div>
-                            ))}
-                            <div className="relative z-10 flex flex-col items-center w-full">
-                                <div className="mb-8 scale-110"><PremiumCard selectedPlan={selectedPlan} /></div>
-                                <div className="text-center space-y-2 animate-slideUpFade" style={{ animationDelay: '0.6s' }}>
-                                    <h2 className="text-2xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-200 to-amber-400">Welcome Aboard</h2>
-                                    <p className="text-stone-400 text-xs font-medium">所有特权已激活，尽情享受吧。</p>
-                                </div>
-                                <button onClick={onClose} className="mt-8 bg-white text-stone-900 px-8 py-3 rounded-full font-bold shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 group animate-slideUpFade text-sm" style={{ animationDelay: '0.8s' }}> 
-                                    <span>进入 Pro 空间</span> <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" /> 
-                                </button> 
-                            </div>
-                        </div> 
-                    )} 
+                                </motion.div> 
+                            )} 
+                        </motion.div> 
+                    </motion.div> 
                 </div> 
-            </div> 
-        </div> 
+            )}
+        </AnimatePresence>
     ); 
 };
 
 // ... (LogoutOverlay Component added here)
 const LogoutOverlay = () => (
-    <div className="fixed inset-0 z-[200] bg-stone-950 flex flex-col items-center justify-center animate-fadeIn duration-500">
+    <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[200] bg-stone-950 flex flex-col items-center justify-center"
+    >
         <div className="relative">
             <div className="absolute inset-0 bg-amber-500/20 blur-3xl rounded-full animate-pulse-slow"></div>
-            <div className="w-24 h-24 bg-stone-900 border border-stone-800 rounded-[2rem] flex items-center justify-center shadow-2xl relative z-10 mb-8 animate-bounce-gentle">
+            <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, type: "spring" }}
+                className="w-24 h-24 bg-stone-900 border border-stone-800 rounded-[2rem] flex items-center justify-center shadow-2xl relative z-10 mb-8"
+            >
                 <Music size={40} className="text-amber-500" />
-            </div>
+            </motion.div>
         </div>
-        <h2 className="text-3xl font-serif text-white font-bold mb-2 animate-slideUp">Goodbye</h2>
-        <p className="text-stone-500 animate-slideUp" style={{animationDelay: '0.1s'}}>期待您的下一次练习</p>
+        <motion.h2 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-3xl font-serif text-white font-bold mb-2"
+        >
+            Goodbye
+        </motion.h2>
+        <motion.p 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-stone-500"
+        >
+            期待您的下一次练习
+        </motion.p>
         <div className="mt-8 w-48 h-1 bg-stone-900 rounded-full overflow-hidden">
-            <div className="h-full bg-amber-500 animate-progress-fast"></div>
+            <motion.div 
+                initial={{ width: "0%" }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 1.5, ease: "easeInOut" }}
+                className="h-full bg-amber-500"
+            />
         </div>
-        <style>{`
-            @keyframes progressFast { from { width: 0%; } to { width: 100%; } }
-            .animate-progress-fast { animation: progressFast 1.2s ease-out forwards; }
-        `}</style>
-    </div>
+    </motion.div>
 );
 
 // Welcome Overlay for Login
 const WelcomeOverlay: React.FC<{ user: UserProfile | null }> = ({ user }) => {
     return (
-        <div className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center animate-fadeIn duration-500">
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center"
+        >
             <div className="absolute inset-0 bg-gradient-to-br from-stone-50 via-amber-50 to-orange-50 opacity-50"></div>
             
             <div className="relative z-10 flex flex-col items-center text-center p-8">
                 {/* Avatar with Glow */}
-                <div className="relative mb-8 animate-scale-in">
+                <div className="relative mb-8">
                     <div className="absolute inset-0 bg-amber-400 rounded-full blur-xl opacity-30 animate-pulse-slow"></div>
-                    <div className="w-32 h-32 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-stone-100 flex items-center justify-center text-5xl relative z-10">
+                    <motion.div 
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: "spring", duration: 0.6 }}
+                        className="w-32 h-32 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-stone-100 flex items-center justify-center text-5xl relative z-10"
+                    >
                         {user?.isCustomAvatar ? (
                             <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
                             user?.avatar || <UserIcon size={48} className="text-stone-400" />
                         )}
-                    </div>
+                    </motion.div>
                 </div>
 
-                <h2 className="text-4xl md:text-5xl font-serif font-bold text-stone-900 mb-3 animate-slideUp" style={{ animationDelay: '0.2s' }}>
+                <motion.h2 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-4xl md:text-5xl font-serif font-bold text-stone-900 mb-3"
+                >
                     Welcome, <span className="text-amber-600">{user?.name}</span>
-                </h2>
-                <p className="text-stone-500 font-medium tracking-wide animate-slideUp" style={{ animationDelay: '0.3s' }}>
+                </motion.h2>
+                <motion.p 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-stone-500 font-medium tracking-wide"
+                >
                     正在为你准备专属课程...
-                </p>
+                </motion.p>
 
                 {/* Loading Indicator */}
-                <div className="mt-12 w-16 h-16 relative flex items-center justify-center animate-slideUp" style={{ animationDelay: '0.4s' }}>
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="mt-12 w-16 h-16 relative flex items-center justify-center"
+                >
                     <div className="absolute inset-0 border-4 border-stone-200 rounded-full"></div>
                     <div className="absolute inset-0 border-4 border-amber-500 rounded-full border-t-transparent animate-spin"></div>
-                </div>
+                </motion.div>
             </div>
-        </div>
+        </motion.div>
     );
 };
 
 enum Tab {
   LESSON = 'lesson',
-  TUTOR = 'tutor'
+  TUTOR = 'tutor',
+  DICTIONARY = 'dictionary'
 }
 
 enum LessonTopic {
@@ -436,50 +1115,125 @@ enum LessonTopic {
   IMPRESSIONISM = 'impressionism', TWELVE_TONE = 'twelve_tone', PITCH_CLASS_SETS = 'pitch_class_sets', MICROTONALITY = 'microtonality', SPECTRALISM = 'spectralism', MINIMALISM = 'minimalism', BITONALITY = 'bitonality', ALEATORIC = 'aleatoric', NEGATIVE_HARMONY = 'negative_harmony', NEO_RIEMANNIAN = 'neo_riemannian', QUARTAL_HARMONY = 'quartal_harmony', OVERTONE_SERIES = 'overtone_series',
 }
 
-const BackgroundParticles: React.FC = () => {
-  const particles = useMemo(() => Array.from({ length: 15 }).map((_, i) => ({
-    id: i,
-    left: Math.random() * 100,
-    delay: Math.random() * 20,
-    duration: 15 + Math.random() * 20,
-    size: 10 + Math.random() * 20,
-    symbol: ['♪', '♫', '♩', '♭', '♯', '𝄞'][Math.floor(Math.random() * 6)]
-  })), []);
+const BackgroundParticles: React.FC<{ style?: 'notes' | 'stars' | 'sakura' | 'bubbles' }> = ({ style = 'notes' }) => {
+  const particles = useMemo(() => {
+    const symbolsMap = {
+      notes: ['♪', '♫', '♩', '♭', '♯', '𝄞', '𝄢', '𝄡'],
+      stars: ['★', '☆', '✦', '✧', '✨', '✵', '✷'],
+      sakura: ['🌸', '💮', '✿', '❀', '🍃', '🏵️'],
+      bubbles: ['🫧', '◌', '⚬', '⚪', '🫧']
+    };
+    const symbols = symbolsMap[style] || symbolsMap.notes;
+    const count = 22; // Increased count for richer visual depth
+    
+    return Array.from({ length: count }).map((_, i) => {
+      const leftRandom = Math.random() * 105 - 5; // allow slightly out of bounds starting
+      const topRandom = Math.random() * 105 - 5;
+      const delay = Math.random() * 20;
+      const duration = style === 'stars' ? 8 + Math.random() * 10 : 12 + Math.random() * 16;
+      const size = style === 'sakura' || style === 'bubbles' ? 16 + Math.random() * 18 : 12 + Math.random() * 24;
+      
+      return {
+        id: i,
+        left: leftRandom,
+        top: topRandom,
+        delay,
+        duration,
+        size,
+        symbol: symbols[Math.floor(Math.random() * symbols.length)],
+        rotationSpeed: 5 + Math.random() * 15,
+        driftWidth: 20 + Math.random() * 40
+      };
+    });
+  }, [style]);
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="absolute text-stone-200/40 font-serif"
-          style={{
-            left: `${p.left}%`,
-            top: '105%',
-            fontSize: `${p.size}px`,
-            animation: `floatUp ${p.duration}s linear infinite`,
-            animationDelay: `-${p.delay}s`,
-            opacity: 0, 
-          }}
-        >
-          {p.symbol}
-        </div>
-      ))}
+      {particles.map((p) => {
+        let textClass = "";
+        let inlineStyle: React.CSSProperties = {
+          position: 'absolute',
+          fontSize: `${p.size}px`,
+          animationDelay: `-${p.delay}s`,
+          animationDuration: `${p.duration}s`,
+          animationIterationCount: 'infinite',
+          animationTimingFunction: style === 'stars' ? 'ease-in-out' : 'linear',
+          transformOrigin: 'center',
+          willChange: 'transform, opacity',
+        };
+
+        if (style === 'notes') {
+          textClass = "text-amber-800/25 md:text-amber-800/20 font-serif";
+          inlineStyle.left = `${p.left}%`;
+          inlineStyle.top = '105%';
+          inlineStyle.animationName = 'floatUpNotes';
+        } else if (style === 'stars') {
+          // Stars are scattered around and twinkle in place or drift micro amounts
+          textClass = "text-amber-500/40 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]";
+          inlineStyle.left = `${p.left}%`;
+          inlineStyle.top = `${p.top}%`;
+          inlineStyle.animationName = 'twinkleStars';
+        } else if (style === 'sakura') {
+          textClass = "text-rose-400/55 drop-shadow-[0_2px_4px_rgba(244,63,94,0.3)] animate-bounce-gentle";
+          inlineStyle.left = `${p.left - 20}%`; // start off-screen left to drift right
+          inlineStyle.top = '-10%';
+          inlineStyle.animationName = 'fallSakura';
+        } else if (style === 'bubbles') {
+          textClass = "text-sky-400/50 drop-shadow-[0_2px_6px_rgba(56,189,248,0.45)]";
+          inlineStyle.left = `${p.left}%`;
+          inlineStyle.top = '105%';
+          inlineStyle.animationName = 'riseBubbles';
+        }
+
+        return (
+          <div
+            key={p.id}
+            className={`${textClass} transition-colors duration-1000`}
+            style={inlineStyle}
+          >
+            {p.symbol}
+          </div>
+        );
+      })}
       <style>{`
-        @keyframes floatUp {
-          0% { transform: translateY(0) rotate(0deg); opacity: 0; }
-          10% { opacity: 0.5; }
-          90% { opacity: 0.3; }
-          100% { transform: translateY(-110vh) rotate(360deg); opacity: 0; }
+        @keyframes floatUpNotes {
+          0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+          10% { opacity: 0.6; }
+          90% { opacity: 0.5; }
+          100% { transform: translateY(-115vh) translateX(40px) rotate(270deg); opacity: 0; }
+        }
+        @keyframes twinkleStars {
+          0%, 100% { opacity: 0.15; transform: scale(0.7) rotate(0deg); }
+          50% { opacity: 0.75; transform: scale(1.2) rotate(180deg); }
+        }
+        @keyframes fallSakura {
+          0% { transform: translate(0, 0) rotate(0deg) scale(0.8); opacity: 0; }
+          15% { opacity: 0.75; }
+          85% { opacity: 0.45; }
+          100% { transform: translate(60vw, 115vh) rotate(540deg) scale(1.1); opacity: 0; }
+        }
+        @keyframes riseBubbles {
+          0% { transform: translateY(0) translateX(0) scale(0.8); opacity: 0; }
+          12% { opacity: 0.65; }
+          50% { transform: translateY(-50vh) translateX(25px) scale(1.1); opacity: 0.75; }
+          88% { opacity: 0.4; }
+          100% { transform: translateY(-115vh) translateX(-15px) scale(0.9); opacity: 0; }
         }
       `}</style>
     </div>
   );
 };
 
-const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) => {
-    // ... (same as before)
+const useAmbience = (settings: UserSettings) => {
+    const type = settings.ambience;
+    const volume = settings.volume;
+    const rainIntensity = settings.rainIntensity ?? 50;
+    const binauralBeats = settings.binauralBeats ?? false;
+    const cafeChatter = settings.cafeChatter ?? false;
+
     const audioCtxRef = useRef<AudioContext | null>(null);
     const nodesRef = useRef<any[]>([]);
+    const chatterIntervalRef = useRef<any>(null);
     
     useEffect(() => {
         if (type === 'off' || volume === 0) {
@@ -497,7 +1251,7 @@ const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) =>
             stopAmbience(); 
 
             const gainNode = ctx!.createGain();
-            gainNode.gain.value = volume * 0.1; 
+            gainNode.gain.value = (volume / 100) * 0.15; // Adjusted calibration 
             gainNode.connect(ctx!.destination);
 
             if (type === 'white' || type === 'rain') {
@@ -517,12 +1271,13 @@ const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) =>
                 
                 const filter = ctx!.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.value = type === 'rain' ? 400 : 1000;
+                // Rain intensity adjusts lowpass frequency: from 150Hz to 1200Hz
+                filter.frequency.value = type === 'rain' ? (150 + (rainIntensity * 10)) : 1000;
                 
                 noise.connect(filter);
                 filter.connect(gainNode);
                 noise.start();
-                nodesRef.current.push(noise);
+                nodesRef.current.push(noise, filter);
             } 
             else if (type === 'cafe') {
                 const bufferSize = 2 * ctx!.sampleRate;
@@ -546,7 +1301,62 @@ const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) =>
                 noise.connect(filter);
                 filter.connect(gainNode);
                 noise.start();
-                nodesRef.current.push(noise);
+                nodesRef.current.push(noise, filter);
+
+                if (cafeChatter) {
+                    const chatterInterval = setInterval(() => {
+                        try {
+                            if (!ctx || ctx.state === 'suspended') return;
+                            const osc = ctx.createOscillator();
+                            const gain = ctx.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.value = 800 + Math.random() * 1200; // high bell tone
+                            gain.gain.setValueAtTime(0, ctx.currentTime);
+                            gain.gain.linearRampToValueAtTime(0.012 * (volume / 100), ctx.currentTime + 0.01);
+                            gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.8 + Math.random() * 0.4);
+                            
+                            osc.connect(gain);
+                            gain.connect(ctx.destination);
+                            osc.start();
+                            
+                            setTimeout(() => {
+                                try { osc.stop(); osc.disconnect(); gain.disconnect(); } catch(e){}
+                            }, 1500);
+                        } catch(e) {}
+                    }, 4000 + Math.random() * 5000);
+                    chatterIntervalRef.current = chatterInterval;
+                }
+            }
+
+            if (binauralBeats && type === 'white') {
+                const oscL = ctx!.createOscillator();
+                const oscR = ctx!.createOscillator();
+                
+                oscL.frequency.value = 200; // Carrier L
+                oscR.frequency.value = 210; // Carrier R - 10Hz binaural delta (Alpha Wave)
+                
+                const panL = ctx!.createStereoPanner ? ctx!.createStereoPanner() : null;
+                const panR = ctx!.createStereoPanner ? ctx!.createStereoPanner() : null;
+                
+                const beatGain = ctx!.createGain();
+                beatGain.gain.value = 0.08 * (volume / 100); 
+                
+                if (panL && panR) {
+                    panL.pan.value = -1;
+                    panR.pan.value = 1;
+                    oscL.connect(panL).connect(beatGain);
+                    oscR.connect(panR).connect(beatGain);
+                } else {
+                    oscL.connect(beatGain);
+                    oscR.connect(beatGain);
+                }
+                
+                beatGain.connect(ctx!.destination);
+                oscL.start();
+                oscR.start();
+                nodesRef.current.push(oscL, oscR, beatGain);
+                if (panL) nodesRef.current.push(panL);
+                if (panR) nodesRef.current.push(panR);
             }
             
             nodesRef.current.push(gainNode);
@@ -557,9 +1367,13 @@ const useAmbience = (type: 'off' | 'rain' | 'cafe' | 'white', volume: number) =>
         return () => {
             stopAmbience();
         };
-    }, [type, volume]); 
+    }, [type, volume, rainIntensity, binauralBeats, cafeChatter]); 
 
     const stopAmbience = () => {
+        if (chatterIntervalRef.current) {
+            clearInterval(chatterIntervalRef.current);
+            chatterIntervalRef.current = null;
+        }
         nodesRef.current.forEach(node => {
             try {
                 if (node.stop) node.stop();
@@ -591,7 +1405,13 @@ const App: React.FC = () => {
       customColor: '', 
       volume: 80,
       dailyGoal: 15,
-      ambience: 'off'
+      ambience: 'off',
+      instrumentSound: 'grand',
+      particlesStyle: 'notes',
+      keyboardStyle: 'minimal',
+      binauralBeats: false,
+      rainIntensity: 50,
+      cafeChatter: false
   });
 
   const [achievements, setAchievements] = useState<Achievement[]>(INITIAL_ACHIEVEMENTS);
@@ -608,43 +1428,102 @@ const App: React.FC = () => {
   const [lastActiveLessonId, setLastActiveLessonId] = useState<string | null>(null);
   const [studyMinutes, setStudyMinutes] = useState(0);
 
-  useAmbience(userSettings.ambience, userSettings.volume / 100);
+  useAmbience(userSettings);
 
-  // Load Saved Data
+  // Load Saved Authenticated Session on Mount
   useEffect(() => {
     const storedUser = localStorage.getItem('pt_user');
-    if (storedUser) setUser(JSON.parse(storedUser));
-    
-    const savedPro = localStorage.getItem('pianoTheoryPro');
-    if (savedPro === 'true') setIsPro(true);
-
-    const savedPlan = localStorage.getItem('pianoTheoryProPlan');
-    if (savedPlan) setProPlan(savedPlan as any);
-
-    const savedProgress = localStorage.getItem('pt_progress');
-    if (savedProgress) setCompletedLessons(JSON.parse(savedProgress));
-
-    const savedAchievements = localStorage.getItem('pt_achievements');
-    if (savedAchievements) setAchievements(JSON.parse(savedAchievements));
-
-    const savedLastLesson = localStorage.getItem('pt_last_lesson');
-    if (savedLastLesson) setLastActiveLessonId(savedLastLesson);
-
-    const savedMinutes = localStorage.getItem('pt_study_minutes');
-    if (savedMinutes) setStudyMinutes(parseInt(savedMinutes, 10));
+    if (storedUser) {
+        setUser(JSON.parse(storedUser));
+    }
   }, []);
 
-  // Save Progress
+  // Synchronize and Load User-Specific Progress / Settings / Pro Status on User change
   useEffect(() => {
-      localStorage.setItem('pt_progress', JSON.stringify(completedLessons));
-      localStorage.setItem('pt_achievements', JSON.stringify(achievements));
+    if (!user) {
+        setIsPro(false);
+        setProPlan(null);
+        setCompletedLessons([]);
+        setAchievements(INITIAL_ACHIEVEMENTS);
+        setLastActiveLessonId(null);
+        setStudyMinutes(0);
+        setUserSettings({
+            themeColor: 'amber',
+            customColor: '', 
+            volume: 80,
+            dailyGoal: 15,
+            ambience: 'off',
+            instrumentSound: 'grand',
+            particlesStyle: 'notes',
+            keyboardStyle: 'minimal',
+            binauralBeats: false,
+            rainIntensity: 50,
+            cafeChatter: false
+        });
+        return;
+    }
+
+    const username = user.name;
+
+    const savedPro = localStorage.getItem(`pt_pro_${username}`);
+    setIsPro(savedPro === 'true');
+
+    const savedPlan = localStorage.getItem(`pt_pro_plan_${username}`);
+    setProPlan(savedPlan ? (savedPlan as any) : null);
+
+    const savedProgress = localStorage.getItem(`pt_progress_${username}`);
+    setCompletedLessons(savedProgress ? JSON.parse(savedProgress) : []);
+
+    const savedAchievements = localStorage.getItem(`pt_achievements_${username}`);
+    setAchievements(savedAchievements ? JSON.parse(savedAchievements) : INITIAL_ACHIEVEMENTS);
+
+    const savedLastLesson = localStorage.getItem(`pt_last_lesson_${username}`);
+    setLastActiveLessonId(savedLastLesson || null);
+
+    const savedMinutes = localStorage.getItem(`pt_study_minutes_${username}`);
+    setStudyMinutes(savedMinutes ? parseInt(savedMinutes, 10) : 0);
+
+    const savedSettings = localStorage.getItem(`pt_settings_${username}`);
+    if (savedSettings) {
+        setUserSettings(JSON.parse(savedSettings));
+    } else {
+        setUserSettings({
+            themeColor: 'amber',
+            customColor: '', 
+            volume: 80,
+            dailyGoal: 15,
+            ambience: 'off',
+            instrumentSound: 'grand',
+            particlesStyle: 'notes',
+            keyboardStyle: 'minimal',
+            binauralBeats: false,
+            rainIntensity: 50,
+            cafeChatter: false
+        });
+    }
+  }, [user]);
+
+  // Persist User-Specific Settings
+  useEffect(() => {
+      if (!user) return;
+      localStorage.setItem(`pt_settings_${user.name}`, JSON.stringify(userSettings));
+  }, [userSettings, user]);
+
+  // Persist User-Specific Progress and Achievements
+  useEffect(() => {
+      if (!user) return;
+      const username = user.name;
+      localStorage.setItem(`pt_progress_${username}`, JSON.stringify(completedLessons));
+      localStorage.setItem(`pt_achievements_${username}`, JSON.stringify(achievements));
       
       const checkUnlock = (id: string, condition: boolean) => {
           setAchievements(prev => {
               const target = prev.find(a => a.id === id);
               if (target && !target.unlocked && condition) {
                   setUnlockedToast({ ...target, unlocked: true });
-                  return prev.map(a => a.id === id ? { ...a, unlocked: true, progress: a.maxProgress } : a);
+                  const updated = prev.map(a => a.id === id ? { ...a, unlocked: true, progress: a.maxProgress } : a);
+                  localStorage.setItem(`pt_achievements_${username}`, JSON.stringify(updated));
+                  return updated;
               }
               return prev;
           });
@@ -656,9 +1535,9 @@ const App: React.FC = () => {
       const hour = new Date().getHours();
       if (hour >= 22 || hour < 4) checkUnlock('night_owl', true);
 
-  }, [completedLessons, isPro]);
+  }, [completedLessons, isPro, user]);
 
-  // Study Timer Logic
+  // Study Timer Logic with scoped storage writing
   useEffect(() => {
       let interval: number;
       // Only count time if user is logged in and actually on a lesson (not home dashboard)
@@ -666,7 +1545,7 @@ const App: React.FC = () => {
           interval = window.setInterval(() => {
               setStudyMinutes(prev => {
                   const newVal = prev + 1;
-                  localStorage.setItem('pt_study_minutes', newVal.toString());
+                  localStorage.setItem(`pt_study_minutes_${user.name}`, newVal.toString());
                   return newVal;
               });
           }, 60000); // 1 minute
@@ -680,12 +1559,19 @@ const App: React.FC = () => {
       setTempUserProfile(profile);
       setIsLoggingIn(true);
       
+      // Double-buffered background rendering:
+      // Pre-renders and mounts the workspace behind the WelcomeOverlay after 400ms
+      // so there is absolutely zero rendering cost when the visual overlay exits.
       setTimeout(() => {
           setUser(profile);
           localStorage.setItem('pt_user', JSON.stringify(profile));
+      }, 400);
+
+      // Finish welcome animation and fade out overlay after 2500ms
+      setTimeout(() => {
           setIsLoggingIn(false);
           setTempUserProfile(null);
-      }, 2500); // 2.5s login animation
+      }, 2500);
   };
 
   const handleUpdateProfile = (profile: UserProfile) => {
@@ -700,11 +1586,25 @@ const App: React.FC = () => {
           setUser(null);
           setIsPro(false);
           setProPlan(null);
-          localStorage.removeItem('pt_user');
-          localStorage.removeItem('pianoTheoryPro');
-          localStorage.removeItem('pianoTheoryProPlan');
-          setUserSettings(prev => ({ ...prev, themeColor: 'amber', customColor: '' })); 
+          setCompletedLessons([]);
+          setAchievements(INITIAL_ACHIEVEMENTS);
+          setLastActiveLessonId(null);
+          setStudyMinutes(0);
+          setUserSettings({
+              themeColor: 'amber',
+              customColor: '', 
+              volume: 80,
+              dailyGoal: 15,
+              ambience: 'off',
+              instrumentSound: 'grand',
+              particlesStyle: 'notes',
+              keyboardStyle: 'minimal',
+              binauralBeats: false,
+              rainIntensity: 50,
+              cafeChatter: false
+          }); 
           setActiveLesson(LessonTopic.HOME);
+          localStorage.removeItem('pt_user');
           setIsLoggingOut(false);
       }, 1500);
   };
@@ -712,8 +1612,10 @@ const App: React.FC = () => {
   const handleProSuccess = (plan: 'monthly' | 'yearly') => {
     setIsPro(true);
     setProPlan(plan);
-    localStorage.setItem('pianoTheoryPro', 'true');
-    localStorage.setItem('pianoTheoryProPlan', plan);
+    if (user) {
+        localStorage.setItem(`pt_pro_${user.name}`, 'true');
+        localStorage.setItem(`pt_pro_plan_${user.name}`, plan);
+    }
   };
 
   const checkAccess = (isProFeature: boolean) => {
@@ -883,9 +1785,11 @@ const App: React.FC = () => {
       if (!checkAccess(false)) return;
       if (!checkAccess(isProLesson)) return;
 
-      // Persist Last Active Lesson
+      // Persist Last Active Lesson with user-scoped key
       setLastActiveLessonId(lessonId);
-      localStorage.setItem('pt_last_lesson', lessonId);
+      if (user) {
+          localStorage.setItem(`pt_last_lesson_${user.name}`, lessonId);
+      }
 
       if (!completedLessons.includes(lessonId)) {
           setCompletedLessons(prev => [...prev, lessonId]);
@@ -917,7 +1821,7 @@ const App: React.FC = () => {
         />;
     }
 
-    if (activeLesson === LessonTopic.SIGHT_READING) return <GenericLesson level="Level 1" title="视奏入门" subtitle="Sight Reading" sections={[{ title: "看在前面", content: "眼睛永远走在手前面。", icon: Eye }]} />
+    if (activeLesson === LessonTopic.SIGHT_READING) return <SightReadingLesson settings={userSettings} />;
     if (activeLesson === LessonTopic.EAR_TRAINING) return <GenericLesson level="Level 2" title="练耳基础" subtitle="Ear Training" sections={[{ title: "音程色彩", content: "分辨大三度（快乐）和小三度（悲伤）。", icon: Mic2 }]} />
 
     if (activeLesson === LessonTopic.FORM_BINARY_TERNARY) return <FormBinaryTernaryLesson />;
@@ -1016,16 +1920,16 @@ const App: React.FC = () => {
       />
     )}
     
-    {isLoggingOut && <LogoutOverlay />}
-    {isLoggingIn && <WelcomeOverlay user={tempUserProfile} />}
+    <AnimatePresence>
+        {isLoggingOut && <LogoutOverlay key="logout" />}
+        {isLoggingIn && <WelcomeOverlay key="welcome" user={tempUserProfile} />}
+    </AnimatePresence>
 
-    <div className={`h-screen flex flex-col md:flex-row bg-[#FAFAF9] overflow-hidden font-sans transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isAppVisible && !isLoggingOut && !isLoggingIn ? 'opacity-100 scale-100 blur-0' : (isLoggingOut || isLoggingIn ? 'opacity-50 scale-95 blur-sm' : 'opacity-0 scale-95 blur-sm')}`}>
-      
-      <AuthModal 
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onLogin={handleLogin}
-      />
+    <AnimatePresence mode="wait">
+      {!showSplash && !user ? (
+        <MandatoryAuthScreen key="mandatory" onLogin={handleLogin} />
+      ) : (
+        <div className={`h-screen flex flex-col md:flex-row bg-[#FAFAF9] overflow-hidden font-sans transition-[opacity,transform] duration-500 ease-out ${isAppVisible && !isLoggingOut && !isLoggingIn ? 'opacity-100 scale-100' : (isLoggingOut || isLoggingIn ? 'opacity-30 scale-[0.995]' : 'opacity-0 scale-[0.995]')}`}>
 
       <AchievementToast achievement={unlockedToast} onClose={() => setUnlockedToast(null)} />
 
@@ -1083,6 +1987,16 @@ const App: React.FC = () => {
                } ${activeTab === Tab.LESSON ? 'font-bold' : ''}`}
              >
                <BookOpen size={16} /> 课程
+             </button>
+             <button
+               onClick={() => { setActiveTab(Tab.DICTIONARY); setIsMobileMenuOpen(false); }}
+               className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 z-10 relative ${
+                 activeTab === Tab.DICTIONARY 
+                 ? 'bg-white text-stone-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)]' 
+                 : 'text-stone-500 hover:text-stone-700 hover:bg-white/50'
+               } ${activeTab === Tab.DICTIONARY ? 'font-bold' : ''}`}
+             >
+               <BookOpen size={16} /> 字典
              </button>
              <button
                onClick={() => { setActiveTab(Tab.TUTOR); setIsMobileMenuOpen(false); }}
@@ -1257,35 +2171,69 @@ const App: React.FC = () => {
       {/* Main Content Area */}
       <main id="main-content" className="flex-1 h-full overflow-hidden flex flex-col relative transition-colors duration-500">
          <div className="absolute inset-0 opacity-[0.3] pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(#d6d3d1 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
-         <BackgroundParticles />
+         <BackgroundParticles key={userSettings.particlesStyle} style={userSettings.particlesStyle} />
          <div className={`absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-[#FAFAF9] to-transparent z-10 pointer-events-none transition-opacity duration-300 ${hasScrolled ? 'opacity-100' : 'opacity-0'}`}></div>
 
          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12 lg:px-20 w-full z-10 scroll-smooth relative">
-            {activeTab === Tab.LESSON ? (
-               renderLessonContent()
-            ) : (
-               <div className="h-full flex flex-col max-w-4xl mx-auto pb-6 animate-slideUp">
-                  <header className="mb-6 flex items-baseline justify-between">
-                    <div>
-                        <h2 className="text-3xl font-bold serif text-stone-900">智能助教</h2>
-                        <p className="text-stone-500 text-sm mt-1">基于 Gemini 2.5 Flash 模型</p>
-                    </div>
-                    {isPro && <div className={`${getThemeClass('bg')}/10 ${getThemeClass('text')} px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border ${getThemeClass('border')} transition-colors duration-500`} style={{...getThemeStyle('activeBg'), ...getThemeStyle('text'), ...getThemeStyle('border')}}><Crown size={12} fill="currentColor" /> Pro Unlocked</div>}
-                  </header>
-                  <div className="flex-1 bg-white rounded-3xl shadow-xl shadow-stone-200/50 border border-stone-200 overflow-hidden flex flex-col">
-                     {!user ? (
-                         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                             <div className="bg-stone-100 p-4 rounded-full mb-4"><Lock size={32} className="text-stone-400"/></div>
-                             <h3 className="text-xl font-bold text-stone-800">请先登录</h3>
-                             <p className="text-stone-500 mt-2 mb-6">您需要登录账户才能使用 AI 助教功能。</p>
-                             <button onClick={() => setShowAuthModal(true)} className="bg-stone-900 text-white px-8 py-3 rounded-xl font-bold shadow-lg">立即登录</button>
-                         </div>
-                     ) : (
-                         <AITutor isPro={isPro} onRequestUpgrade={() => setShowSubscribeModal(true)} />
-                     )}
-                  </div>
-               </div>
-            )}
+            <AnimatePresence mode="wait">
+                {activeTab === Tab.LESSON ? (
+                    <motion.div 
+                        key={activeLesson}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="w-full"
+                        style={{ willChange: "opacity" }}
+                    >
+                        {renderLessonContent()}
+                    </motion.div>
+                ) : activeTab === Tab.DICTIONARY ? (
+                    <motion.div
+                        key="dictionary"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="h-full w-full"
+                        style={{ willChange: "opacity" }}
+                    >
+                        <SymbolDictionary />
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="tutor"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="h-full w-full"
+                        style={{ willChange: "opacity" }}
+                    >
+                        <div className="h-full flex flex-col max-w-4xl mx-auto pb-6">
+                           <header className="mb-6 flex items-baseline justify-between">
+                             <div>
+                                 <h2 className="text-3xl font-bold serif text-stone-900">智能助教</h2>
+                                 <p className="text-stone-500 text-sm mt-1">基于 Gemini 2.5 Flash 模型</p>
+                             </div>
+                             {isPro && <div className={`${getThemeClass('bg')}/10 ${getThemeClass('text')} px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border ${getThemeClass('border')} transition-colors duration-500`} style={{...getThemeStyle('activeBg'), ...getThemeStyle('text'), ...getThemeStyle('border')}}><Crown size={12} fill="currentColor" /> Pro Unlocked</div>}
+                           </header>
+                           <div className="flex-1 bg-white rounded-3xl shadow-xl shadow-stone-200/50 border border-stone-200 overflow-hidden flex flex-col">
+                              {!user ? (
+                                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                                      <div className="bg-stone-100 p-4 rounded-full mb-4"><Lock size={32} className="text-stone-400"/></div>
+                                      <h3 className="text-xl font-bold text-stone-800">请先登录</h3>
+                                      <p className="text-stone-500 mt-2 mb-6">您需要登录账户才能使用 AI 助教功能。</p>
+                                      <button onClick={() => setShowAuthModal(true)} className="bg-stone-900 text-white px-8 py-3 rounded-xl font-bold shadow-lg">立即登录</button>
+                                  </div>
+                              ) : (
+                                  <AITutor isPro={isPro} onRequestUpgrade={() => setShowSubscribeModal(true)} />
+                              )}
+                           </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
          </div>
       </main>
       
@@ -1296,6 +2244,8 @@ const App: React.FC = () => {
         />
       )}
     </div>
+    )}
+    </AnimatePresence>
     </>
   );
 };

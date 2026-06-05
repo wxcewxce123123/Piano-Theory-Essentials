@@ -20,6 +20,12 @@ export interface UserSettings {
     volume: number;
     dailyGoal: number;
     ambience: 'off' | 'rain' | 'cafe' | 'white';
+    instrumentSound?: 'grand' | 'upright' | 'rhodes' | 'synth';
+    particlesStyle?: 'notes' | 'stars' | 'sakura' | 'bubbles';
+    keyboardStyle?: 'minimal' | 'retro' | 'neon' | 'aurora';
+    binauralBeats?: boolean;
+    rainIntensity?: number;
+    cafeChatter?: boolean;
 }
 
 export interface Achievement {
@@ -1021,6 +1027,133 @@ const ProfileSettings: React.FC<{
                           </button>
                       )
                   })}
+              </div>
+          </div>
+      </div>
+
+      {/* Pro Exclusive Personalization Section */}
+      <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4 px-2 mt-8 flex items-center gap-2">
+          <Crown size={16} className="text-amber-500 animate-pulse-soft" /> Pro 会员专属调节
+          {!isPro && <span className="text-[10px] bg-stone-900 text-white px-2 py-0.5 rounded-full font-bold">LOCKED</span>}
+      </h3>
+      
+      <div className={`bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm relative mb-8`}>
+          {!isPro && (
+              <div className="absolute inset-0 bg-stone-950/20 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-8 text-center bg-white/70">
+                  <div className="w-12 h-12 bg-amber-400 rounded-full flex items-center justify-center text-stone-900 shadow-lg mb-4 animate-bounce">
+                      <Lock size={20} />
+                  </div>
+                  <h4 className="text-lg font-bold text-stone-900">高级粒子调节未解锁</h4>
+                  <p className="text-xs text-stone-600 max-w-sm mt-2 leading-relaxed">
+                      升级至 Pro 会员，体验古典音符、浪漫星空、春意樱舞或梦幻气泡等多种唯美背景氛围！
+                  </p>
+                  <button onClick={onUpgrade} className="mt-4 px-5 py-2 bg-stone-900 text-white rounded-xl text-xs font-bold shadow-md hover:bg-stone-800 transition-all flex items-center gap-1.5">
+                      <Sparkles size={12} /> 立即升级 Pro
+                  </button>
+              </div>
+          )}
+
+          {/* Background Particles Options */}
+          <div className="w-full p-6 flex flex-col gap-5">
+              <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-500 flex items-center justify-center shadow-sm">
+                      <Sparkles size={18} />
+                  </div>
+                  <div>
+                      <span className="font-bold text-stone-800 block text-base font-serif">背景粒子动效</span>
+                      <span className="text-xs text-stone-400 font-medium tracking-wide font-mono">Custom Floating Ambient Particles</span>
+                  </div>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                      { id: 'notes', label: '古典音符', desc: 'Classical Notes', isProOnly: false },
+                      { id: 'stars', label: '浪漫星空', desc: 'Cosmic Stars', isProOnly: false },
+                      { id: 'sakura', label: '春意樱舞', desc: 'Spring Sakura', isProOnly: true },
+                      { id: 'bubbles', label: '梦幻气泡', desc: 'Dreamy Bubbles', isProOnly: true }
+                  ].map((part) => {
+                      const isActive = (settings.particlesStyle || 'notes') === part.id;
+                      return (
+                          <button
+                              key={part.id}
+                              type="button"
+                              disabled={!isPro && part.isProOnly}
+                              onClick={() => {
+                                  if (part.isProOnly && !isPro) onUpgrade();
+                                  else onUpdate({ ...settings, particlesStyle: part.id as any });
+                              }}
+                              className={`group/card flex flex-col justify-center items-center h-20 bg-white border rounded-2xl p-4 shadow-sm hover:shadow-md transition-all text-center relative overflow-hidden ${
+                                  isActive
+                                  ? 'border-stone-900 ring-2 ring-stone-950/10 font-bold shadow-md bg-stone-50/20'
+                                  : 'border-stone-200 text-stone-600 hover:border-stone-400 hover:bg-stone-50/50'
+                              } ${part.isProOnly && !isPro ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          >
+                              {!isPro && part.isProOnly && (
+                                  <div className="absolute top-2.5 right-2.5 text-stone-400 z-10 group-hover/card:scale-110 transition-transform">
+                                      <Lock size={12} />
+                                  </div>
+                              )}
+                              <span className="text-xs font-bold text-stone-800 leading-none mb-1 block">
+                                  {part.label}
+                              </span>
+                              <span className="text-[9px] text-stone-400 font-mono tracking-wide leading-none truncate block mt-1">
+                                  {part.desc}
+                              </span>
+                          </button>
+                      );
+                  })}
+              </div>
+          </div>
+
+          {/* 4. Advanced Acoustic sliders (Rain intensity, Cafe chatter, Binaural support) */}
+          <div className="w-full p-5 flex flex-col gap-4 bg-stone-50/50">
+              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block">高级声学混音器 Acoustics Mixer</span>
+              
+              {/* Rain Intensity */}
+              <div className={`flex flex-col gap-2 transition-opacity ${settings.ambience === 'rain' ? 'opacity-100' : 'opacity-40'}`}>
+                  <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-stone-600">降雨密度与雷鸣倾向 (Rain Intensity)</span>
+                      <span className="font-semibold text-stone-500">{settings.rainIntensity ?? 50}%</span>
+                  </div>
+                  <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      disabled={!isPro || settings.ambience !== 'rain'}
+                      value={settings.rainIntensity ?? 50}
+                      onChange={(e) => onUpdate({ ...settings, rainIntensity: Number(e.target.value) })}
+                      className="w-full cursor-pointer bg-stone-300 h-1.5 rounded-lg accent-stone-700"
+                  />
+                  <p className="text-[9px] text-stone-400 leading-none">仅在激活【专注雨声 (Rain)】环境音时可调节低通滤幅。</p>
+              </div>
+
+              {/* Cafe Chatter */}
+              <div className={`flex justify-between items-center transition-opacity ${settings.ambience === 'cafe' ? 'opacity-100' : 'opacity-40'}`}>
+                  <div>
+                      <span className="font-bold text-stone-600 block text-xs">咖啡馆暖心环境轻响 (Warm Cafe Clinks)</span>
+                      <span className="text-[9px] text-stone-400">开启偶尔出现的咖啡杯碰撞与谈笑声</span>
+                  </div>
+                  <button
+                      disabled={!isPro || settings.ambience !== 'cafe'}
+                      onClick={() => onUpdate({ ...settings, cafeChatter: !settings.cafeChatter })}
+                      className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-300 relative ${settings.cafeChatter ? 'bg-amber-500' : 'bg-stone-300'}`}
+                  >
+                      <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${settings.cafeChatter ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                  </button>
+              </div>
+
+              {/* Binaural Beats */}
+              <div className={`flex justify-between items-center transition-opacity ${settings.ambience === 'white' ? 'opacity-100' : 'opacity-40'}`}>
+                  <div>
+                      <span className="font-bold text-stone-600 block text-xs">双耳阿尔法节拍机制 (Binaural Alpha Beats)</span>
+                      <span className="text-[9px] text-stone-400 font-medium">左右声道微差立体偏频缩短心流潜入时间</span>
+                  </div>
+                  <button
+                      disabled={!isPro || settings.ambience !== 'white'}
+                      onClick={() => onUpdate({ ...settings, binauralBeats: !settings.binauralBeats })}
+                      className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-300 relative ${settings.binauralBeats ? 'bg-cyan-500' : 'bg-stone-300'}`}
+                  >
+                      <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${settings.binauralBeats ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                  </button>
               </div>
           </div>
       </div>
