@@ -1,1335 +1,1140 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Zap, Play, Pause, Activity, Footprints, Sparkles, Gamepad2, 
-  Trophy, RefreshCw, Layers, BookOpen, Volume2, Flame, 
-  HelpCircle, AlertCircle, ChevronRight, Check
+  Zap, Play, Pause, Activity, RefreshCw, Sparkles, BookOpen, 
+  Volume2, Flame, Sliders, ArrowRight, Check, Star, CheckCircle,
+  Award, RefreshCw as ResetIcon, Info, HelpCircle, Music, Compass
 } from 'lucide-react';
 
-type SyncopationType = 'classic' | 'anticipation' | 'tresillo';
-type SoundKit = 'classic' | 'electronic' | 'acoustic';
+// Define core types for Music Theory representation
+type SyncopationType = 'tie' | 'duration' | 'rest' | 'accent';
 
-interface SyncopationPattern {
+interface TheoryDemo {
   id: SyncopationType;
-  name: string;
-  chineseName: string;
-  description: string;
-  gridLabels: string[]; // Labels for sixteen slots
-  hits: { index: number; type: 'strong' | 'accent' | 'weak'; label: string; duration: number }[];
-}
-
-interface Masterpiece {
   title: string;
-  composer: string;
-  style: string;
+  subtitle: string;
   description: string;
-  syncUsage: string;
-  rhythmTip: string;
-}
-
-interface QuizQuestion {
-  question: string;
-  options: string[];
-  correctIndex: number;
+  sheetFormula: string; // Solfege representation
   explanation: string;
+  // Notes in the measure (for synthesis and visualization)
+  // Each note: { pitch (Hz), step (16th note index), durationSteps, isTieEnd?, isAccent? }
+  notes: Array<{
+    pitch: number;
+    step: number; 
+    durationSteps: number;
+    name: string;
+    isTieStart?: boolean;
+    isTieEnd?: boolean;
+    isAccent?: boolean;
+    isRestOutline?: boolean; // Represent silence inside downbeat
+  }>;
 }
 
 const SyncopationLesson: React.FC = () => {
-  // Tabs: 'visual' | 'trainer' | 'masterpieces' | 'quiz'
-  const [activeTab, setActiveTab] = useState<'visual' | 'trainer' | 'masterpieces' | 'quiz'>('visual');
-
-  // Metronome / Playback State
+  // Navigation & playback controls
   const [isPlaying, setIsPlaying] = useState(false);
-  const [bpm, setBpm] = useState(90);
-  const [activePatternId, setActivePatternId] = useState<SyncopationType>('classic');
-  const [soundKit, setSoundKit] = useState<SoundKit>('electronic');
-  const [volume, setVolume] = useState(70);
-  const [playMetronome, setPlayMetronome] = useState(true); // Ground steady pulse reference toggle
+  const [bpm, setBpm] = useState(85);
+  const [volume, setVolume] = useState(65);
+  const [activeTab, setActiveTab] = useState<SyncopationType>('duration');
+  
+  // Interactive Score Playhead state
+  const [active16thStep, setActive16thStep] = useState<number>(-1);
+  const [beatPulse, setBeatPulse] = useState<number>(0); // 1, 2, 3, 4 downbeat pulses
 
-  // Trainer Game State
-  const [trainerActive, setTrainerActive] = useState(false);
-  const [trainerScore, setTrainerScore] = useState(0);
-  const [trainerStreak, setTrainerStreak] = useState(0);
-  const [trainerFeedback, setTrainerFeedback] = useState('点击下面按钮开始，准备在强拍之后的弱拍（切分点）按节奏拍击！');
-  const [feedbackColor, setFeedbackColor] = useState('text-stone-500');
-  const [feedbackOffset, setFeedbackOffset] = useState<string>('');
-  const lastTrainerTapRef = useRef<number>(0);
+  // --- Puzzle Builder State ---
+  // Users drag/tap rhythmic blocks to form a mathematically legal 4/4 syncopated bar
+  // Target: total of 16 sixteenth steps.
+  // Blocks options
+  const BLOCKS_CATALOG = [
+    { id: 'sixteenth', name: '十六分音符', duration: 1, symbol: '𝅘𝅥𝅯', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    { id: 'eighth', name: '八分音符', duration: 2, symbol: '𝅘𝅥𝅮', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    { id: 'quarter', name: '四分音符', duration: 4, symbol: '𝅘𝅥', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+    { id: 'dottedEighth', name: '附点八分', duration: 3, symbol: '𝅘𝅥𝅮.', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+    { id: 'dottedQuarter', name: '附点四分', duration: 6, symbol: '𝅘𝅥.', color: 'bg-purple-50 text-purple-700 border-purple-200' }
+  ];
 
-  // Quiz State
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [puzzleGrid, setPuzzleGrid] = useState<Array<typeof BLOCKS_CATALOG[0]>>([]);
+  const [puzzleMessage, setPuzzleMessage] = useState<string>('小节虚位以待，请点击上方时值乐章，拼装出一个纯正的「切分律动」！目标总跨度：16 步（一小节）。');
+  const [puzzleValid, setPuzzleValid] = useState<boolean | null>(null);
+  const [puzzlePlaying, setPuzzlePlaying] = useState<boolean>(false);
+
+  // Audio Context management
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const isPlayingRef = useRef(false);
+  const timerIDRef = useRef<number | null>(null);
+  const bpmRef = useRef(bpm);
+  const volumeRef = useRef(volume);
+
+  // Scheduler progress
+  const stepIndexRef = useRef<number>(0);
+  const nextStepTimeRef = useRef<number>(0);
+  const startTimeRef = useRef<number>(0);
+
+  // Quiz state
+  const [quizQuestion, setQuizQuestion] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [score, setScore] = useState(0);
+  const [quizScore, setQuizScore] = useState(0);
   const [quizFinished, setQuizFinished] = useState(false);
 
-  // Refs for Audio & Animation
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const timerIDRef = useRef<number | null>(null);
-  const animationRef = useRef<number | null>(null);
-  const isPlayingRef = useRef(false);
-
-  // Synchronized state refs for audio loop
-  const bpmRef = useRef(bpm);
-  const activePatternIdRef = useRef(activePatternId);
-  const soundKitRef = useRef(soundKit);
-  const volumeRef = useRef(volume);
-  const playMetronomeRef = useRef(playMetronome);
-
+  // Sync state refs to keep scheduler updated without re-triggers
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
-  useEffect(() => { activePatternIdRef.current = activePatternId; }, [activePatternId]);
-  useEffect(() => { soundKitRef.current = soundKit; }, [soundKit]);
   useEffect(() => { volumeRef.current = volume; }, [volume]);
-  useEffect(() => { playMetronomeRef.current = playMetronome; }, [playMetronome]);
 
-  const startTimeRef = useRef<number>(0);
-  const nextNoteTimeRef = useRef<number>(0);
-  const tickIndexRef = useRef<number>(0);
-
-  // 16 Sixteenth notes in 1 Bar of 4/4
-  const TOTAL_STEPS = 16;
-
-  // Pattern Configurations
-  const PATTERNS: Record<SyncopationType, SyncopationPattern> = {
-    classic: {
-      id: 'classic',
-      name: 'Classic Syncopation',
-      chineseName: '经典八分切分音',
-      description: '最基础的切分音。在第1拍和第3拍的“弱半拍”出重音，并延音拉长，故意让最稳定的下拍（第2、4拍）保持空洞，产生极强的失重与拉扯感。',
-      gridLabels: ['1 拍', 'e', '&', 'ah', '2 拍', 'e', '&', 'ah', '3 拍', 'e', '&', 'ah', '4 拍', 'e', '&', 'ah'],
-      hits: [
-        { index: 0, type: 'strong', label: '1 拍正', duration: 2 },
-        { index: 2, type: 'accent', label: '1 拍半 (切分音)', duration: 4 }, // Weak subdivision struck & held across beat 2
-        { index: 6, type: 'weak', label: '2 拍半', duration: 2 },
-        { index: 8, type: 'strong', label: '3 拍正', duration: 2 },
-        { index: 10, type: 'accent', label: '3 拍半 (切分音)', duration: 4 }, // Struck & held across beat 4
-        { index: 14, type: 'weak', label: '4 拍半', duration: 2 }
-      ]
-    },
-    anticipation: {
-      id: 'anticipation',
-      name: 'Sixteenth Anticipation',
-      chineseName: '十六分前推切分 (放克/流行)',
-      description: '极为酷炫的放克(Funk)或拉丁风格节奏。重音被提前了整整一个十六分音符。感觉像把音乐猛地吸了一口，向前倾倒推移。',
-      gridLabels: ['1 拍', 'e', '&', 'ah', '2 拍', 'e', '&', 'ah', '3 拍', 'e', '&', 'ah', '4 拍', 'e', '&', 'ah'],
-      hits: [
-        { index: 0, type: 'strong', label: '1 拍正', duration: 4 },
-        { index: 4, type: 'weak', label: '2 拍正', duration: 3 },
-        { index: 7, type: 'accent', label: '2 拍半后 (前推)', duration: 5 }, // Anticipated note before beat 3
-        { index: 12, type: 'strong', label: '4 拍正', duration: 4 }
-      ]
-    },
-    tresillo: {
-      id: 'tresillo',
-      name: 'Tresillo 3-3-2 Clave',
-      chineseName: '拉丁塞西略 (3-3-2 律动)',
-      description: '风靡全球的雷鬼(Reggaeton)和现代流行乐灵魂节奏（例如《Shape of You》）。将16个细分音符按 3+3+2 结构拆分。它的第二个和第三个重音恰好全部卡在弱拍空隙，充满弹性摇摆的律动。',
-      gridLabels: ['1 拍', 'e', '&', 'ah', '2 拍', 'e', '&', 'ah', '3 拍', 'e', '&', 'ah', '4 拍', 'e', '&', 'ah'],
-      hits: [
-        { index: 0, type: 'strong', label: '1 (重)', duration: 3 },
-        { index: 3, type: 'accent', label: '1& 后 (切分)', duration: 3 },
-        { index: 6, type: 'accent', label: '2& (切分)', duration: 2 },
-        { index: 8, type: 'strong', label: '3 (重)', duration: 3 },
-        { index: 11, type: 'accent', label: '3& 后 (切分)', duration: 3 },
-        { index: 14, type: 'accent', label: '4& (切分)', duration: 2 }
-      ]
-    }
-  };
-
-  const masterpieces: Masterpiece[] = [
-    {
-      title: '《枫叶拉格泰姆》 (Maple Leaf Rag)',
-      composer: '斯科特·乔普林 (Scott Joplin)',
-      style: '拉格泰姆 (Ragtime)',
-      description: '切分音进入现代世俗音乐的始祖。左手演奏一板一眼的严整二分法重音，而右手几乎全部由跳跃的八分切分音符切碎。左右手完美地进行纵向“撕扯”，如同抹了黄油般轻快滑溜。',
-      syncUsage: '利用切分音符重合和留空，形成右手永不停顿的非对称摇摆。',
-      rhythmTip: '练习拉格泰姆时，大腿保持打一、二正拍，双手绝对独立演奏，右手重拍要准确落在“空中”。'
-    },
-    {
-      title: '《蓝色狂想曲》 (Rhapsody in Blue)',
-      composer: '乔治·格什温 (George Gershwin)',
-      style: '交响爵士 (Symphonic Jazz)',
-      description: '古典与爵士切分音交融的顶峰。开头黑管惊艳地拉长音滑上去之后，钢琴便奏出极具美国大都会街头气息的切分旋律。这些旋律大多在弱拍重音（Off-beat），充满朝气与戏剧性。',
-      syncUsage: '利用十六分和八分切分连线，将音乐的重心彻底移位，带来摩登的力量。',
-      rhythmTip: '这需要极致的“弱指力量”。不要压重正拍，而是通过微小的腕部跳动把“空中弱拍”弹得充满弹性。'
-    },
-    {
-      title: '《赫比汉考克的西瓜人》 (Watermelon Man)',
-      composer: '赫比·汉考克 (Herbie Hancock)',
-      style: '融合爵士 (Jazz Funk)',
-      description: '地道的放克灵魂舞动。贝斯和爵士鼓打出极致深邃的 3-3-2 塞西略变形与十六分前推切分(Sixteenth Anticipation)，听者浑身不自主地随着这个凹槽(Groove)进行前后晃动。',
-      syncUsage: '整首曲子没有一拍是干瘪的正拍强击，旋律全部在前一个十六分音符瞬间爆发。',
-      rhythmTip: '不要试图硬邦邦地数 1、2、3、4。要把自己想象成弹簧，把每一次十六分前推切分发力点，当作是释放弹力。'
-    }
-  ];
-
-  const quizQuestions: QuizQuestion[] = [
-    {
-      question: '到底什么是“切分音 (Syncopation)”？它的本质作用是什么？',
-      options: [
-        '通过在正拍上狂弹重音，让节奏听起来像阅兵式那样刻板严整',
-        '故意将重音从强拍移动到弱拍或弱分拍（Off-beat），打破原本稳定的预期，制造动能与 Groove',
-        '一小节内塞入两个完全不同的速度，让左手慢、右手快，让听众完全听不懂节奏',
-        '一种让所有音符都叠在一起强音齐奏的演奏技巧'
-      ],
-      correctIndex: 1,
-      explanation: '切分音最本质的作用就是“颠覆强弱规则”。将原本属于强拍的重音转移到弱拍、或者将弱拍重音延长到强拍，从而在预期未满的地方产生奇妙的拉扯重心。'
-    },
-    {
-      question: '为什么有些切分音符弹下后，原本应该重音击响的后一拍突然没声了，但却显得律动更强？',
-      options: [
-        '因为手太酸，漏弹了后面的音符',
-        '因为延音线（Tie）将前一个弱拍上的切分重音延长了，使原本应该发声的正拍被“吃掉”了，形成了巨大的拉扯张力',
-        '因为钢琴踏板坏了，没有办法继续传声音',
-        '因为乐谱印刷错误，把后面的强拍音符漏印了'
-      ],
-      correctIndex: 1,
-      explanation: '在切分音中，我们经常用延音线（Tie）将弱拍（或弱半拍）击响的重音，跨过后面的强拍。强拍因此保持悬空和静音，由于音响滞留（Syncopation Suspension），大脑会感到一种强烈的向前推涌动感！'
-    },
-    {
-      question: '现代超级热门神曲（如 Reggaeton 音乐/流行舞曲）常说的 “3-3-2” 指的是什么？',
-      options: [
-        '一首曲子总共弹完花 3 分 3 角 2 秒',
-        '三个歌手、三个乐手、两个领舞的组合',
-        '将一个 4 拍小节的 16 个十六分音符等分，平均分成 3+3+2 脉冲结构，后两个重音落在弱拍上，散发热带摇摆气息',
-        '钢琴上左手按 3 键、右手按 3 键、双脚踩 2 个踏板'
-      ],
-      correctIndex: 2,
-      explanation: '3-3-2 Clave 是塞西略（Tresillo）节奏。它把 16 分音符框拆成 3(16分)-3(16分)-2(16分) 长度来打击。由于第二个重音踩在第 1 拍半的后边（弱半拍），第三个重音卡在第 2 拍半（弱半拍），形成了具有不可思议摇摆感的切分。'
-    },
-    {
-      question: '在数节奏和拍击切分音时，保持什么样的心态最不容易被切分音“带偏”走音？',
-      options: [
-        '脑中和脚下必须有一个绝对平稳、不受任何干扰的核心“骨架律动（Pulse）”，切分重音反向拉扯它即可',
-        '什么都不去数，凭直觉一顿乱拍，越乱切分力度越足',
-        '每次拍击切分拍时，把脚踏的速度随时变快两倍',
-        '只弹强拍，彻底抛弃所有的弱半拍'
-      ],
-      correctIndex: 0,
-      explanation: '弹奏切分音最忌讳的就是“脚跟着切分音起跑”。我们必须保持大腿、身体或脚具有一个精准如铁律的恒定脉冲（Pulse）作为参考，身体知道“正拍在哪”，手指在“弱位（空中）”用力打击，才能体会到反作用力的切分美感。'
-    }
-  ];
-
-  // --- METRONOME ENGINE (Web Audio API Direct scheduling) ---
-  const initAudio = () => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
-    }
-  };
-
-  const playSynthesizedClick = (time: number, isStrong: boolean, isAccent: boolean, isMetronomePulse: boolean) => {
-    if (!audioCtxRef.current) return;
-    const ctx = audioCtxRef.current;
-
-    const osc = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    osc.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    const masterVolume = (volumeRef.current / 100) * 0.18;
-    const kit = soundKitRef.current;
-
-    if (isMetronomePulse) {
-      // Very dry, subtle click for metronome pulse background so user maintains pulse reference
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(440, time);
-      gainNode.gain.setValueAtTime(masterVolume * 0.25, time);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
-      osc.start(time);
-      osc.stop(time + 0.06);
-      return;
-    }
-
-    if (kit === 'classic') {
-      osc.type = 'sine';
-      if (isStrong) {
-        osc.frequency.setValueAtTime(950, time);
-        gainNode.gain.setValueAtTime(masterVolume * 1.2, time);
-      } else if (isAccent) {
-        // High, laser-like blip for syncopated accents 
-        osc.frequency.setValueAtTime(1300, time);
-        gainNode.gain.setValueAtTime(masterVolume * 1.3, time);
-      } else {
-        osc.frequency.setValueAtTime(600, time);
-        gainNode.gain.setValueAtTime(masterVolume * 0.6, time);
-      }
-      gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-      osc.start(time);
-      osc.stop(time + 0.12);
-
-    } else if (kit === 'electronic') {
-      // 808 Style punchy sound kit
-      osc.type = 'triangle';
-      if (isStrong) {
-        osc.frequency.setValueAtTime(150, time);
-        osc.frequency.exponentialRampToValueAtTime(30, time + 0.14);
-        gainNode.gain.setValueAtTime(masterVolume * 1.5, time);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.16);
-        osc.start(time);
-        osc.stop(time + 0.18);
-
-        // Click crisp component on strong
-        const clk = ctx.createOscillator();
-        const clkG = ctx.createGain();
-        clk.connect(clkG);
-        clkG.connect(ctx.destination);
-        clk.type = 'sine';
-        clk.frequency.setValueAtTime(2200, time);
-        clkG.gain.setValueAtTime(masterVolume * 0.3, time);
-        clkG.gain.exponentialRampToValueAtTime(0.001, time + 0.02);
-        clk.start(time);
-        clk.stop(time + 0.03);
-      } else if (isAccent) {
-        // Crisp 808 Snare blip on syncopated accent
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, time);
-        osc.frequency.exponentialRampToValueAtTime(400, time + 0.08);
-        gainNode.gain.setValueAtTime(masterVolume * 1.4, time);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-        osc.start(time);
-        osc.stop(time + 0.12);
-        
-        // Noise snap
-        const noise = ctx.createOscillator();
-        const noiseG = ctx.createGain();
-        noise.connect(noiseG);
-        noiseG.connect(ctx.destination);
-        noise.type = 'triangle';
-        noise.frequency.setValueAtTime(1800, time);
-        noiseG.gain.setValueAtTime(masterVolume * 0.5, time);
-        noiseG.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
-        noise.start(time);
-        noise.stop(time + 0.07);
-      } else {
-        // Simple synth tom tick
-        osc.frequency.setValueAtTime(320, time);
-        gainNode.gain.setValueAtTime(masterVolume * 0.6, time);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
-        osc.start(time);
-        osc.stop(time + 0.08);
-      }
-    } else if (kit === 'acoustic') {
-      // Woodblock & Sidestick click
-      osc.type = 'triangle';
-      if (isStrong) {
-        osc.frequency.setValueAtTime(650, time);
-        gainNode.gain.setValueAtTime(masterVolume * 1.2, time);
-      } else if (isAccent) {
-        osc.frequency.setValueAtTime(1100, time);
-        gainNode.gain.setValueAtTime(masterVolume * 1.4, time);
-      } else {
-        osc.frequency.setValueAtTime(450, time);
-        gainNode.gain.setValueAtTime(masterVolume * 0.7, time);
-      }
-      gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
-      osc.start(time);
-      osc.stop(time + 0.09);
-    }
-  };
-
-  const scheduleNextNotes = () => {
-    if (!audioCtxRef.current || !isPlayingRef.current) return;
-
-    const scheduleAheadTime = 0.15;
-    const secondsPerBeat = 60.0 / bpmRef.current;
-    
-    // We are dividing a 4-beat bar into 16 steps (sixteenth subdivisions)
-    const secondsPerStep = secondsPerBeat / 4.0;
-
-    while (nextNoteTimeRef.current < audioCtxRef.current.currentTime + scheduleAheadTime) {
-      const stepIndex = tickIndexRef.current % TOTAL_STEPS;
-      
-      const pattern = PATTERNS[activePatternIdRef.current];
-      const matchHit = pattern.hits.find(hit => hit.index === stepIndex);
-
-      // Play ground pulse reference (regular beats: 0, 4, 8, 12) if playMetronome is true
-      if (playMetronomeRef.current && (stepIndex % 4 === 0)) {
-        playSynthesizedClick(nextNoteTimeRef.current, false, false, true);
-      }
-
-      // Play pattern notes
-      if (matchHit) {
-        const isStrong = matchHit.type === 'strong';
-        const isAccent = matchHit.type === 'accent';
-        playSynthesizedClick(nextNoteTimeRef.current, isStrong, isAccent, false);
-      }
-
-      nextNoteTimeRef.current += secondsPerStep;
-      tickIndexRef.current++;
-    }
-
-    timerIDRef.current = window.setTimeout(scheduleNextNotes, 25.0);
-  };
-
-  // --- GEOMETRIC SYNC PLAY ANIMATION LOOP ---
-  const drawTrajectory = () => {
-    if (!isPlayingRef.current || !canvasRef.current || !audioCtxRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-
-    if (width === 0 || height === 0) {
-      animationRef.current = requestAnimationFrame(drawTrajectory);
-      return;
-    }
-
-    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-    }
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, width, height);
-
-    const currentTime = audioCtxRef.current.currentTime;
-    const secondsPerBeat = 60.0 / bpmRef.current;
-    const secondsPerBar = secondsPerBeat * 4.0;
-
-    const elapsed = Math.max(0, currentTime - startTimeRef.current);
-    const progress = (elapsed % secondsPerBar) / secondsPerBar; // 0 to 1 loop
-
-    const pattern = PATTERNS[activePatternIdRef.current];
-
-    const paddingX = 45;
-    const drawingWidth = width - paddingX * 2;
-    const baselineYTop = 64;       // Ground steady pulse reference track
-    const baselineYBottom = 160;   // Dynamic syncopated bouncing wave track
-    const animationAmplitude = 36;  // Height of bouncing curves
-
-    // ---- TRACK 1: Reference Pulse Track (Top) ----
-    ctx.beginPath();
-    ctx.moveTo(paddingX - 10, baselineYTop);
-    ctx.lineTo(width - paddingX + 10, baselineYTop);
-    ctx.strokeStyle = '#CBD5E1'; // Slate-300
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 4]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Plot 4 steady rhythmic beats arches (Down-up-down-up)
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 4; i++) {
-      const beatWidth = drawingWidth / 4;
-      const xStart = paddingX + i * beatWidth;
-      const xEnd = paddingX + (i + 1) * beatWidth;
-
-      ctx.moveTo(xStart, baselineYTop);
-      for (let xCoord = xStart; xCoord <= xEnd; xCoord++) {
-        const localProg = (xCoord - xStart) / beatWidth;
-        const curveY = baselineYTop - Math.sin(localProg * Math.PI) * 20;
-        ctx.lineTo(xCoord, curveY);
-      }
-    }
-    ctx.stroke();
-
-    // Regular pulse dot indicators (1, 2, 3, 4 beats)
-    for (let i = 0; i <= 4; i++) {
-      const xPoint = paddingX + i * (drawingWidth / 4);
-      ctx.beginPath();
-      ctx.arc(xPoint, baselineYTop, i < 4 ? 5 : 4, 0, Math.PI * 2);
-      ctx.fillStyle = i < 4 ? '#475569' : '#94A3B8';
-      ctx.fill();
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      if (i < 4) {
-        ctx.font = 'bold 9px font-sans';
-        ctx.fillStyle = '#64748B';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${i + 1} 拍`, xPoint, baselineYTop - 25);
-      }
-    }
-
-    // Steady pulse ball
-    const pulseBallX = paddingX + progress * drawingWidth;
-    const currentPulseSegment = (progress * 4) % 1;
-    const pulseBallY = baselineYTop - Math.sin(currentPulseSegment * Math.PI) * 20;
-
-    ctx.beginPath();
-    ctx.arc(pulseBallX, pulseBallY, 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#64748B';
-    ctx.fill();
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-
-    // ---- TRACK 2: The Syncopated Wave (Bottom - THE MAIN TRAJECTORY!) ----
-    ctx.beginPath();
-    ctx.moveTo(paddingX - 10, baselineYBottom);
-    ctx.lineTo(width - paddingX + 10, baselineYBottom);
-    ctx.strokeStyle = '#475569'; // Slate-600
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // First draw pre-computed trajectory wave segments based on note durations
-    ctx.beginPath();
-    ctx.strokeStyle = activePatternId === 'tresillo' ? 'rgba(236, 72, 153, 0.4)' : 'rgba(245, 158, 11, 0.4)';
-    ctx.lineWidth = 3;
-    ctx.setLineDash([4, 2]);
-
-    for (let h = 0; h < pattern.hits.length; h++) {
-      const hit = pattern.hits[h];
-      const nextHit = pattern.hits[(h + 1) % pattern.hits.length];
-
-      const stepWidth = drawingWidth / TOTAL_STEPS;
-      const xStart = paddingX + hit.index * stepWidth;
-      
-      // Calculate where the note trajectory lands (either next hit or end of bar)
-      let endIdx = hit.index + hit.duration;
-      if (endIdx > TOTAL_STEPS) {
-        endIdx = TOTAL_STEPS;
-      }
-      const xEnd = paddingX + endIdx * stepWidth;
-      const currentWidth = xEnd - xStart;
-
-      // Draw custom sine-arc representing note duration
-      ctx.moveTo(xStart, baselineYBottom);
-      for (let xCoord = xStart; xCoord <= xEnd; xCoord++) {
-        const localProg = (xCoord - xStart) / currentWidth;
-        const curveY = baselineYBottom - Math.sin(localProg * Math.PI) * animationAmplitude;
-        ctx.lineTo(xCoord, curveY);
-      }
-    }
-    ctx.stroke();
-    ctx.setLineDash([]); // Reset line dash
-
-    // Draw the actual hits bubbles/impact positions on the baseline progress
-    for (let i = 0; i < TOTAL_STEPS; i++) {
-      const matchHit = pattern.hits.find(hit => hit.index === i);
-      const xPoint = paddingX + i * (drawingWidth / TOTAL_STEPS);
-
-      if (matchHit) {
-        const isAccent = matchHit.type === 'accent';
-        const isStrong = matchHit.type === 'strong';
-
-        // Glowing shadow decoration for offbeats
-        if (isAccent) {
-          ctx.beginPath();
-          ctx.arc(xPoint, baselineYBottom, 8, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
-          ctx.fill();
-        }
-
-        ctx.beginPath();
-        ctx.arc(xPoint, baselineYBottom, isAccent ? 8 : (isStrong ? 6 : 4), 0, Math.PI * 2);
-        ctx.fillStyle = isAccent ? '#F59E0B' : (isStrong ? '#E2E8F0' : '#475569');
-        ctx.fill();
-        ctx.strokeStyle = isAccent ? '#FFFFFF' : '#1E293B';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        // Label above syncopated points
-        ctx.font = `bold ${isAccent ? '10px' : '9px'} font-sans`;
-        ctx.fillStyle = isAccent ? '#F59E0B' : '#94A3B8';
-        ctx.textAlign = 'center';
-        ctx.fillText(
-          isAccent ? '★ 切分音' : (isStrong ? '【强】' : '•'), 
-          xPoint, 
-          baselineYBottom + 20
-        );
-      }
-    }
-
-    // Draw the glowing kinetic bouncing ball on the syncopated curve (calculated dynamically)
-    // 1. Find which hit segment the playhead is currently on
-    const currentStepNum = progress * TOTAL_STEPS;
-    let activeHitIdx = 0;
-    
-    for (let h = 0; h < pattern.hits.length; h++) {
-      const curr = pattern.hits[h];
-      const start = curr.index;
-      const end = curr.index + curr.duration;
-      
-      if (currentStepNum >= start && currentStepNum < end) {
-        activeHitIdx = h;
-        break;
-      }
-      // Overlap loop handle if playhead crosses the bar boundary
-      if (curr.index + curr.duration > TOTAL_STEPS && currentStepNum < (curr.index + curr.duration) % TOTAL_STEPS) {
-        activeHitIdx = h;
-        break;
-      }
-    }
-
-    const activeHitMark = pattern.hits[activeHitIdx];
-    const segmentStartIdx = activeHitMark.index;
-    let segmentEndIdx = segmentStartIdx + activeHitMark.duration;
-    
-    // Normalize progress index on this active segment stretch
-    let segmentProgress = 0;
-    const dur = activeHitMark.duration;
-
-    if (currentStepNum >= segmentStartIdx) {
-      segmentProgress = (currentStepNum - segmentStartIdx) / dur;
-    } else {
-      // Loop-around offset
-      segmentProgress = (currentStepNum + TOTAL_STEPS - segmentStartIdx) / dur;
-    }
-
-    // Bound progressive safety between 0-1
-    segmentProgress = Math.min(1.0, Math.max(0.0, segmentProgress));
-
-    const stepWidth = drawingWidth / TOTAL_STEPS;
-    const ballXSync = paddingX + progress * drawingWidth;
-    const ballYSync = baselineYBottom - Math.sin(segmentProgress * Math.PI) * animationAmplitude;
-
-    // Glowing halo for the Syncopated playhead
-    const haloColor = activeHitMark.type === 'accent' ? '#F59E0B' : '#60A5FA';
-    ctx.shadowColor = haloColor;
-    ctx.shadowBlur = 14;
-
-    ctx.beginPath();
-    ctx.arc(ballXSync, ballYSync, 12, 0, Math.PI * 2);
-    ctx.fillStyle = activeHitMark.type === 'accent' ? '#F59E0B' : (activeHitMark.type === 'strong' ? '#3B82F6' : '#94A3B8');
-    ctx.fill();
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 3.5;
-    ctx.stroke();
-
-    ctx.shadowBlur = 0; // Restore shadow defaults
-
-    // Flash zap symbol if playhead is near the moment of hit (first 25% of note curve)
-    if (activeHitMark.type === 'accent' && segmentProgress < 0.28) {
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 10px font-sans';
-      ctx.fillText('⚡', ballXSync, ballYSync - 20);
-    }
-
-    animationRef.current = requestAnimationFrame(drawTrajectory);
-  };
-
-  const startEngine = async () => {
-    initAudio();
-    if (audioCtxRef.current?.state === 'suspended') {
-      await audioCtxRef.current.resume();
-    }
-
-    if (audioCtxRef.current) {
-      setIsPlaying(true);
-      isPlayingRef.current = true;
-      tickIndexRef.current = 0;
-
-      const now = audioCtxRef.current.currentTime;
-      nextNoteTimeRef.current = now + 0.1;
-      startTimeRef.current = nextNoteTimeRef.current;
-
-      scheduleNextNotes();
-
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      animationRef.current = requestAnimationFrame(drawTrajectory);
-    }
-  };
-
-  const stopEngine = () => {
-    setIsPlaying(false);
-    isPlayingRef.current = false;
-
-    if (timerIDRef.current) {
-      window.clearTimeout(timerIDRef.current);
-      timerIDRef.current = null;
-    }
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-      animationRef.current = null;
-    }
-
-    // Clear canvas
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-  };
-
-  const handlePatternChange = (patId: SyncopationType) => {
-    stopEngine();
-    setActivePatternId(patId);
-  };
-
-  const togglePlay = () => {
-    if (isPlaying) {
-      stopEngine();
-    } else {
-      startEngine();
-    }
-  };
-
+  // Clean-up on unmount
   useEffect(() => {
     return () => {
       isPlayingRef.current = false;
       if (timerIDRef.current) window.clearTimeout(timerIDRef.current);
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, []);
 
+  // --- HARD-CORE MUSIC THEORY CRUCIBLE: DEMO NOTATIONS ---
+  // Precise piano coordinates simulating beautiful syncopations with classical harmony
+  const THEORY_DEMOS: Record<SyncopationType, TheoryDemo> = {
+    duration: {
+      id: 'duration',
+      title: '时值重音切分 (Duration-Induced / 大切分)',
+      subtitle: '时值跨越强拍产生的无形重力挪移',
+      description: '乐理中最典型的「中置切分」。在 4/4 拍中，原本第1和第2拍都是常规下拍。时值切分故意在第1拍的「后半拍（弱分拍）」发声，且这个音符的时值长达一拍（四分音符），从而把第2拍的「正拍」重音位置全部跨越（覆盖）过去。听众大脑在第2拍踩空，强弱预期发生剧烈抗衡！',
+      sheetFormula: '【 𝅘𝅥𝅮 (半拍) → 𝅘𝅥 (一拍切分音) → 𝅘𝅥𝅮 (半拍) 】 | 哒 (Down) 哒~ (Up, prolonging over Next Down) 哒 (Up)',
+      explanation: '八分音符占1拍的一半，四分音符占1整拍。由于中间的四分音符过长，直接抹杀了第二拍本该落下的稳定地基，将势能强行挂在半空，极具跳跃感。',
+      notes: [
+        { pitch: 261.63, step: 0, durationSteps: 2, name: 'C4' }, // 8th note
+        { pitch: 329.63, step: 2, durationSteps: 4, name: 'E4', isAccent: true }, // Quarter note (Syncopated) - starts on offbeat index 2, spans through step 5
+        { pitch: 392.00, step: 6, durationSteps: 2, name: 'G4' }, // 8th note
+        // Beat 3 & 4: standard reference
+        { pitch: 349.23, step: 8, durationSteps: 4, name: 'F4' }, // Quarter note
+        { pitch: 392.00, step: 12, durationSteps: 4, name: 'G4' } // Quarter note
+      ]
+    },
+    tie: {
+      id: 'tie',
+      title: '延音线切分 (Tie-Induced Syncopation)',
+      subtitle: '用跨拍连线强行吃掉下一拍的正拍能量',
+      description: '钢琴键盘、弦乐重奏极度宠爱的顶级切分方式。在一个弱拍或弱分音符上击键，并用「延音线（Tie）」将其与下一个强拍的正拍音符牢牢连结在一起。在强拍到来时，钢琴琴槌不击弦，但由于连线的延音作用，声波依然在轰鸣，使原本应当在第一拍、第三拍落下的核心安定重心，变成一个奇妙的“真空静止”。',
+      sheetFormula: '【 𝅘𝅥 (正拍响)  ￣￣ [ 连线延伸过第三正拍 ] ￣￣ 𝅘𝅥 (弱拍延音) 】',
+      explanation: '连结不击发！在原本重音位置强迫大脑产生瞬间的“失重悬浮”，并在下一个弱拍得到解脱。',
+      notes: [
+        { pitch: 329.63, step: 0, durationSteps: 4, name: 'E4' }, // Quarter note
+        { pitch: 392.00, step: 4, durationSteps: 4, name: 'G4', isTieStart: true }, // Quarter note leading into 3rd beat
+        { pitch: 392.00, step: 8, durationSteps: 4, name: 'G4', isTieEnd: true }, // tied part, doesn't re-strike
+        { pitch: 440.00, step: 12, durationSteps: 4, name: 'A4' } // Quarter
+      ]
+    },
+    rest: {
+      id: 'rest',
+      title: '休止符切分 (Rest-Induced / 强起空拍)',
+      subtitle: '以虚代实，强拍静默，灵魂于弱拍苏醒',
+      description: '彻底的留白艺术。直接把第一拍或核心强音的正下拍换成一个「休止符」。正常情况下，人类本能会在小节最开头获得最强的脚部锚定音。此处故意“一脚踩空”，反面将所有的旋律和响度堆砌到随后的弱拍上，好似身体失去了惯性，往前扑倒，爆发出惊人的爵士与现代律动。',
+      sheetFormula: '【 𝄾 (八分休止) → 𝅘𝅥 (强弹) → 𝅘𝅥𝅮 (常规弱) 】',
+      explanation: '强拍处出现“无声的叹息（休止）”，而原本默默无闻的弱半拍却砸出了雷霆万钧的重音，反差极其震撼。',
+      notes: [
+        { pitch: 0, step: 0, durationSteps: 2, name: 'Rest', isRestOutline: true }, // Eighth rest
+        { pitch: 349.23, step: 2, durationSteps: 4, name: 'F4', isAccent: true }, // Starts on step 2 (offbeat)
+        { pitch: 392.00, step: 6, durationSteps: 2, name: 'G4' },
+        { pitch: 440.00, step: 8, durationSteps: 4, name: 'A4' },
+        { pitch: 523.25, step: 12, durationSteps: 4, name: 'C5' }
+      ]
+    },
+    accent: {
+      id: 'accent',
+      title: '重音记号切分 (Accent-Induced Syncopation)',
+      subtitle: '正牌力度对置：弱弱之地的核弹重击',
+      description: '这是古典主义大师（如贝多芬）最震撼的乐理调遣手段。时值（音符家族的长度）与音符位置（小节节点）都是一模一样的平润状态。但作曲家故意在应当极其安静的弱拍（比如4/4拍的第二拍或第四拍，甚至那些极碎的十六分弱位）头上，盖下一个狂野怒吼的「重音记号 (＞, sfz)」。直接以暴力的力度颠覆重音序列。',
+      sheetFormula: '【 𝅘𝅥 (常规弹) 𝅘𝅥 (＞ 爆裂重击) 𝅘𝅥 (常规弹) 𝅘𝅥 (＞ 爆裂重击) 】',
+      explanation: '强弱强弱的经典架构，硬生生被扭成了：弱 - 强！ - 弱 - 强！这是敲碎宁静、点亮乐章爆发力的最直接乐理方式。',
+      notes: [
+        { pitch: 261.63, step: 0, durationSteps: 4, name: 'C4' }, 
+        { pitch: 392.00, step: 4, durationSteps: 4, name: 'G4', isAccent: true }, // Hard Accent on beat 2
+        { pitch: 329.63, step: 8, durationSteps: 4, name: 'E4' },
+        { pitch: 440.00, step: 12, durationSteps: 4, name: 'A4', isAccent: true } // Hard Accent on beat 4
+      ]
+    }
+  };
 
-  // --- INTERACTIVE TAP GAME: SYNCOPATION TRAINER ---
-  const handleTrainerTap = () => {
-    if (!trainerActive) return;
-    initAudio();
+  // FM electric piano synthesiser simulating Rhodes metallic warm strings
+  const playTheoryPianoTone = (ctx: AudioContext, freq: number, startTime: number, duration: number, isAccent: boolean = false) => {
+    if (freq === 0) return; // Rest
+    
+    // Create FM structure
+    const carrier = ctx.createOscillator();
+    const modulator = ctx.createOscillator();
+    const modGain = ctx.createGain();
+    const mainGain = ctx.createGain();
 
-    // Trigger instant beautiful playclick audio blip
-    if (audioCtxRef.current) {
-      const osc = audioCtxRef.current.createOscillator();
-      const gain = audioCtxRef.current.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtxRef.current.destination);
-      osc.frequency.setValueAtTime(1100, audioCtxRef.current.currentTime);
-      gain.gain.setValueAtTime(0.12, audioCtxRef.current.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtxRef.current.currentTime + 0.05);
-      osc.start();
-      osc.stop(audioCtxRef.current.currentTime + 0.07);
+    carrier.connect(mainGain);
+    modulator.connect(modGain);
+    modGain.connect(carrier.frequency);
+    mainGain.connect(ctx.destination);
+
+    // Warm, metallic attack
+    const index = isAccent ? 450 : 180;
+    const modFreq = freq * 1.5; // Harmonic multiplier
+
+    carrier.type = 'sine';
+    carrier.frequency.setValueAtTime(freq, startTime);
+
+    modulator.type = 'sine';
+    modulator.frequency.setValueAtTime(modFreq, startTime);
+
+    modGain.gain.setValueAtTime(index, startTime);
+    modGain.gain.exponentialRampToValueAtTime(1, startTime + duration * 0.5);
+
+    // Dynamic Attack/Decay envelope
+    const maxVolume = (volumeRef.current / 100) * (isAccent ? 0.35 : 0.2);
+    mainGain.gain.setValueAtTime(0, startTime);
+    mainGain.gain.linearRampToValueAtTime(maxVolume, startTime + 0.008); // responsive snap
+    mainGain.gain.exponentialRampToValueAtTime(0.002, startTime + duration - 0.02);
+
+    carrier.start(startTime);
+    modulator.start(startTime);
+    carrier.stop(startTime + duration);
+    modulator.stop(startTime + duration);
+  };
+
+  // Play standard metronome "tick" to guide the user's ears to the "eating of downbeats"
+  const playMetronomeTick = (ctx: AudioContext, time: number, beat: number) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const isDownbeat = beat === 0;
+    osc.frequency.setValueAtTime(isDownbeat ? 1000 : 600, time);
+    
+    const metVolume = (volumeRef.current / 100) * 0.06; // Quiet background guide pulse
+    gain.gain.setValueAtTime(metVolume, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+    
+    osc.start(time);
+    osc.stop(time + 0.05);
+  };
+
+  // Scheduler mechanism for Core Theory Demos
+  const startDemoPlayback = async () => {
+    // Lazy initialize AudioContext
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
     }
 
-    const currentBpm = bpm;
-    // For Class Eighth Syncopation trainer: the TARGET of offbeats (Beats 1& / 3&) 
-    // occurs at interval offset: (60 / BPM) / 2 = half-beat distance.
-    const beatIntervalSec = 60.0 / currentBpm;
-    const halfBeatIntervalSec = beatIntervalSec / 2.0;
+    setIsPlaying(true);
+    isPlayingRef.current = true;
+    stepIndexRef.current = 0;
 
-    const nowSecs = performance.now() / 1000;
-    if (lastTrainerTapRef.current === 0) {
-      lastTrainerTapRef.current = nowSecs;
-      setTrainerFeedback('很好！开始感知下一小节弱音切分拍，连续、匀称地在空位点按...');
-      setFeedbackColor('text-blue-600 font-bold');
-      setFeedbackOffset('');
+    const secondsPer16th = (60.0 / bpmRef.current) / 4.0;
+    nextStepTimeRef.current = ctx.currentTime + 0.05;
+    startTimeRef.current = nextStepTimeRef.current;
+
+    runSchedulerLoop();
+  };
+
+  const runSchedulerLoop = () => {
+    if (!audioCtxRef.current || !isPlayingRef.current) return;
+    const ctx = audioCtxRef.current;
+    const scheduleAhead = 0.15; // Schedule 150ms ahead
+    const secondsPer16th = (60.0 / bpmRef.current) / 4.0;
+
+    const activeDemo = THEORY_DEMOS[activeTab];
+
+    while (nextStepTimeRef.current < ctx.currentTime + scheduleAhead) {
+      const stepIdx = stepIndexRef.current % 16;
+      const beat = Math.floor(stepIdx / 4);
+      const isFirst16thOfBeat = stepIdx % 4 === 0;
+
+      // 1. Play background metronome click strictly on standard main beats (1, 2, 3, 4)
+      if (isFirst16thOfBeat) {
+        playMetronomeTick(ctx, nextStepTimeRef.current, beat);
+      }
+
+      // 2. Play active demo notes matching this 16th step
+      activeDemo.notes.forEach((note) => {
+        // If a standard note lands exactly on this 16th step index
+        if (note.step === stepIdx) {
+          // If it's a tie end, we do NOT restrike the note, because it's sustaining
+          if (note.isTieEnd) {
+            return;
+          }
+          const noteDurationSec = note.durationSteps * secondsPer16th;
+          playTheoryPianoTone(ctx, note.pitch, nextStepTimeRef.current, noteDurationSec, note.isAccent);
+        }
+      });
+
+      // Update UI thread synchronously via a delay trigger
+      const currentStepToSync = stepIdx;
+      const currentBeatToSync = beat + 1;
+      const stepTimeDiff = nextStepTimeRef.current - ctx.currentTime;
+
+      setTimeout(() => {
+        if (isPlayingRef.current) {
+          setActive16thStep(currentStepToSync);
+          if (isFirst16thOfBeat) {
+            setBeatPulse(currentBeatToSync);
+          }
+        }
+      }, Math.max(0, stepTimeDiff * 1000));
+
+      nextStepTimeRef.current += secondsPer16th;
+      stepIndexRef.current++;
+    }
+
+    timerIDRef.current = window.setTimeout(runSchedulerLoop, 25);
+  };
+
+  const stopDemoPlayback = () => {
+    setIsPlaying(false);
+    isPlayingRef.current = false;
+    setActive16thStep(-1);
+    setBeatPulse(0);
+    if (timerIDRef.current) {
+      window.clearTimeout(timerIDRef.current);
+      timerIDRef.current = null;
+    }
+  };
+
+  const handleDemoToggle = () => {
+    if (isPlaying) {
+      stopDemoPlayback();
+    } else {
+      startDemoPlayback();
+    }
+  };
+
+  // When switching tabs, immediately halt playback to prevent bleed
+  const selectTheoryTab = (tab: SyncopationType) => {
+    stopDemoPlayback();
+    setActiveTab(tab);
+  };
+
+
+  // --- PUZZLE: RHYTHMIC MATH BLOCK CONSTRUCTOR METHODS ---
+  // Add a rhythmic brick to the measure
+  const handleAddBlock = (block: typeof BLOCKS_CATALOG[0]) => {
+    if (puzzlePlaying) return;
+    
+    // Calculate current total steps
+    const currentTotal = puzzleGrid.reduce((sum, item) => sum + item.duration, 0);
+    const newTotal = currentTotal + block.duration;
+
+    if (newTotal > 16) {
+      setPuzzleMessage(`🚫 警告：无法放入！放入此音符总时值将达到 ${newTotal} 步，超过了一小节 4/4 拍的最大容量（16 步六分音符 / 4个整拍）。`);
+      setPuzzleValid(false);
       return;
     }
 
-    const actualDiff = nowSecs - lastTrainerTapRef.current;
-    lastTrainerTapRef.current = nowSecs;
+    const updatedGrid = [...puzzleGrid, block];
+    setPuzzleGrid(updatedGrid);
+    evaluateRhythmSyncopation(updatedGrid);
+  };
 
-    // Calculate error distance to the nearest target off-beat (half-beat or whole-beat syncopation)
-    // In our trainer, we want the user to tap at the offbeat (half-beat interval, i.e., 1.5, 2.5 times beatInterval)
-    const subdivisionFit = actualDiff / halfBeatIntervalSec;
-    const roundedFit = Math.round(subdivisionFit);
+  // Remove a block by index
+  const handleRemoveBlock = (index: number) => {
+    if (puzzlePlaying) return;
+    const updatedGrid = [...puzzleGrid];
+    updatedGrid.splice(index, 1);
+    setPuzzleGrid(updatedGrid);
+    evaluateRhythmSyncopation(updatedGrid);
+  };
+
+  const handleClearBlocks = () => {
+    if (puzzlePlaying) return;
+    setPuzzleGrid([]);
+    setPuzzleValid(null);
+    setPuzzleMessage('小节虚位以待，请点击上方时值乐章，拼装出一个纯正的「切分律动」！目标总跨度：16 步（一小节）。');
+  };
+
+  // Rhythmic validation algorithm assessing "Music Theory Authenticity"
+  // Does this mathematical summation contain syncopation?
+  const evaluateRhythmSyncopation = (grid: Array<typeof BLOCKS_CATALOG[0]>) => {
+    const totalDuration = grid.reduce((sum, item) => sum + item.duration, 0);
     
-    // We only reward click when they align to an ODD index of rounded fit (which are the Off-beats!)
-    // For example: 1.0 is beat& (offbeat), 2.0 is beat (onbeat), 3.0 is offbeat etc.
-    const isOffbeatHit = roundedFit % 2 !== 0;
-
-    const targetInterval = roundedFit * halfBeatIntervalSec;
-    const errorSecs = actualDiff - targetInterval;
-    const errorPercent = Math.abs(errorSecs) / halfBeatIntervalSec;
-
-    let pointsEarned = 0;
-    let desc = '';
-    let col = '';
-    let offsetMsg = `${(errorSecs * 1000).toFixed(0)} 毫秒`;
-
-    if (!isOffbeatHit) {
-      desc = '❌ 踩在大重拍正拍上了！切分点应该打在两拍正拍之间的“半空卡位”中。';
-      col = 'text-rose-500 font-semibold';
-      setTrainerStreak(0);
-    } else if (errorPercent < 0.12) {
-      pointsEarned = 20;
-      desc = '🔥 完美切分! (Perfect) 身体凹槽感与抗力堪称现场级！';
-      col = 'text-amber-500 font-black scale-105';
-    } else if (errorPercent < 0.24) {
-      pointsEarned = 10;
-      desc = '👍 优秀卡准! (Good) 抢位非常准，肢体平衡感绝佳！';
-      col = 'text-green-600 font-bold';
-    } else {
-      desc = errorSecs > 0 ? '🐢 切分微慢，有点往下掉。' : '🐇 拍急了！平稳呼吸，把声音悬空在中间。';
-      col = 'text-stone-500';
-      setTrainerStreak(0);
+    if (grid.length === 0) {
+      setPuzzleMessage('搭积木：点击时值板块在小节内添加符号。时值之和必须精确等于 16。');
+      setPuzzleValid(null);
+      return;
     }
 
-    if (pointsEarned > 0) {
-      setTrainerScore(prev => prev + pointsEarned);
-      setTrainerStreak(prev => prev + 1);
+    if (totalDuration < 16) {
+      setPuzzleMessage(`🎼 节拍时值拼装中：当前总厚度 ${totalDuration}/16 步（已填满 ${(totalDuration/4).toFixed(1)} 拍）。还需要 ${16 - totalDuration} 步来闭合此小节！`);
+      setPuzzleValid(null);
+      return;
     }
 
-    setTrainerFeedback(desc);
-    setFeedbackColor(col);
-    setFeedbackOffset(isOffbeatHit ? (errorSecs > 0 ? `偏慢 ${offsetMsg}` : `偏快 ${offsetMsg}`) : '完全偏离切分点');
-  };
+    // Exact measure closure (16 sixteenth steps)
+    // Now execute music theory syncopative inspection:
+    // Syncopation exists if an elongated note crosses a normal metric heavy division (8, or 4/12) without restrikes on those strong beats.
+    // Let's map note entry steps in time:
+    let currentStep = 0;
+    const noteOnsets: number[] = [];
+    const noteSpans: Array<{start: number, end: number, duration: number}> = [];
 
-  const toggleTrainerGame = () => {
-    if (trainerActive) {
-      setTrainerActive(false);
-      lastTrainerTapRef.current = 0;
-      setTrainerStreak(0);
-    } else {
-      setTrainerActive(true);
-      setTrainerScore(0);
-      setTrainerStreak(0);
-      lastTrainerTapRef.current = 0;
-      setTrainerFeedback('嗒-（空）-嗒-（空）... 切分速度已锁定，请在每一次正拍弱拍边缘敲出切分力！');
-      setFeedbackColor('text-amber-600 font-bold animate-pulse');
-      setFeedbackOffset('');
-    }
-  };
+    grid.forEach((block) => {
+      noteOnsets.push(currentStep);
+      noteSpans.push({ start: currentStep, end: currentStep + block.duration, duration: block.duration });
+      currentStep += block.duration;
+    });
 
-  // Keyboard Space support for trainers
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        handleTrainerTap();
+    // Check if intermediate notes trigger a "Crossover suspension"
+    // Standard metric subdivisions for 4/4 are steps: 0 (beat 1), 4 (beat 2), 8 (beat 3), 12 (beat 4).
+    // Specifically, steps 4, 8, 12 are heavy downbeats.
+    // If a note starts on an offbeat (e.g. 2, 6, 10) and has a duration that goes *over* a heavy downbeat, it causes syncopation!
+    let foundSyncopation = false;
+    let syncTypeMsg = '';
+
+    noteSpans.forEach((span) => {
+      // Is start position an offbeat?
+      const isStartOffbeat = span.start % 4 !== 0;
+      
+      // Does it scale over a main beat boundary?
+      // Main boundaries inside a bar: 4, 8, 12.
+      const boundaryCrossed = [4, 8, 12].some(boundary => 
+        span.start < boundary && span.end > boundary
+      );
+
+      if (isStartOffbeat && boundaryCrossed) {
+        foundSyncopation = true;
+        syncTypeMsg = `在第 ${(span.start / 4 + 1).toFixed(1)} 拍检测到【时值前推跨拍切分】！本该在强拍落下的重音，提前在 ${span.start} 步击弦，并延音吞噬了接下来的整拍重心。`;
       }
-    };
-    if (trainerActive) {
-      window.addEventListener('keydown', handleKeyDown);
+    });
+
+    // High level secondary check: Classical "3-3-2 Clave / Tresillo" pattern
+    // Occurs when blocks have durations 3, 3, 2 or similar off-ratio structures.
+    const durations = grid.map(b => b.duration);
+    const hasTresilloRatio = durations.join('-').includes('3-3-2') || durations.join('-').includes('3-3-4-6') || durations.join('-').includes('3-3');
+    
+    if (hasTresilloRatio) {
+      foundSyncopation = true;
+      syncTypeMsg = '🧬 乐学系统惊叹：您拼出了风靡加勒比海与现代神曲的 3+3+2 特种复节奏切分！奇律切分判定完美通过！';
     }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [trainerActive, bpm]);
 
-
-  // --- QUIZ GAME ACTIONS ---
-  const handleAnswerSubmit = (optionIdx: number) => {
-    if (showAnswer) return;
-    setSelectedOption(optionIdx);
-    setShowAnswer(true);
-    if (optionIdx === quizQuestions[currentQuestion].correctIndex) {
-      setScore(prev => prev + 1);
+    if (foundSyncopation) {
+      setPuzzleValid(true);
+      setPuzzleMessage(`🎉 乐理验证通过！${syncTypeMsg} 此乐谱具有绝佳弹性气场。点击下方「视听钢琴弹奏」体验你的杰作！`);
+    } else {
+      setPuzzleValid(false);
+      setPuzzleMessage('🧐 小节闭合成功但并无切分音效：这组时值完全沿袭了「常规规整对齐」规则（强拍都在正下拍重新击发了），大脑无法感到任何抗重力失重。尝试在奇数位（例如八分音符后面拼接四分音符）打乱它！');
     }
   };
 
-  const handleNextQuestion = () => {
+  // Play the user's custom created rhythmic math formula using beautiful piano tones!
+  const playCustomRhythmScore = async () => {
+    if (puzzleGrid.length === 0 || puzzlePlaying) return;
+    
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
+    setPuzzlePlaying(true);
+    let currentTime = ctx.currentTime + 0.1;
+    const secondsPer16th = (60.0 / bpm) / 4.0;
+
+    // Harmonic progression to make it sound like a beautiful piano cadence!
+    const harmonicNotes = [
+      261.63, // C4
+      329.63, // E4
+      392.00, // G4
+      523.25, // C5
+      440.00, // A4
+      349.23, // F4
+      329.63, // E4
+      261.63  // C4
+    ];
+
+    let current16thStep = 0;
+    
+    puzzleGrid.forEach((block, idx) => {
+      // Background metronome pulse
+      const beatsCrossed = Math.floor(current16thStep / 4);
+      playMetronomeTick(ctx, currentTime, beatsCrossed);
+
+      // Play FM Piano note with shifting pitch from our harmonic array
+      const pitch = harmonicNotes[idx % harmonicNotes.length];
+      const durationSec = block.duration * secondsPer16th;
+      
+      // Is this note syncopated?
+      const isStartOffbeat = current16thStep % 4 !== 0;
+      const crossesMainBeat = [4, 8, 12].some(b => current16thStep < b && (current16thStep + block.duration) > b);
+      const isSyncopatedAccent = isStartOffbeat && crossesMainBeat;
+
+      playTheoryPianoTone(ctx, pitch, currentTime, durationSec - 0.01, isSyncopatedAccent);
+
+      // Advance
+      currentTime += durationSec;
+      current16thStep += block.duration;
+    });
+
+    // Schedule stop state in UI
+    setTimeout(() => {
+      setPuzzlePlaying(false);
+    }, (16 * secondsPer16th) * 1000 + 400);
+  };
+
+
+  // --- DEEP THEORY QUIZ: ADVANCED CONCEPTS ---
+  const QUIZ_QUESTIONS = [
+    {
+      question: '在钢琴独奏中，如果我们把原属第4拍弱拍的八分音符，与下一个小节第1拍强拍用延音线（Tie）强行连结，在第1拍不重新击弦，这在乐理上称为什么？',
+      options: [
+        '跨小节切分 (Syncopation Across Bar-lines)，由于消融了小节线重音，带来极度自由的前冲感',
+        '装饰性倚音 (Appoggiatura)，只是简单的和弦外音延沓作用',
+        '阻碍终止 (Deceptive Cadence)，它强行改变了属和弦到主和弦的调性进行路线',
+        '等音转换 (Enharmonic change)，只是在拼写上改变了音符而实际声音完全一样'
+      ],
+      correctIndex: 0,
+      explanation: '当延音线横跨小节线（Bar-line）时，音乐最神圣的第一拍重音直接陷于无声，听众在最坚实的着陆点瞬间悬浮，把前一小节末尾的悬置力撕扯到了最大，这是李斯特、贝多芬极爱用的技法。'
+    },
+    {
+      question: '经典的 𝅘𝅥𝅮 (八分) - 𝅘𝅥 (四分) - 𝅘𝅥𝅮 (八分) 形式的「大切分音符」，在数学和时值的内部契合上为什么能够颠覆重音序列？',
+      options: [
+        '因为它破坏了一小节的总节拍数，使小节塞进了超过正常范围的多余拍值',
+        '因为中间的四分音符起奏于“弱分拍（第一拍的后半个八分音符）”，且时值长达整整一拍，完全跨越遮盖了第二正拍，吃掉了重位',
+        '因为第二下打击发出了极速尖锐的高频噪音，迫使大脑无法接受',
+        '因为中间的四分音符必须采用不协和的半音阶进行，从而瓦解阶名'
+      ],
+      correctIndex: 1,
+      explanation: '八分音符占0.5拍，四分音符占1拍。序列起奏在 0.5 拍位置，由于时值是1拍，其保持长度一直到 1.5 拍处。因而第 1.0 拍（原本应当砸下第二声重音的大正拍）被这个持续发声的四分音符彻底强占，大脑在正拍踩空，切分音宣告诞生！'
+    },
+    {
+      question: '以下关于「休止符切分」与「常规弱起拍（Anacrusis）」的乐理对比，哪一项是完全正确的？',
+      options: [
+        '休止符切分必须要求小节的第一拍强拍处于寂静中（休止），而旋律在弱位瞬间点亮重音；而常规弱起则是小节前的单独筹备性弱拍，不颠覆主拍重心',
+        '两者完全没有区别，在德奥乐派的五线谱中它们采用同一套缩写记号',
+        '休止符切分只适用于打击乐乐器，而在钢琴或大型协奏曲中是不被允许的',
+        '常规弱起只有在弹奏黑色琴键时才能触发，属于转调乐理，而切分音是纯白旋律'
+      ],
+      correctIndex: 0,
+      explanation: '弱起（Anacrusis / 起拍）一般是指在第一小节前多出的不成节拍的引子，强音依然会重重砸在第一小节的第一拍；而休止符切分发生于完整的小节内，故意在原本应该砸响重音的人类本脑预期点（正拍）安放寂静，让人重心前倾。'
+    }
+  ];
+
+  const handleQuizAnswer = (idx: number) => {
+    if (showAnswer) return;
+    setSelectedOption(idx);
+    setShowAnswer(true);
+    if (idx === QUIZ_QUESTIONS[quizQuestion].correctIndex) {
+      setQuizScore(s => s + 1);
+    }
+  };
+
+  const handleNextQuiz = () => {
     setSelectedOption(null);
     setShowAnswer(false);
-    if (currentQuestion + 1 < quizQuestions.length) {
-      setCurrentQuestion(prev => prev + 1);
+    if (quizQuestion + 1 < QUIZ_QUESTIONS.length) {
+      setQuizQuestion(prev => prev + 1);
     } else {
       setQuizFinished(true);
     }
   };
 
   const resetQuiz = () => {
-    setCurrentQuestion(0);
+    setQuizQuestion(0);
     setSelectedOption(null);
     setShowAnswer(false);
-    setScore(0);
+    setQuizScore(0);
     setQuizFinished(false);
   };
 
-  const currentPattern = PATTERNS[activePatternId];
 
   return (
-    <div className="space-y-10 pb-20 max-w-5xl mx-auto px-1">
-      {/* Premium Header */}
-      <header className="animate-slideUp">
-        <div className="inline-block px-4 py-1.5 bg-gradient-to-r from-amber-500 to-red-500 text-white rounded-full text-xs font-black tracking-widest uppercase mb-4 shadow-sm">
-          LEVEL 4 - 节奏高级张力专题 (Syncopation)
+    <div className="space-y-8 pb-16 animate-fadeIn max-w-6xl mx-auto px-4 text-stone-800">
+      
+      {/* HEADER: High-End Minimal Ivory & Charcoal Slate Banner */}
+      <header className="p-8 md:p-12 rounded-3xl bg-neutral-900 border border-neutral-800 text-white relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
+        
+        <div className="relative z-10 space-y-4">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold tracking-widest uppercase">
+            <Compass size={13} className="text-amber-400" /> MUSIC THEORY ACADEMY • 乐理专精工坊
+          </span>
+          <h1 className="text-3xl md:text-5xl font-black font-serif text-white leading-snug tracking-wide">
+            切分音乐理：失重悬浮与节拍的几何抗衡
+          </h1>
+          <p className="text-base text-neutral-300 font-light max-w-3xl leading-relaxed">
+            切分音（Syncopation）并不是简单的把速度变快，而是<strong>乐理对听众大脑节拍重力的无形拆卸</strong>。本单通过五线谱视听对照、钢琴时值积木拼接验证、高级和弦延音拆解，帮您真正吃透「强拍缺失、弱拍称王」的钢琴美学奥理。
+          </p>
         </div>
-        <h2 className="text-4xl md:text-5xl font-black serif text-stone-900 mb-4 tracking-tight flex items-center gap-3">
-          <Zap className="text-amber-500 animate-pulse" size={36} /> 切分音的重力转移：击碎规则，拥抱摇摆
-        </h2>
-        <p className="text-lg text-stone-600 font-light max-w-3xl leading-relaxed">
-          切分音是音乐中的“反叛力”。它通过<strong>强行转移重拍位置</strong>、或是将重音放置于最意想不到的弱拍位，打破身体原本机械的重力平衡，产生一股想要不停起飞、跳跃的强烈律动动能。
-        </p>
       </header>
 
-      {/* Tabs Menu */}
-      <div className="flex bg-stone-100 p-1.5 rounded-2xl md:max-w-md shadow-inner border border-stone-200">
-        <button
-          onClick={() => { setActiveTab('visual'); stopEngine(); }}
-          className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 transition-all ${
-            activeTab === 'visual' ? 'bg-white text-stone-900 shadow-md scale-[1.02]' : 'text-stone-500 hover:text-stone-800'
-          }`}
-        >
-          <Sparkles size={15} /> 逆重力运动轨迹
-        </button>
-        <button
-          onClick={() => { setActiveTab('trainer'); stopEngine(); }}
-          className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 transition-all ${
-            activeTab === 'trainer' ? 'bg-white text-stone-900 shadow-md scale-[1.02]' : 'text-stone-500 hover:text-stone-800'
-          }`}
-        >
-          <Gamepad2 size={15} /> 体感强弱校对
-        </button>
-        <button
-          onClick={() => { setActiveTab('masterpieces'); stopEngine(); }}
-          className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 transition-all ${
-            activeTab === 'masterpieces' ? 'bg-white text-stone-900 shadow-md scale-[1.02]' : 'text-stone-500 hover:text-stone-800'
-          }`}
-        >
-          <BookOpen size={15} /> 巨匠切分图谱
-        </button>
-        <button
-          onClick={() => { setActiveTab('quiz'); stopEngine(); }}
-          className={`flex-1 py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 transition-all ${
-            activeTab === 'quiz' ? 'bg-white text-stone-900 shadow-md scale-[1.02]' : 'text-stone-500 hover:text-stone-800'
-          }`}
-        >
-          <Trophy size={15} /> 实力水平挑战
-        </button>
-      </div>
-
-      {/* TAB 1: Visual and sound stage */}
-      {activeTab === 'visual' && (
-        <div className="space-y-8 animate-fadeIn">
-          {/* Main Visualizer Stage */}
-          <div className="bg-white rounded-3xl p-6 md:p-8 border border-stone-200 shadow-lg relative overflow-hidden">
-            {/* Background luxury gradient glow */}
-            <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-amber-50 to-transparent opacity-60"></div>
-
-            <div className="relative z-10 flex flex-col lg:flex-row gap-8">
-              {/* Left Side: Rhythmic displacement details & explanation */}
-              <div className="w-full lg:w-1/3 flex flex-col items-center bg-stone-50 p-6 rounded-2xl border border-stone-200 animate-slideUp">
-                <span className="text-[10px] uppercase tracking-widest text-stone-400 font-bold mb-4">重力中心横向移位</span>
-
-                <div className="flex flex-col items-center relative py-6 px-10 bg-white rounded-2xl border border-stone-100 shadow-sm w-full max-w-[14rem]">
-                  <div className="text-[10px] font-black text-amber-500 leading-none mb-1 select-none tracking-widest bg-amber-50 px-2 py-1 rounded-full border border-amber-100">
-                    打破常规下拍
-                  </div>
-
-                  <div className="text-3xl font-sans font-black text-stone-800 leading-none my-4 select-none flex items-center">
-                    弱拍 <ChevronRight size={20} className="text-amber-500 animate-ping" /> 强音
-                  </div>
-
-                  <div className="text-[10px] font-black text-stone-500 leading-none mt-1 select-none tracking-widest bg-stone-100 px-3 py-1.5 rounded-full">
-                    延音跨越强拍骨架
-                  </div>
-                </div>
-
-                <div className="mt-6 w-full space-y-3.5 text-xs text-stone-600 leading-relaxed">
-                  <div className="bg-white p-4 rounded-xl border border-stone-150 shadow-sm">
-                    <span className="block font-bold text-stone-800 text-xs mb-1">“悬空”心理学</span>
-                    当乐音在强拍（1、3拍）前击响并廷时，原本该受到重击的强拍瞬间成了“空的”。大脑会体验到一种轻微的、由于重力未按时着陆而产生的<strong>悬空兴奋感</strong>。
-                  </div>
-                  <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-100">
-                    <span className="block font-bold text-amber-900 text-xs mb-1">训练小窍门 (Anti-gravity)</span>
-                    弹切分音时，手部可以极其松弛地在空中划一个弧线，反向去借用身体打拍子的下坠阻力。这就是爵士钢琴中的 “Air-Bounce” 感。
-                  </div>
-                </div>
+      {/* SECTION 1: THE ACTIVE THEORY SCORE DEMO BOARD */}
+      <section className="bg-white rounded-3xl border border-stone-200 shadow-xl overflow-hidden grid lg:grid-cols-12">
+        
+        {/* Left Column (Theory Tab Navigation & Deep Descriptions): 4 slots */}
+        <div className="lg:col-span-5 bg-stone-50 p-8 border-r border-stone-200 flex flex-col justify-between space-y-6">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xs font-black uppercase tracking-widest text-stone-400 mb-3 flex items-center gap-1.5">
+                <BookOpen size={13} /> 切分音四大基本乐理架构
+              </h2>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.keys(THEORY_DEMOS) as SyncopationType[]).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => selectTheoryTab(type)}
+                    className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                      activeTab === type 
+                        ? 'bg-amber-500 border-amber-600 text-neutral-950 font-bold shadow-md shadow-amber-500/10' 
+                        : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-100 hover:border-stone-300'
+                    }`}
+                  >
+                    <span className="text-[10px] uppercase tracking-wider opacity-85">
+                      {type === 'duration' ? '时值切分' : type === 'tie' ? '延音线切分' : type === 'rest' ? '休止切分' : '重音切分'}
+                    </span>
+                    <span className="text-xs font-black mt-1 line-clamp-1">
+                      {type === 'duration' ? '大切分式' : type === 'tie' ? '跨拍延音' : type === 'rest' ? '留白呼吸' : '弱拍爆破'}
+                    </span>
+                  </button>
+                ))}
               </div>
+            </div>
 
-              {/* Right Column: Visual bounce curves & sound controls */}
-              <div className="w-full lg:w-2/3 flex flex-col gap-6 justify-between">
-                <div>
-                  <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-stone-200 pb-4 mb-4 gap-3">
-                    <div>
-                      <h3 className="text-2xl font-bold font-serif text-stone-900">
-                        {currentPattern.chineseName}
-                      </h3>
-                      <p className="text-xs text-stone-400 font-medium mt-1 leading-relaxed max-w-md">{currentPattern.description}</p>
-                    </div>
-
-                    <div className="flex bg-stone-100 p-1 rounded-xl shrink-0 self-start md:self-auto">
-                      {(['classic', 'anticipation', 'tresillo'] as SyncopationType[]).map((pat) => (
-                        <button
-                          key={pat}
-                          onClick={() => handlePatternChange(pat)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
-                            activePatternId === pat 
-                              ? 'bg-amber-500 text-stone-950 shadow-sm' 
-                              : 'text-stone-500 hover:text-stone-900'
-                          }`}
-                        >
-                          {pat === 'classic' ? '经典切分' : pat === 'anticipation' ? '前推十六分' : '拉丁3-3-2'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* HIGH PERFORMANCE TRAJECTORY CANVAS STAGE */}
-                  <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 relative min-h-[18rem] flex flex-col items-center justify-center overflow-hidden shadow-inner">
-                    <div className="absolute top-3 left-4 flex gap-1.5 z-20">
-                      <div className="text-[10px] text-white/50 bg-white/10 px-2.5 py-1 rounded-full font-mono font-bold select-none">
-                        当前小节细分：16 步
-                      </div>
-                    </div>
-
-                    <canvas 
-                      ref={canvasRef} 
-                      className="w-full h-48 block bg-transparent"
-                      style={{ touchAction: 'none' }}
-                    />
-
-                    {/* Accent Guides panel */}
-                    <div className="w-full mt-4 flex items-center justify-between px-3 text-[10px] font-mono text-stone-400 select-none">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-slate-600"></span> 脉冲参考轨 (Steady Pulse Beat)
-                      </span>
-                      <span className="flex items-center gap-1.5 text-amber-400 font-medium">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> 逆向切分波 (Syncopated Gravity Arc)
-                      </span>
-                    </div>
-
-                    {!isPlaying && (
-                      <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center select-none z-10 transition-opacity">
-                        <div className="w-14 h-14 rounded-full bg-amber-500 text-stone-950 flex items-center justify-center shadow-lg hover:scale-105 transition-transform cursor-pointer" onClick={startEngine}>
-                          <Play size={28} fill="currentColor" className="ml-1" />
-                        </div>
-                        <p className="text-white font-bold text-sm mt-3">点击开启切分引擎，眼观“流线逆行轨”、耳闻“错位拉扯”</p>
-                        <p className="text-stone-400 text-xs mt-1 max-w-sm leading-relaxed">
-                          采用高保真音频合成器与平滑贝塞尔极速反弹轨迹，提供最直观的强弱反弹切分对比
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Meter controls and Reference Metronome switch */}
-                <div className="grid md:grid-cols-2 gap-4 bg-stone-100/50 p-4 rounded-xl border border-stone-200">
-                  <div className="space-y-4 text-xs font-semibold">
-                    <div>
-                      <span className="block text-stone-600 font-bold mb-1.5 text-xs">主声音组 (Sound Kits)</span>
-                      <div className="grid grid-cols-3 gap-2">
-                        {(['classic', 'electronic', 'acoustic'] as SoundKit[]).map((kit) => (
-                          <button
-                            key={kit}
-                            onClick={() => setSoundKit(kit)}
-                            className={`py-1.5 rounded-lg border font-bold capitalize transition-all ${
-                              soundKit === kit 
-                                ? 'bg-stone-900 border-stone-900 text-white shadow-sm' 
-                                : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-100'
-                            }`}
-                          >
-                            {kit === 'classic' ? '经典蜂鸣' : kit === 'electronic' ? '鼓机 808' : '实木侧击'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-stone-200">
-                      <div className="leading-tight">
-                        <span className="block text-stone-700 font-bold">参考正拍 metronome</span>
-                        <span className="block text-[10px] text-stone-400 font-medium">开启后提供平稳的背景四拍骨架</span>
-                      </div>
-                      <button
-                        onClick={() => setPlayMetronome(!playMetronome)}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-colors ${
-                          playMetronome 
-                            ? 'bg-green-600 text-white shadow-sm' 
-                            : 'bg-stone-200 text-stone-600'
-                        }`}
-                      >
-                        {playMetronome ? '开启中' : '已关闭'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <span className="flex justify-between text-xs text-stone-600 font-bold mb-1.5">
-                        <span>节拍速度 (BPM)</span>
-                        <span className="font-mono text-amber-600 text-xs font-black">{bpm} 拍/分</span>
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-stone-400">50</span>
-                        <input
-                          type="range"
-                          min="50"
-                          max="130"
-                          value={bpm}
-                          onChange={(e) => setBpm(Number(e.target.value))}
-                          className="w-full h-1 bg-stone-300 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                        />
-                        <span className="text-xs font-mono text-stone-400">130</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-1 select-none">
-                      <button
-                        onClick={togglePlay}
-                        className={`w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 border transition-all active:scale-[0.98] cursor-pointer ${
-                          isPlaying 
-                            ? 'bg-stone-900 border-stone-900 text-white shadow-lg hover:bg-stone-800' 
-                            : 'bg-amber-500 border-amber-500 text-stone-950 shadow-lg hover:bg-amber-400'
-                        }`}
-                      >
-                        {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-                        <span>{isPlaying ? '暂停切分规律律动' : '开启切分观察'}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
+            <div className="space-y-3 p-5 rounded-2xl bg-amber-50/50 border border-amber-100/80">
+              <h3 className="text-sm font-black text-amber-900 flex items-center gap-1.5">
+                <Flame size={15} className="text-amber-500" />
+                {THEORY_DEMOS[activeTab].title}
+              </h3>
+              <p className="text-xs text-stone-600 leading-relaxed font-light">
+                {THEORY_DEMOS[activeTab].description}
+              </p>
             </div>
           </div>
 
-          {/* Rhythmic Physics boxes */}
-          <div className="grid md:grid-cols-2 gap-6 leading-relaxed">
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex gap-4">
-              <div className="w-12 h-12 bg-stone-100 rounded-xl flex items-center justify-center shrink-0 border border-stone-200 text-stone-600">
-                <Footprints size={22} />
-              </div>
-              <div>
-                <h4 className="text-base font-black text-stone-900 mb-1">正拍骨架 (The On-beats) - 恒定下沉重力</h4>
-                <p className="text-xs text-stone-600">
-                  像重力铁球。每一次重击均精准击打在 1、2、3、4 拍的重力垂直落地线上。它像大理石柱般稳固有力，是人体肢体感知时间跨度的底层心理防线。
-                </p>
-              </div>
+          {/* Quick interactive stats & playback trigger */}
+          <div className="space-y-4 pt-4 border-t border-stone-200">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-stone-500 font-medium">乐理课节奏时速 (Tempo)</span>
+              <span className="font-mono text-amber-600 font-bold">{bpm} BPM</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="60"
+                max="125"
+                value={bpm}
+                onChange={(e) => setBpm(Number(e.target.value))}
+                className="w-full h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              />
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex gap-4">
-              <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center shrink-0 border border-amber-100 text-amber-500">
-                <Zap size={22} className="animate-pulse" />
-              </div>
-              <div>
-                <h4 className="text-base font-black text-stone-900 mb-1">切分音 (Syncopated) - 凌空抓捕</h4>
-                <p className="text-xs text-stone-600">
-                  像空中飞人。故意让声音在重拍到来前弹响并且保持音量，逼迫正拍处于悬空。它和正拍重力形成了一股巨大的、向上飞扬的对抗张力，这也是 Groove 的核心成分。
-                </p>
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDemoToggle}
+                className={`flex-1 py-3.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  isPlaying 
+                    ? 'bg-neutral-900 text-white shadow-inner' 
+                    : 'bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black shadow-lg shadow-amber-500/10'
+                }`}
+              >
+                {isPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                <span>{isPlaying ? '停止乐谱播放' : '播放五线谱声学解析'}</span>
+              </button>
             </div>
           </div>
         </div>
-      )}
 
-      {/* TAB 2: Trainer Game stage */}
-      {activeTab === 'trainer' && (
-        <div className="bg-white rounded-3xl p-6 md:p-8 border border-stone-200 shadow-lg animate-fadeIn max-w-3xl mx-auto space-y-8">
-          <div className="text-center space-y-2">
-            <h3 className="text-2xl font-bold serif text-stone-950 flex items-center justify-center gap-2">
-              <Gamepad2 className="text-amber-500 animate-bounce" /> 切分体感肌肉精度测试仪
-            </h3>
-            <p className="text-xs text-stone-500 max-w-xl mx-auto leading-relaxed">
-              测试你是否能抵抗强拍重力的本能磁力！测试仪会提供平稳的背景常规脉冲鼓点（强拍），你要<strong>刻意在两个正拍的正中央半空位置（弱拍切分点）进行精准拍击</strong>，看看你敲出的切分误差是多少毫秒！
+        {/* Right Column (Pure Visual Notation Vector Score): 7 slots */}
+        <div className="lg:col-span-7 p-8 flex flex-col justify-between space-y-8 bg-neutral-950 text-white">
+          <div className="flex justify-between items-center border-b border-neutral-800 pb-4">
+            <div className="flex items-center gap-2">
+              <Music className="text-amber-400" size={17} />
+              <span className="text-xs font-mono font-bold tracking-widest text-stone-400 uppercase">
+                高音谱号切分音律动分析仪 ({activeTab.toUpperCase()})
+              </span>
+            </div>
+            {/* Metronome pulse beats marker */}
+            <div className="flex gap-1.5">
+              {[1, 2, 3, 4].map((b) => (
+                <div 
+                  key={b} 
+                  className={`w-8 py-1 rounded text-[10px] font-mono font-black text-center border transition-all ${
+                    beatPulse === b 
+                      ? 'bg-amber-500 border-amber-600 text-neutral-900 scale-105' 
+                      : 'bg-neutral-900 border-neutral-800 text-stone-500'
+                  }`}
+                >
+                  拍 {b}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* DYNAMIC SVG SHEET MUSIC RENDERER */}
+          <div className="relative py-4 px-2 rounded-2xl bg-neutral-900 border border-neutral-800 flex flex-col items-center justify-center min-h-[14rem]">
+            
+            {/* Playhead line scrolling across */}
+            {isPlaying && active16thStep >= 0 && (
+              <div 
+                className="absolute top-4 bottom-4 w-0.5 bg-amber-500 shadow-lg shadow-amber-500/50 transition-all duration-75 z-20 pointer-events-none"
+                style={{ left: `${14 + (active16thStep * 5.12)}%` }} // aligned mathematically with the 16 subdivisions
+              />
+            )}
+
+            {/* Treble Clef and lines SVG */}
+            <svg viewBox="0 0 450 120" className="w-full h-auto text-white fill-current overflow-visible">
+              
+              {/* Five Ledger Lines */}
+              <line x1="20" y1="20" x2="430" y2="20" stroke="#444" strokeWidth="1.2" />
+              <line x1="20" y1="35" x2="430" y2="35" stroke="#444" strokeWidth="1.2" />
+              <line x1="20" y1="50" x2="430" y2="50" stroke="#444" strokeWidth="1.2" />
+              <line x1="20" y1="65" x2="430" y2="65" stroke="#444" strokeWidth="1.2" />
+              <line x1="20" y1="80" x2="430" y2="80" stroke="#444" strokeWidth="1.2" />
+
+              {/* Bar Lines - Start & End */}
+              <line x1="22" y1="20" x2="22" y2="80" stroke="#888" strokeWidth="2.5" />
+              {/* Measure center subdivide */}
+              <line x1="225" y1="20" x2="225" y2="80" stroke="#333" strokeWidth="1" strokeDasharray="3,3" />
+              <line x1="428" y1="20" x2="428" y2="80" stroke="#888" strokeWidth="2.5" />
+
+              {/* Treble Clef (G谱号) - Simplified elegant Vector */}
+              <path 
+                d="M 32 85 C 34 85, 36 78, 36 72 C 36 60, 26 50, 26 42 C 26 32, 34 22, 40 10 C 42 6, 44 6, 44 14 C 44 26, 38 40, 38 48 C 38 60, 48 70, 48 78 C 48 86, 38 92, 32 92 C 26 92, 22 88, 22 83" 
+                fill="none" 
+                stroke="#d1d5db" 
+                strokeWidth="2.5" 
+                strokeLinecap="round"
+              />
+
+              {/* Time signature: 4/4 */}
+              <text x="56" y="44" className="font-serif text-lg font-bold fill-neutral-300">4</text>
+              <text x="56" y="74" className="font-serif text-lg font-bold fill-neutral-300">4</text>
+
+              {/* DRAW NOTES DIRECTLY LINKED WITH activeTab DATA */}
+              {THEORY_DEMOS[activeTab].notes.map((note, index) => {
+                // Map the 16th step scale directly to X coordinates [75px to 410px]
+                const startX = 85 + (note.step * 20);
+                // Pitch determines Y coordinate
+                // Standard Treble Staff lines are at 20, 35, 50, 65, 80:
+                // C5 (523.25) -> y = 42.5 (Space 3)
+                // A4 (440.00) -> y = 57.5 (Space 2)
+                // G4 (392.00) -> y = 65 (Line 2)
+                // F4 (349.23) -> y = 72.5 (Space 1)
+                // E4 (329.63) -> y = 80 (Line 1, bottom line)
+                // C4 (261.63) -> y = 95 (Ledger line below bottom line)
+                let noteY = 65; 
+                if (note.pitch === 261.63) noteY = 95; // C4
+                else if (note.pitch === 329.63) noteY = 80; // E4
+                else if (note.pitch === 349.23) noteY = 72.5; // F4
+                else if (note.pitch === 392.00) noteY = 65; // G4
+                else if (note.pitch === 440.00) noteY = 57.5; // A4
+                else if (note.pitch === 523.25) noteY = 42.5; // C5
+
+                const isActive = active16thStep >= note.step && active16thStep < (note.step + note.durationSteps);
+
+                return (
+                  <g key={index} className="transition-all duration-150">
+                    
+                    {/* Render REST symbol if marked */}
+                    {note.isRestOutline ? (
+                      <path 
+                        d={`M ${startX} 40 L ${startX + 5} 55 L ${startX - 2} 62 L ${startX + 3} 68`} 
+                        fill="none" 
+                        stroke={isActive ? '#f59e0b' : '#ef4444'} 
+                        strokeWidth="3.5"
+                      />
+                    ) : (
+                      <>
+                        {/* Render Ledger Line if note is below the staff (C4) */}
+                        {note.pitch === 261.63 && (
+                          <line
+                            x1={startX - 12}
+                            y1={95}
+                            x2={startX + 12}
+                            y2={95}
+                            stroke={isActive ? '#f59e0b' : '#444'}
+                            strokeWidth="1.2"
+                          />
+                        )}
+
+                        {/* Note Head - Ellipse */}
+                        <ellipse 
+                          cx={startX} 
+                          cy={noteY} 
+                          rx="6" 
+                          ry="4" 
+                          transform={`rotate(-15 ${startX} ${noteY})`}
+                          className={`cursor-pointer transition-all ${
+                            isActive ? 'fill-amber-400 drop-shadow-[0_0_8px_#f59e0b]' : 'fill-stone-200'
+                          }`}
+                        />
+
+                        {/* Note Stem - pointing upwards or downwards based on ledger position (Notes on/above B4 point down, notes below point up) */}
+                        <line 
+                          x1={startX + 6} 
+                          y1={noteY} 
+                          x2={startX + 6} 
+                          y2={noteY >= 50 ? noteY - 28 : noteY + 28} 
+                          stroke={isActive ? '#f59e0b' : '#9ca3af'} 
+                          strokeWidth="1.5"
+                        />
+
+                        {/* Draw flags for eighth notes (duration 2) if not connected */}
+                        {note.durationSteps === 2 && (
+                          <path 
+                            d={`M ${startX + 6} ${noteY >= 50 ? noteY - 28 : noteY + 28} C ${startX + 12} ${noteY >= 50 ? noteY - 20 : noteY + 20}, ${startX + 14} ${noteY >= 50 ? noteY - 14 : noteY + 14}, ${startX + 10} ${noteY >= 50 ? noteY - 10 : noteY + 10}`} 
+                            fill="none" 
+                            stroke={isActive ? '#f59e0b' : '#cbd5e1'} 
+                            strokeWidth="1.5"
+                          />
+                        )}
+
+                        {/* Draw Accents (>) underneath/above if marked */}
+                        {note.isAccent && (
+                          <path 
+                            d={`M ${startX - 5} ${noteY - 12} L ${startX + 1} ${noteY - 15} L ${startX - 5} ${noteY - 18}`} 
+                            fill="none" 
+                            stroke="#f59e0b" 
+                            strokeWidth="2"
+                          />
+                        )}
+
+                        {/* Render TIE (弧线延音线) */}
+                        {note.isTieStart && (
+                          <path 
+                            d={`M ${startX + 4} ${noteY + 7} Q ${startX + 44} ${noteY + 22} ${startX + 80} ${noteY + 7}`} 
+                            fill="none" 
+                            stroke="#10b981" 
+                            strokeWidth="2.5" 
+                            strokeDasharray="1,1" 
+                            className="animate-pulse"
+                          />
+                        )}
+                      </>
+                    )}
+
+                    {/* Trigger Text Labels right on top of notation notes */}
+                    <text 
+                      x={startX - 10} 
+                      y={noteY - 33} 
+                      className={`text-[9px] font-mono font-bold tracking-tight ${
+                        isActive ? 'fill-amber-400' : 'fill-stone-500'
+                      }`}
+                    >
+                      {note.isRestOutline ? '休止' : note.isTieEnd ? '(延音)' : note.name}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* Live notation footer guide */}
+            <div className="absolute bottom-2 text-[10px] font-mono text-stone-500 w-full text-center tracking-widest uppercase">
+              16步高精细分微观扫描轨 ( 1格 = 半个八分音符 )
+            </div>
+          </div>
+
+          {/* Deep theoretical solfege readout */}
+          <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-2xl space-y-2">
+            <span className="text-[10px] text-amber-500 font-bold uppercase tracking-wider block">
+              💡 视唱与节奏拆解口诀 (Rhythm Speech Solfege)
+            </span>
+            <div className="text-sm font-semibold font-serif text-stone-200">
+              {THEORY_DEMOS[activeTab].sheetFormula}
+            </div>
+            <p className="text-xs text-stone-400 font-light leading-relaxed">
+              <strong>乐理解析：</strong>{THEORY_DEMOS[activeTab].explanation} 试着跟随播放红线，在心里唱出这个极富弹性的停顿并感受失重。
             </p>
           </div>
 
-          <div className="bg-stone-950 p-6 md:p-8 rounded-2xl border border-stone-800 flex flex-col items-center justify-center text-center py-10 relative overflow-hidden shadow-inner">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 to-red-500"></div>
+        </div>
+      </section>
 
-            <div className="absolute top-4 right-4 flex items-center gap-3 text-stone-400">
-              <div className="text-left">
-                <span className="block text-[9px] text-stone-500 font-bold uppercase tracking-wider">训练抗干扰速率</span>
-                <span className="block text-xs font-mono text-amber-500 font-bold">{bpm} BPM</span>
-              </div>
+      {/* SECTION 2: THE INTERACTIVE RHYTHM CONSTRUCTOR CHALLENGE */}
+      <section className="bg-white rounded-3xl p-8 border border-stone-200 shadow-xl space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-stone-100 pb-4 gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="p-1 px-2 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase">
+                Challenge Arena
+              </span>
+              <h2 className="text-xl font-black text-stone-900 flex items-center gap-1.5">
+                <Sliders size={20} className="text-amber-500" />
+                时值拼装工匠：自定义切分音创作台
+              </h2>
             </div>
-
-            {/* Scoreboard */}
-            <div className="flex gap-16 mb-8 relative z-10">
-              <div className="text-center">
-                <span className="block text-[11px] text-stone-400 font-bold uppercase tracking-wider mb-1">训练总得分</span>
-                <span className="text-4xl font-mono font-black text-amber-400">{trainerScore}</span>
-              </div>
-              <div className="text-center">
-                <span className="block text-[11px] text-stone-400 font-bold uppercase tracking-wider mb-1">连击 COMBO</span>
-                <span className="text-4xl font-mono font-black text-rose-500 animate-pulse">{trainerStreak}</span>
-              </div>
-            </div>
-
-            {/* Tap controls and ms timing delay output */}
-            <div className="space-y-6 w-full max-w-md relative z-10">
-              <div className="h-14 flex flex-col items-center justify-center select-none">
-                <p className={`text-sm md:text-base font-bold transition-all duration-150 ${feedbackColor}`}>{trainerFeedback}</p>
-                {feedbackOffset && (
-                  <p className="text-xs text-stone-400 font-mono font-bold mt-1.5 bg-white/10 px-3 py-0.5 rounded-full border border-white/10">{feedbackOffset}</p>
-                )}
-              </div>
-
-              <div className="flex justify-center pt-2">
-                <button
-                  disabled={!trainerActive}
-                  onMouseDown={handleTrainerTap}
-                  className="w-32 h-32 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 border-8 border-amber-950 shadow-2xl hover:brightness-110 active:scale-90 transition-all flex flex-col items-center justify-center text-stone-950 font-black select-none cursor-pointer outline-none disabled:from-stone-800 disabled:to-stone-900 disabled:border-stone-950 disabled:text-stone-600 disabled:cursor-not-allowed group"
-                >
-                  <Flame size={24} className="mb-1 text-stone-950/80 group-hover:scale-125 transition-transform" />
-                  <span className="text-xs tracking-widest">{trainerActive ? '拍击：切分点!' : '未锁定'}</span>
-                </button>
-              </div>
-
-              <p className="text-[11px] text-stone-500 font-medium">电脑端用户支持按键盘上的 【空格键】 直接拍击抗力切分点</p>
-            </div>
+            <p className="text-xs text-stone-500 font-light">
+              利用科学的音符时值。点击下方音符积木，使一小节时值厚度之和精确契合 <strong>16 步六分音符</strong>，看你是否形成了符合乐理的“切分音”。
+            </p>
           </div>
-
-          <div className="flex justify-center">
-            <button
-              onClick={toggleTrainerGame}
-              className={`px-8 py-3.5 rounded-xl font-bold text-xs shadow-md flex items-center gap-1.5 transition-all outline-none ${
-                trainerActive 
-                  ? 'bg-stone-900 hover:bg-stone-800 text-white' 
-                  : 'bg-amber-500 hover:bg-amber-400 text-stone-950'
+          
+          <div className="shrink-0 flex gap-2">
+            <button 
+              onClick={handleClearBlocks}
+              disabled={puzzlePlaying}
+              className="px-4 py-2 text-xs font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-all flex items-center gap-1 hover:text-stone-900 disabled:opacity-40"
+            >
+              <ResetIcon size={13} />
+              清空重置
+            </button>
+            <button 
+              onClick={playCustomRhythmScore}
+              disabled={puzzleGrid.length === 0 || puzzlePlaying}
+              className={`px-5 py-2 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow ${
+                puzzleGrid.length > 0 && !puzzlePlaying
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 hover:brightness-105' 
+                  : 'bg-stone-100 text-stone-400 border border-stone-200'
               }`}
             >
-              <RefreshCw size={14} className={trainerActive ? 'animate-spin' : ''} />
-              <span>{trainerActive ? '关闭测试器 (查看精度成绩)' : '开启抗重力肌肉测试'}</span>
+              <Music size={13} />
+              {puzzlePlaying ? '钢琴演奏示范中...' : '视听钢琴弹奏'}
             </button>
           </div>
         </div>
-      )}
 
-      {/* TAB 3: Masterpieces Gallery */}
-      {activeTab === 'masterpieces' && (
-        <div className="bg-white rounded-3xl p-6 md:p-8 border border-stone-200 shadow-lg animate-fadeIn space-y-6">
-          <div>
-            <h3 className="text-2xl font-bold serif text-stone-950 flex items-center gap-2">
-              <BookOpen className="text-amber-500" /> 世界传世巨献中的切分音图解
-            </h3>
-            <p className="text-xs text-stone-500 mt-1 max-w-xl leading-relaxed">
-              名作不单是音符的雕砌，天才们用切分音彻底释放了钢琴这台黑白打击乐器的野性动能：
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {masterpieces.map((piece, idx) => (
-              <div 
-                key={idx}
-                className="bg-stone-50 border border-stone-200 p-6 rounded-2xl flex flex-col justify-between hover:border-amber-400 hover:shadow-md transition-all group"
+        {/* 1. BLOCKS CATALOG AVAILABLE TO POP IN */}
+        <div className="space-y-3">
+          <span className="text-[10px] font-black tracking-wider text-stone-400 uppercase block">
+            请点击加进音符库 (音符积木时值一览)
+          </span>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {BLOCKS_CATALOG.map((block) => (
+              <button
+                key={block.id}
+                disabled={puzzlePlaying}
+                onClick={() => handleAddBlock(block)}
+                className={`p-3.5 rounded-2xl border text-left transition-all active:scale-[0.97] hover:shadow flex flex-col justify-between h-20 disabled:opacity-40 cursor-pointer ${block.color}`}
               >
-                <div>
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-[10px] bg-amber-500/10 text-amber-700 px-2.5 py-1 rounded-md font-bold uppercase">
-                      {piece.style}
-                    </span>
-                  </div>
-
-                  <h4 className="text-base font-bold text-stone-950 font-serif mb-1 group-hover:text-amber-600 transition-colors">
-                    {piece.title}
-                  </h4>
-                  <p className="text-[11px] text-stone-400 font-medium mb-3">
-                    作曲：{piece.composer}
-                  </p>
-                  
-                  <p className="text-xs text-stone-600 leading-relaxed mb-4">
-                    {piece.description}
-                  </p>
+                <div className="flex justify-between items-start w-full">
+                  <span className="text-xs font-bold">{block.name}</span>
+                  <span className="text-base leading-none font-black">{block.symbol}</span>
                 </div>
-
-                <div className="space-y-2.5 pt-4 border-t border-stone-200/60 text-xs">
-                  <div className="bg-white p-2.5 rounded-lg border border-stone-150">
-                    <span className="block font-bold text-stone-800 text-[11px] mb-0.5">⚡ 切分笔触</span>
-                    <span className="text-[11px] text-stone-500 leading-relaxed block">{piece.syncUsage}</span>
-                  </div>
-                  <div className="bg-amber-50/40 p-2.5 rounded-lg border border-amber-100 text-amber-900/80">
-                    <span className="block font-bold text-amber-950 text-[11px] mb-0.5">💡 钢琴手艺诀窍</span>
-                    <span className="text-[11px] text-amber-700 leading-relaxed block">{piece.rhythmTip}</span>
-                  </div>
-                </div>
-              </div>
+                <span className="text-[10px] font-mono font-black tracking-widest uppercase opacity-75">
+                  长: {block.duration} 步 ({block.duration / 4} 拍)
+                </span>
+              </button>
             ))}
           </div>
         </div>
-      )}
 
-      {/* TAB 4: Quiz Stage */}
-      {activeTab === 'quiz' && (
-        <div className="bg-white rounded-3xl p-6 md:p-8 border border-stone-200 shadow-lg animate-fadeIn max-w-2xl mx-auto">
-          {!quizFinished ? (
-            <div className="space-y-6">
-              {/* Question progress */}
-              <div className="flex justify-between items-center text-xs text-stone-400 font-bold">
-                <span>RHYTHMIC CHALLENGE</span>
-                <span className="bg-stone-100 text-stone-700 px-2 py-1 rounded font-mono">
-                  {currentQuestion + 1} / {quizQuestions.length}
-                </span>
+        {/* 2. THE CHOSEN GRID DISPLAY ROW (The Actual Music Score Board) */}
+        <div className="space-y-3 pt-4">
+          <span className="text-[10px] font-black tracking-wider text-stone-400 uppercase block">
+            您拼装的一小节乐谱 (A 4/4 Bar Score Layout)
+          </span>
+          
+          <div className="p-6 rounded-2xl bg-stone-900 border border-stone-800 text-white min-h-[7rem] flex flex-wrap items-center gap-3 relative">
+            {puzzleGrid.length === 0 ? (
+              <div className="w-full flex flex-col items-center justify-center py-4 text-center select-none text-stone-500">
+                <Music size={24} className="mb-1.5 opacity-40" />
+                <span className="text-xs font-bold">小节尚空，点击上方板块，搭起您脑海中的乐谱吧！</span>
               </div>
-
-              {/* Progress bar */}
-              <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden">
+            ) : (
+              puzzleGrid.map((block, idx) => (
                 <div 
-                  className="h-full bg-amber-500 transition-all duration-300"
-                  style={{ width: `${((currentQuestion + 1) / quizQuestions.length) * 100}%` }}
-                ></div>
-              </div>
-
-              {/* Question text */}
-              <h3 className="text-lg md:text-xl font-bold font-serif text-stone-900 leading-relaxed">
-                {quizQuestions[currentQuestion].question}
-              </h3>
-
-              {/* Options */}
-              <div className="space-y-3">
-                {quizQuestions[currentQuestion].options.map((opt, oIdx) => {
-                  let btnStyle = 'border-stone-200 hover:border-stone-400 hover:bg-stone-50 text-stone-700';
-                  
-                  if (showAnswer) {
-                    if (oIdx === quizQuestions[currentQuestion].correctIndex) {
-                      btnStyle = 'bg-green-50 border-green-400 text-green-900 font-bold';
-                    } else if (selectedOption === oIdx) {
-                      btnStyle = 'bg-rose-50 border-rose-300 text-rose-900';
-                    } else {
-                      btnStyle = 'opacity-50 border-stone-100';
-                    }
-                  }
-
-                  return (
-                    <button
-                      key={oIdx}
-                      disabled={showAnswer}
-                      onClick={() => handleAnswerSubmit(oIdx)}
-                      className={`w-full p-4 rounded-xl border text-xs md:text-sm text-left transition-all flex justify-between items-center gap-3 ${btnStyle}`}
-                    >
-                      <span>{opt}</span>
-                      {showAnswer && oIdx === quizQuestions[currentQuestion].correctIndex && (
-                        <Check size={16} className="text-green-600 shrink-0" strokeWidth={3} />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Explanations section */}
-              {showAnswer && (
-                <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 space-y-2 animate-fadeIn text-xs leading-relaxed">
-                  <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                    <AlertCircle size={14} />
-                    <span>切分功力深度解析</span>
-                  </div>
-                  <p className="text-amber-800">{quizQuestions[currentQuestion].explanation}</p>
-                  
-                  <div className="flex justify-end pt-2">
-                    <button
-                      onClick={handleNextQuestion}
-                      className="px-5 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors font-bold text-xs flex items-center gap-1"
-                    >
-                      <span>{currentQuestion + 1 === quizQuestions.length ? '完成挑战' : '下一题'}</span>
-                      <ChevronRight size={14} />
-                    </button>
+                  key={idx}
+                  onClick={() => handleRemoveBlock(idx)}
+                  className={`px-4 py-3 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-all hover:scale-105 active:scale-95 group relative overflow-hidden backdrop-blur-sm shadow`}
+                  style={{ width: `${60 + (block.duration * 10)}px` }} // Width scales dynamically matching note length!
+                >
+                  <span className="text-lg leading-tight font-black">{block.symbol}</span>
+                  <span className="text-[9px] font-mono opacity-80">{block.duration}步</span>
+                  {/* Delete hovering cover */}
+                  <div className="absolute inset-0 bg-red-600 text-white text-[10px] uppercase font-black flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    移除 ✕
                   </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-10 space-y-6 animate-fadeIn">
-              <div className="inline-block p-4 bg-amber-50 text-amber-500 rounded-full border border-amber-100 shadow-sm animate-bounce">
-                <Trophy size={48} />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-2xl font-black font-serif text-stone-900">切分抗力段位挑战完成！</h3>
-                <p className="text-xs text-stone-400 font-semibold uppercase tracking-wider">Your Rhythm Rank Results</p>
-              </div>
+              ))
+            )}
 
-              {/* Circular gauge */}
-              <div className="flex flex-col items-center">
-                <div className="relative w-28 h-28 flex items-center justify-center bg-stone-900 rounded-full shadow-lg border-4 border-amber-400">
-                  <span className="text-4xl font-mono font-black text-amber-400 leading-none">
-                    {Math.round((score / quizQuestions.length) * 100)}%
+            {/* Metric total counter indicator bubble */}
+            <div className="absolute top-2 right-3 px-3 py-1 bg-neutral-950 border border-neutral-800 text-[10px] font-mono font-black text-amber-400 rounded-lg">
+              当前蓄水: {puzzleGrid.reduce((sum, item) => sum + item.duration, 0)} / 16 步
+            </div>
+          </div>
+        </div>
+
+        {/* 3. VALIDATION VERDICT BOARD */}
+        <div className={`p-4 rounded-2xl border flex items-start gap-3 transition-colors ${
+          puzzleValid === true 
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+            : puzzleValid === false 
+              ? 'bg-amber-50 border-amber-200 text-amber-800' 
+              : 'bg-stone-50 border-stone-200 text-stone-600'
+        }`}>
+          <div className="p-2 bg-white rounded-lg border border-current shrink-0">
+            {puzzleValid === true ? (
+              <CheckCircle size={18} className="text-emerald-600" />
+            ) : puzzleValid === false ? (
+              <Info size={18} className="text-amber-600" />
+            ) : (
+              <HelpCircle size={18} className="text-stone-500" />
+            )}
+          </div>
+          <div className="space-y-1 text-xs">
+            <span className="font-bold block uppercase tracking-wide">乐理评级室 (Theory Validation System)</span>
+            <p className="font-light leading-relaxed">{puzzleMessage}</p>
+          </div>
+        </div>
+
+        {/* Playful combination ideas */}
+        <div className="bg-stone-50 p-4 rounded-xl text-xs text-stone-600 space-y-1.5 font-light leading-relaxed">
+          <span className="font-bold text-stone-800 flex items-center gap-1">
+            <Star size={13} className="text-amber-500 fill-current" /> 
+            推荐的乐理切分拼法（在上面点击拼试）：
+          </span>
+          <ul className="list-disc pl-5 space-y-1.5 text-[11px]">
+            <li>
+              <strong>大切分典型进行式：</strong> 【八分 (2步)】 → 【四分 (4步) - 切分发生！】 → 【八分 (2步)】 → 【两个四分 (4+4步)】 = 16 步。
+            </li>
+            <li>
+              <strong>雷鬼塞西略舞感型：</strong> 【附点八分 (3步)】 → 【附点八分 (3步)】 → 【八分 (2步)】 → 【接着循环或填四分】 3+3+2 完美的错位狂潮。
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      {/* SECTION 3: THE HIGH-LEVEL MUSIC THEORY EXAM */}
+      <section className="grid lg:grid-cols-2 gap-8 items-stretch">
+        
+        {/* Classical Masterpieces Analysis */}
+        <div className="bg-white rounded-3xl p-8 border border-stone-200 shadow-xl flex flex-col justify-between">
+          <div className="space-y-6">
+            <div className="border-b border-stone-100 pb-3 flex items-center gap-2">
+              <Award className="text-amber-500" size={20} />
+              <h2 className="text-lg font-black font-serif text-stone-900">
+                大师名谱剖析：切分乐理的德奥与爵士交锋
+              </h2>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-stone-50 p-5 rounded-2xl border border-stone-150 space-y-2.5">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-black text-xs text-stone-900">
+                      贝多芬《第三交响曲“英雄”(Eroica)》
+                    </h3>
+                    <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider font-mono">
+                      德国古典交响乐理
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-amber-800 text-[9px] font-black">
+                    BEETHOVEN
                   </span>
                 </div>
-                <p className="text-xs text-stone-500 font-bold mt-4">
-                  打对题数： {score} / {quizQuestions.length} 题
+                <p className="text-xs text-stone-600 leading-normal font-light">
+                  在第一乐章充满戏剧性的展开部中，贝多芬故意打破 3/4 拍（强、弱、弱）的平滑流逝，命令铜管乐手在第二和第三拍弱拍上，砸出极具毁灭性的爆裂重音 (sfz) 并在大正拍空着不弹。
                 </p>
+                <div className="p-2.5 bg-neutral-900 text-[10px] text-amber-400 rounded-lg font-mono">
+                  <strong>重口理秘诀：</strong>打破节拍的天然骨架，从而模拟出法国大革命英雄浴血奋战中骨骼肌肉的不屈拉扯。
+                </div>
               </div>
 
-              <p className="text-sm text-stone-600 max-w-sm mx-auto leading-relaxed">
-                {score === quizQuestions.length 
-                  ? '✨ 天生放客乐手！你具有极其顶尖的律动核心抵抗力，切分音的悬空格局在你脑中明镜如画！'
-                  : '👍 表现不俗！你已经完全识破了切分拍的重拍转移欺骗，在经典钢琴独奏里你会对它的对抗性更为敏感。'
-                }
-              </p>
-
-              <div>
-                <button
-                  onClick={resetQuiz}
-                  className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl text-xs transition-colors shadow-md"
-                >
-                  重新进行测验
-                </button>
+              <div className="bg-stone-50 p-5 rounded-2xl border border-stone-150 space-y-2.5">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-black text-xs text-stone-900">
+                      斯科特·乔普林《演艺人 (The Entertainer)》
+                    </h3>
+                    <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider font-mono">
+                      爵士早期 Ragtime 舞曲乐理
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-amber-800 text-[9px] font-black">
+                    RAGTIME JAZZ
+                  </span>
+                </div>
+                <p className="text-xs text-stone-600 leading-normal font-light">
+                  拉格泰姆左手雷打不动地行进着像打字机一样机械的重音基柱，而右手高音区却频繁演奏着跨拍延音线或八分小切分。
+                </p>
+                <div className="p-2.5 bg-neutral-900 text-[10px] text-amber-400 rounded-lg font-mono">
+                  <strong>重口理秘诀：</strong>“Ragtime”原意就是“切碎的时间”。通过高悬的切分，让庄严肃穆的古典钢琴瞬间充满调皮逗趣、轻佻摇摆的街头幽默。
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Syncopation mental quiz */}
+        <div className="bg-neutral-900 text-white rounded-3xl p-8 shadow-2xl flex flex-col justify-between border border-neutral-800">
+          <div>
+            <h3 className="text-lg font-black font-serif border-b border-stone-800 pb-3 flex items-center gap-2 text-amber-400">
+              <Award size={20} />
+              切分乐理深度试炼 Crucible
+            </h3>
+
+            {!quizFinished ? (
+              <div className="mt-6 space-y-4 animate-fadeIn">
+                <div className="flex items-center justify-between text-xs text-neutral-400 font-mono">
+                  <span>理论题 {quizQuestion + 1} / {QUIZ_QUESTIONS.length}</span>
+                  <span className="text-amber-400 font-black">答对积分: {quizScore} pts</span>
+                </div>
+
+                <h4 className="font-bold text-sm text-stone-100 leading-relaxed">
+                  {QUIZ_QUESTIONS[quizQuestion].question}
+                </h4>
+
+                <div className="space-y-2.5 pt-2">
+                  {QUIZ_QUESTIONS[quizQuestion].options.map((option, idx) => {
+                    const isSelectedVal = selectedOption === idx;
+                    const isCorrectVal = idx === QUIZ_QUESTIONS[quizQuestion].correctIndex;
+                    
+                    let style = 'bg-neutral-950 border-neutral-800 hover:bg-neutral-800/80 text-stone-300';
+                    if (showAnswer) {
+                      if (isCorrectVal) {
+                        style = 'bg-green-950/60 border-green-500 text-white font-black';
+                      } else if (isSelectedVal) {
+                        style = 'bg-rose-950/60 border-rose-500 text-stone-200';
+                      } else {
+                        style = 'opacity-35 bg-neutral-950 text-stone-600';
+                      }
+                    }
+
+                    return (
+                      <button
+                        key={idx}
+                        disabled={showAnswer}
+                        onClick={() => handleQuizAnswer(idx)}
+                        className={`w-full text-left p-3.5 rounded-xl border text-xs leading-normal transition-all flex items-center justify-between gap-3 cursor-pointer ${style}`}
+                      >
+                        <span className="flex-1">{option}</span>
+                        {showAnswer && isCorrectVal && <CheckCircle size={15} className="text-green-400 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {showAnswer && (
+                  <div className="p-3.5 bg-neutral-950 rounded-xl border border-neutral-800 text-[11px] text-stone-400 leading-relaxed animate-slideUp">
+                    <span className="block font-bold text-amber-400 mb-0.5">🧠 德奥名门考级解析录：</span>
+                    {QUIZ_QUESTIONS[quizQuestion].explanation}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-8 text-center space-y-4 animate-scaleUp py-6">
+                <Award size={52} className="mx-auto text-amber-400 animate-bounce" />
+                <h4 className="text-lg font-black text-white">切分音高级理学者验证通过！</h4>
+                <p className="text-xs text-stone-400 max-w-xs mx-auto">
+                  恭喜你成功通过本次试炼！总积分： <strong>{quizScore} 分</strong>（满分 {QUIZ_QUESTIONS.length}）
+                </p>
+                <button
+                  onClick={resetQuiz}
+                  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-black shadow-lg transition-transform hover:scale-105 cursor-pointer"
+                >
+                  重温一次试炼
+                </button>
+              </div>
+            )}
+          </div>
+
+          {!quizFinished && showAnswer && (
+            <button
+              onClick={handleNextQuiz}
+              className="mt-6 w-full py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-black transition-transform hover:scale-[1.01] cursor-pointer"
+            >
+              继续下一题
+            </button>
           )}
         </div>
-      )}
+
+      </section>
+
     </div>
   );
 };

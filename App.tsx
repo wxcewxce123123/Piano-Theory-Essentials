@@ -56,6 +56,7 @@ import AITutor from './components/AITutor';
 import GenericLesson from './components/GenericLesson';
 import SplashScreen from './components/SplashScreen';
 import StartPage, { UserSettings, UserProfile, Achievement } from './components/StartPage'; 
+import Piano88Page from './components/Piano88Page';
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
     { id: 'first_lesson', title: '初入琴房', desc: '完成你的第 1 个课程', icon: '🎵', unlocked: false, progress: 0, maxProgress: 1 },
@@ -1115,24 +1116,42 @@ enum LessonTopic {
   IMPRESSIONISM = 'impressionism', TWELVE_TONE = 'twelve_tone', PITCH_CLASS_SETS = 'pitch_class_sets', MICROTONALITY = 'microtonality', SPECTRALISM = 'spectralism', MINIMALISM = 'minimalism', BITONALITY = 'bitonality', ALEATORIC = 'aleatoric', NEGATIVE_HARMONY = 'negative_harmony', NEO_RIEMANNIAN = 'neo_riemannian', QUARTAL_HARMONY = 'quartal_harmony', OVERTONE_SERIES = 'overtone_series',
 }
 
-const BackgroundParticles: React.FC<{ style?: 'notes' | 'stars' | 'sakura' | 'bubbles' }> = ({ style = 'notes' }) => {
+const BackgroundParticles: React.FC<{ style?: 'notes' | 'stars' | 'sakura' | 'bubbles' | 'aurora' | 'stardust' | 'keys' | 'retro' }> = ({ style = 'notes' }) => {
   const particles = useMemo(() => {
     const symbolsMap = {
       notes: ['♪', '♫', '♩', '♭', '♯', '𝄞', '𝄢', '𝄡'],
       stars: ['★', '☆', '✦', '✧', '✨', '✵', '✷'],
       sakura: ['🌸', '💮', '✿', '❀', '🍃', '🏵️'],
-      bubbles: ['🫧', '◌', '⚬', '⚪', '🫧']
+      bubbles: ['🫧', '◌', '⚬', '⚪', '🫧'],
+      aurora: ['✦', '◌', '✧', '✨', '⚪', '✴️', '🌀'],
+      stardust: ['✨', '✦', '✧', '❇️', '❈', '🌠', '✨'],
+      keys: ['🎹', '⬜', '⬛', '🎶', '♩', '♩'],
+      retro: ['🎧', '⚡', '⚡', '📼', '📻', '👾', '🔥']
     };
     const symbols = symbolsMap[style] || symbolsMap.notes;
-    const count = 22; // Increased count for richer visual depth
+    const count = style === 'stardust' || style === 'aurora' ? 30 : 22; // Richer visual density
     
     return Array.from({ length: count }).map((_, i) => {
-      const leftRandom = Math.random() * 105 - 5; // allow slightly out of bounds starting
+      const leftRandom = Math.random() * 105 - 5; 
       const topRandom = Math.random() * 105 - 5;
       const delay = Math.random() * 20;
-      const duration = style === 'stars' ? 8 + Math.random() * 10 : 12 + Math.random() * 16;
-      const size = style === 'sakura' || style === 'bubbles' ? 16 + Math.random() * 18 : 12 + Math.random() * 24;
+      const duration = style === 'stars' || style === 'stardust' || style === 'aurora' 
+        ? 6 + Math.random() * 8 
+        : 12 + Math.random() * 16;
+      const size = style === 'sakura' || style === 'bubbles' || style === 'retro' || style === 'keys'
+        ? 16 + Math.random() * 18 
+        : 12 + Math.random() * 24;
       
+      const colors = {
+        aurora: ['text-cyan-400/40', 'text-teal-400/40', 'text-fuchsia-400/40', 'text-violet-400/40'],
+        stardust: ['text-amber-400/50', 'text-yellow-300/55', 'text-rose-400/50', 'text-sky-300/50', 'text-emerald-300/45'],
+        retro: ['text-fuchsia-500/35', 'text-cyan-400/40', 'text-rose-500/35', 'text-amber-400/35'],
+        keys: ['text-stone-350/20', 'text-stone-400/25', 'text-stone-500/15']
+      };
+
+      const colorList = colors[style as keyof typeof colors] || [];
+      const chosenColor = colorList.length > 0 ? colorList[Math.floor(Math.random() * colorList.length)] : '';
+
       return {
         id: i,
         left: leftRandom,
@@ -1141,6 +1160,7 @@ const BackgroundParticles: React.FC<{ style?: 'notes' | 'stars' | 'sakura' | 'bu
         duration,
         size,
         symbol: symbols[Math.floor(Math.random() * symbols.length)],
+        colorClass: chosenColor,
         rotationSpeed: 5 + Math.random() * 15,
         driftWidth: 20 + Math.random() * 40
       };
@@ -1150,32 +1170,31 @@ const BackgroundParticles: React.FC<{ style?: 'notes' | 'stars' | 'sakura' | 'bu
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
       {particles.map((p) => {
-        let textClass = "";
+        let textClass = p.colorClass || "";
         let inlineStyle: React.CSSProperties = {
           position: 'absolute',
           fontSize: `${p.size}px`,
           animationDelay: `-${p.delay}s`,
           animationDuration: `${p.duration}s`,
           animationIterationCount: 'infinite',
-          animationTimingFunction: style === 'stars' ? 'ease-in-out' : 'linear',
+          animationTimingFunction: style === 'stars' || style === 'aurora' || style === 'stardust' ? 'ease-in-out' : 'linear',
           transformOrigin: 'center',
           willChange: 'transform, opacity',
         };
 
         if (style === 'notes') {
-          textClass = "text-amber-800/25 md:text-amber-800/20 font-serif";
+          textClass = "text-amber-800/25 md:text-amber-800/20 font-serif animate-pulse-slow";
           inlineStyle.left = `${p.left}%`;
           inlineStyle.top = '105%';
           inlineStyle.animationName = 'floatUpNotes';
         } else if (style === 'stars') {
-          // Stars are scattered around and twinkle in place or drift micro amounts
           textClass = "text-amber-500/40 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]";
           inlineStyle.left = `${p.left}%`;
           inlineStyle.top = `${p.top}%`;
           inlineStyle.animationName = 'twinkleStars';
         } else if (style === 'sakura') {
           textClass = "text-rose-400/55 drop-shadow-[0_2px_4px_rgba(244,63,94,0.3)] animate-bounce-gentle";
-          inlineStyle.left = `${p.left - 20}%`; // start off-screen left to drift right
+          inlineStyle.left = `${p.left - 20}%`; 
           inlineStyle.top = '-10%';
           inlineStyle.animationName = 'fallSakura';
         } else if (style === 'bubbles') {
@@ -1183,6 +1202,26 @@ const BackgroundParticles: React.FC<{ style?: 'notes' | 'stars' | 'sakura' | 'bu
           inlineStyle.left = `${p.left}%`;
           inlineStyle.top = '105%';
           inlineStyle.animationName = 'riseBubbles';
+        } else if (style === 'aurora') {
+          textClass = `${textClass} drop-shadow-[0_0_12px_currentColor]`;
+          inlineStyle.left = `${p.left}%`;
+          inlineStyle.top = `${p.top}%`;
+          inlineStyle.animationName = 'pulseAurora';
+        } else if (style === 'stardust') {
+          textClass = `${textClass} drop-shadow-[0_0_6px_currentColor]`;
+          inlineStyle.left = `${p.left}%`;
+          inlineStyle.top = `${p.top}%`;
+          inlineStyle.animationName = 'twinkleStars';
+        } else if (style === 'keys') {
+          textClass = `${textClass} font-mono opacity-25`;
+          inlineStyle.left = `${p.left}%`;
+          inlineStyle.top = '105%';
+          inlineStyle.animationName = 'floatUpKeys';
+        } else if (style === 'retro') {
+          textClass = `${textClass} drop-shadow-[0_0_8px_currentColor] opacity-30`;
+          inlineStyle.left = `${p.left}%`;
+          inlineStyle.top = '105%';
+          inlineStyle.animationName = 'floatUpNotes';
         }
 
         return (
@@ -1202,9 +1241,19 @@ const BackgroundParticles: React.FC<{ style?: 'notes' | 'stars' | 'sakura' | 'bu
           90% { opacity: 0.5; }
           100% { transform: translateY(-115vh) translateX(40px) rotate(270deg); opacity: 0; }
         }
+        @keyframes floatUpKeys {
+          0% { transform: translateY(0) translateX(0) rotate(0deg) scale(0.7); opacity: 0; }
+          15% { opacity: 0.5; }
+          85% { opacity: 0.4; }
+          100% { transform: translateY(-115vh) translateX(-30px) rotate(360deg) scale(1.1); opacity: 0; }
+        }
         @keyframes twinkleStars {
           0%, 100% { opacity: 0.15; transform: scale(0.7) rotate(0deg); }
           50% { opacity: 0.75; transform: scale(1.2) rotate(180deg); }
+        }
+        @keyframes pulseAurora {
+          0%, 100% { opacity: 0.1; transform: scale(0.8) translateY(0px) rotate(0deg); filter: hue-rotate(0deg); }
+          50% { opacity: 0.8; transform: scale(1.15) translateY(-12px) rotate(180deg); filter: hue-rotate(90deg); }
         }
         @keyframes fallSakura {
           0% { transform: translate(0, 0) rotate(0deg) scale(0.8); opacity: 0; }
@@ -1393,6 +1442,7 @@ const App: React.FC = () => {
   const [tempUserProfile, setTempUserProfile] = useState<UserProfile | null>(null); // For Welcome Overlay
 
   const [activeTab, setActiveTab] = useState<Tab>(Tab.LESSON);
+  const [showPianoStudio, setShowPianoStudio] = useState(false);
   const [activeLesson, setActiveLesson] = useState<LessonTopic>(LessonTopic.HOME); 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
@@ -1818,6 +1868,7 @@ const App: React.FC = () => {
             onLoginRequest={() => setShowAuthModal(true)}
             lastActiveLessonId={lastActiveLessonId}
             studyMinutes={studyMinutes}
+            onPlayPiano={() => setShowPianoStudio(true)}
         />;
     }
 
@@ -1941,6 +1992,15 @@ const App: React.FC = () => {
         customColor={userSettings.customColor}
       />
 
+      <AnimatePresence>
+        {showPianoStudio && (
+          <Piano88Page 
+            onClose={() => setShowPianoStudio(false)} 
+            user={user} 
+          />
+        )}
+      </AnimatePresence>
+
       {/* Mobile Header */}
       <div className="md:hidden glass px-4 py-3 flex justify-between items-center z-50 sticky top-0 border-b border-stone-200/50">
          <div className="flex items-center gap-2">
@@ -2025,6 +2085,17 @@ const App: React.FC = () => {
                 >
                     <Layout size={18} className={`transition-colors duration-500 ${activeLesson === LessonTopic.HOME ? (userSettings.themeColor==='custom' ? 'text-white' : getThemeClass('text')) : 'text-stone-400 group-hover:text-stone-600'}`} style={activeLesson === LessonTopic.HOME ? {color: userSettings.customColor || undefined} : {}} />
                     <span className="font-bold text-sm">首页 (Dashboard)</span>
+                </button>
+            </div>
+
+            <div className="mb-2">
+                <button 
+                    onClick={() => { setShowPianoStudio(true); setIsMobileMenuOpen(false); }}
+                    className="w-full px-4 py-3 flex items-center gap-3 rounded-xl transition-all duration-500 group text-amber-600 bg-amber-400/5 hover:bg-amber-400/10 border border-amber-400/20 hover:border-amber-400/40 shadow-sm"
+                >
+                    <Music size={18} className="text-amber-500 group-hover:scale-110 transition-transform animate-pulse" />
+                    <span className="font-bold text-sm tracking-wide">88键全屏演奏厅 🎹</span>
+                    <span className="text-[8px] bg-amber-400 text-stone-950 px-1.5 py-0.5 rounded-md font-bold ml-auto leading-none">STAGE</span>
                 </button>
             </div>
 

@@ -1,5 +1,6 @@
 {
   "name": "Piano Theory: Essentials",
-  "description": "An interactive guide explaining piano sheet music basics: Slurs, Tie, Time Signatures, and Tempo markings.",
-  "requestFramePermissions": []
+  "description": "An interactive guide explaining piano sheet music basics with an immersive full-screen 88-key piano stage featuring cascade waterfall visualizer, practice mode, and MIDI integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
