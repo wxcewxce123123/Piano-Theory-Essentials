@@ -1708,7 +1708,11 @@ const ProfileSettings: React.FC<{
             onClick={() => setShowSecurity(true)}
             className="group flex items-center gap-2 px-4 py-2 bg-white border border-stone-200 rounded-full text-xs font-bold text-stone-600 hover:border-stone-300 hover:text-stone-900 hover:shadow-sm transition-all"
           >
-            <UserCog size={14} className="text-emerald-500 group-hover:scale-110 transition-transform"/>
+            <UserCog 
+              size={14} 
+              className={`group-hover:scale-110 transition-transform ${theme.isCustom ? '' : theme.text}`}
+              style={theme.isCustom ? { color: theme.hex } : {}}
+            />
             账号与学习偏好设置
             <ChevronRight size={12} className="text-stone-300 group-hover:translate-x-1 transition-transform"/>
           </button>
@@ -1723,25 +1727,54 @@ const ProfileSettings: React.FC<{
                 key={ach.id} 
                 className={`relative p-5 rounded-2xl border flex items-center gap-5 overflow-hidden transition-all duration-300 group
                     ${ach.unlocked 
-                        ? 'bg-gradient-to-br from-white to-stone-50 border-stone-200 shadow-sm hover:shadow-md hover:border-amber-200' 
+                        ? `bg-gradient-to-br from-white to-stone-50 border-stone-200 shadow-sm hover:shadow-md ${theme.isCustom ? '' : 'hover:' + theme.border}` 
                         : 'bg-stone-50 border-stone-100 opacity-60 grayscale'
                     }`}
+                style={(ach.unlocked && theme.isCustom) ? { borderColor: theme.hex + '60' } : {}}
               >
-                  {ach.unlocked && <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-amber-100/50 to-transparent rounded-bl-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>}
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm shrink-0 relative z-10 transition-transform duration-300 group-hover:scale-110 ${ach.unlocked ? 'bg-amber-100 text-amber-600' : 'bg-stone-200 text-stone-400'}`}>
+                  {ach.unlocked && (
+                      <div 
+                          className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${theme.isCustom ? '' : 'from-' + (settings.themeColor === 'amber' ? 'amber' : settings.themeColor) + '-100/50'} to-transparent rounded-bl-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity`}
+                          style={theme.isCustom ? { backgroundImage: `linear-gradient(to bottom left, ${theme.hex}22, transparent)` } : {}}
+                      />
+                  )}
+                  <div 
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm shrink-0 relative z-10 transition-transform duration-300 group-hover:scale-110 ${
+                          ach.unlocked 
+                              ? (theme.isCustom ? '' : `${theme.lightBg} ${theme.text}`) 
+                              : 'bg-stone-200 text-stone-400'
+                      }`}
+                      style={(ach.unlocked && theme.isCustom) ? { backgroundColor: theme.hex + '15', color: theme.hex } : {}}
+                  >
                       {ach.icon}
                       {!ach.unlocked && <div className="absolute inset-0 flex items-center justify-center bg-black/10 rounded-2xl backdrop-blur-[1px]"><Lock size={16} className="text-white"/></div>}
                   </div>
                   <div className="flex-1 relative z-10">
                       <div className="flex justify-between items-start mb-1">
                           <div className={`font-bold text-base ${ach.unlocked ? 'text-stone-900' : 'text-stone-500'}`}>{ach.title}</div>
-                          {ach.unlocked && <div className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">UNLOCKED</div>}
+                          {ach.unlocked && (
+                              <div 
+                                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                      theme.isCustom ? '' : `${theme.lightBg} ${theme.text}`
+                                  }`}
+                                  style={theme.isCustom ? { backgroundColor: theme.hex + '15', color: theme.hex } : {}}
+                              >
+                                  UNLOCKED
+                              </div>
+                          )}
                       </div>
                       <div className="text-xs text-stone-500 leading-tight mb-3">{ach.desc}</div>
                       <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
                           <div 
-                            className={`h-full rounded-full transition-all duration-1000 ease-out ${ach.unlocked ? 'bg-amber-500' : 'bg-stone-300'}`}
-                            style={{ width: `${(ach.progress / ach.maxProgress) * 100}%` }}
+                            className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                                ach.unlocked 
+                                    ? (theme.isCustom ? '' : theme.bg) 
+                                    : 'bg-stone-300'
+                            }`}
+                            style={{ 
+                                width: `${(ach.progress / ach.maxProgress) * 100}%`,
+                                ...(ach.unlocked && theme.isCustom ? { backgroundColor: theme.hex } : {})
+                            }}
                           ></div>
                       </div>
                   </div>
@@ -1750,7 +1783,11 @@ const ProfileSettings: React.FC<{
       </div>
 
       <div 
-        className={`p-8 rounded-3xl border mb-8 relative overflow-hidden transition-all duration-700 ${isPro ? 'bg-stone-900 text-white border-stone-800 shadow-2xl' : `bg-gradient-to-br from-stone-50 to-orange-50 border-amber-200`}`}
+        className={`p-8 rounded-3xl border mb-8 relative overflow-hidden transition-all duration-700 ${
+            isPro 
+                ? 'bg-stone-900 text-white border-stone-800 shadow-2xl' 
+                : `bg-gradient-to-br from-stone-50 to-stone-100/20 ${theme.isCustom ? '' : theme.border}`
+        }`}
         style={(!isPro && theme.isCustom) ? { borderColor: theme.hex + '40', background: `linear-gradient(to bottom right, ${theme.hex}10, white)` } : {}}
       >
           <div className="relative z-10 flex justify-between items-center">
@@ -1977,7 +2014,8 @@ const ProfileSettings: React.FC<{
                   <button
                       disabled={!isPro || settings.ambience !== 'cafe'}
                       onClick={() => onUpdate({ ...settings, cafeChatter: !settings.cafeChatter })}
-                      className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-300 relative ${settings.cafeChatter ? 'bg-amber-500' : 'bg-stone-300'}`}
+                      className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-300 relative ${settings.cafeChatter ? (theme.isCustom ? '' : theme.bg) : 'bg-stone-300'}`}
+                      style={settings.cafeChatter && theme.isCustom ? { backgroundColor: theme.hex } : {}}
                   >
                       <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${settings.cafeChatter ? 'translate-x-4' : 'translate-x-0'}`}></div>
                   </button>
@@ -2050,7 +2088,10 @@ const ProfileSettings: React.FC<{
                   </div>
                   <span className="font-bold text-stone-700">消息通知</span>
               </div>
-              <div className={`w-12 h-7 rounded-full p-1 transition-colors duration-500 relative ${notify ? 'bg-green-500' : 'bg-stone-300'}`}>
+              <div 
+                className={`w-12 h-7 rounded-full p-1 transition-colors duration-500 relative ${notify ? (theme.isCustom ? '' : theme.bg) : 'bg-stone-300'}`}
+                style={notify && theme.isCustom ? { backgroundColor: theme.hex } : {}}
+              >
                   <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${notify ? 'translate-x-5' : 'translate-x-0'}`}></div>
               </div>
           </div>
