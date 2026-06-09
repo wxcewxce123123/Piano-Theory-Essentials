@@ -4,7 +4,7 @@ import {
     Maximize2, Minimize2, Music, Sparkles, Check, 
     HelpCircle, Zap, ZoomIn, ZoomOut, Eye, Keyboard,
     ListMusic, Radio, Settings, Power, Award, User,
-    Sliders, VolumeX, Waves, Compass, Upload, Sun, Moon
+    Sliders, VolumeX, Waves, Compass, Upload, Sun, Moon, Repeat
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -96,6 +96,7 @@ class PianoSynthesizer {
     private bassEQNode: BiquadFilterNode | null = null;
     private midEQNode: BiquadFilterNode | null = null;
     private highEQNode: BiquadFilterNode | null = null;
+    private limiterNode: DynamicsCompressorNode | null = null;
 
     // Cached noise buffer for hammer strike simulation
     private hammerNoiseBuffer: AudioBuffer | null = null;
@@ -218,17 +219,23 @@ class PianoSynthesizer {
             const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
             this.ctx = new AudioCtx();
             
-            // Build soft felt hammer friction click sound
+            // Build soft felt hammer friction click & woody compression thunk
             const sampleRate = this.ctx.sampleRate;
             const bufferSize = sampleRate * 0.08; // 80ms pulse buffer
             this.hammerNoiseBuffer = this.ctx.createBuffer(1, bufferSize, sampleRate);
             const data = this.hammerNoiseBuffer.getChannelData(0);
             let lastVal = 0.0;
             for (let i = 0; i < bufferSize; i++) {
+                const t = i / sampleRate;
                 const white = Math.random() * 2 - 1;
-                // Soft pink filter for high felt string contact and wooden knock dynamics
-                lastVal = 0.18 * white + 0.82 * lastVal;
-                data[i] = lastVal * 2.2;
+                // Soft pink filter for high felt string contact friction
+                lastVal = 0.15 * white + 0.85 * lastVal;
+                
+                // Low-frequency shockwave single-cycle wooden knock (thunk)
+                // Decays extremely fast, dominant in first 15ms (90Hz sine bump)
+                const thunk = Math.sin(2 * Math.PI * 90 * t) * Math.exp(-t * 220);
+                
+                data[i] = (lastVal * 1.6 * Math.exp(-t * 180)) + (thunk * 2.8);
             }
 
             // Generate master gain control node
@@ -273,13 +280,24 @@ class PianoSynthesizer {
                 console.warn("Failed to set up soundboard convolved cabinet resonance:", e);
             }
 
-            // Direct dry output connection
-            this.masterGainNode.connect(this.ctx.destination);
+            // Instantiation of Dynamics Compressor/Limiter Node
+            this.limiterNode = this.ctx.createDynamicsCompressor();
+            this.limiterNode.threshold.setValueAtTime(-1.5, this.ctx.currentTime);
+            this.limiterNode.knee.setValueAtTime(8, this.ctx.currentTime);
+            this.limiterNode.ratio.setValueAtTime(12, this.ctx.currentTime);
+            this.limiterNode.attack.setValueAtTime(0.003, this.ctx.currentTime);
+            this.limiterNode.release.setValueAtTime(0.08, this.ctx.currentTime);
+
+            // Direct dry output connection goes through limiter
+            this.masterGainNode.connect(this.limiterNode);
+            this.limiterNode.connect(this.ctx.destination);
             
-            // Reverb spatial delay loop feedback connection
+            // Reverb spatial delay loop feedback connection (internal to delay only)
             this.delayNode.connect(this.feedbackNode);
             this.feedbackNode.connect(this.delayNode);
-            this.feedbackNode.connect(this.bassEQNode);
+            
+            // Reverb wet output: connect feedback output directly to limiter instead of feeding it back into the EQ chain input
+            this.feedbackNode.connect(this.limiterNode);
             
             // Feed master dry signal into spatial delay network
             this.masterGainNode.connect(this.delayNode);
@@ -452,7 +470,7 @@ class PianoSynthesizer {
         const masterGain = this.ctx.createGain();
         masterGain.gain.setValueAtTime(0, now);
         
-        let partialsDef: { n: number, gain: number, type: 'sine' | 'triangle' | 'sawtooth' | 'square', detune: number }[] = [];
+        let partialsDef: { n: number, gain: number, type: 'sine' | 'triangle' | 'sawtooth' | 'square', detune: number, decayMult?: number }[] = [];
         let B = 0.00015; // default stiffness factor
         let unisonDetune = 1.25; // string beating
         let filterStartMult = 5.0;
@@ -470,113 +488,122 @@ class PianoSynthesizer {
 
         if (this.timbre === 'grand') {
             // Setup for: Steinway Concert Grand Extra Depth Dynamic
-            baseDecay = 10.5;
-            B = 0.00012 * registerStiffnessMult;
-            unisonDetune = 1.15 * (1.2 - registerRatio * 0.4);
-            filterStartMult = 5.5 * this.hammerHardness; 
-            filterEndMult = 1.25;
-            filterDecay = 2.6; 
-            hammerPitchOffset = 18;
-            hammerVolMult = 0.20;
-            hammerDecayTime = 0.012;
-            attackSwell = 0.0018; 
+            baseDecay = 11.5;
+            B = 0.00010 * registerStiffnessMult;
+            unisonDetune = 1.25 * (1.25 - registerRatio * 0.45);
+            filterStartMult = 6.2 * this.hammerHardness; 
+            filterEndMult = 1.15;
+            filterDecay = 2.8; 
+            hammerPitchOffset = 20;
+            hammerVolMult = 0.35;
+            hammerDecayTime = 0.010;
+            attackSwell = 0.0015; 
             
             partialsDef = [
-                { n: 1, gain: 0.95, type: 'sine' as const, detune: -unisonDetune },
-                { n: 1, gain: 0.75, type: 'triangle' as const, detune: +unisonDetune },
-                { n: 1, gain: 0.58, type: 'sine' as const, detune: 0 },
-                { n: 2, gain: 0.35, type: 'triangle' as const, detune: +0.3 * unisonDetune },
-                { n: 3, gain: 0.16, type: 'sine' as const, detune: -0.3 * unisonDetune },
-                { n: 4, gain: 0.08, type: 'sine' as const, detune: +0.1 },
-                { n: 5, gain: 0.03, type: 'sine' as const, detune: 0 },
-                { n: 6, gain: 0.01, type: 'sine' as const, detune: 0 }
+                // Unison strings (fundamental) for rich wood warmth
+                { n: 1, gain: 1.0, type: 'sine' as const, detune: -unisonDetune, decayMult: 1.0 },
+                { n: 1, gain: 0.90, type: 'triangle' as const, detune: +unisonDetune, decayMult: 0.95 },
+                { n: 1, gain: 0.55, type: 'sine' as const, detune: 0, decayMult: 1.0 },
+                // 2nd Harmonic (Warm Octave)
+                { n: 2, gain: 0.48, type: 'triangle' as const, detune: -0.3 * unisonDetune, decayMult: 0.75 },
+                { n: 2, gain: 0.38, type: 'sine' as const, detune: +0.3 * unisonDetune, decayMult: 0.8 },
+                // 3rd Harmonic (Rich Fifth)
+                { n: 3, gain: 0.28, type: 'sine' as const, detune: -0.15 * unisonDetune, decayMult: 0.45 },
+                { n: 3, gain: 0.18, type: 'triangle' as const, detune: +0.15 * unisonDetune, decayMult: 0.45 },
+                // High frequency metallic "ping" of hammer strike decaying extremely fast
+                { n: 4, gain: 0.22, type: 'sawtooth' as const, detune: +0.2, decayMult: 0.08 },
+                { n: 5, gain: 0.15, type: 'triangle' as const, detune: -0.2, decayMult: 0.06 },
+                { n: 6, gain: 0.09, type: 'sawtooth' as const, detune: 0, decayMult: 0.04 },
+                { n: 8, gain: 0.05, type: 'sine' as const, detune: 0, decayMult: 0.02 }
             ];
         } 
         else if (this.timbre === 'yamaha') {
             // Setup for: Yamaha Concert Bright Recording Choice
-            baseDecay = 8.0;
-            B = 0.00024 * registerStiffnessMult; 
-            unisonDetune = 0.90 * (1.3 - registerRatio * 0.5); 
-            filterStartMult = 8.8 * this.hammerHardness; 
-            filterEndMult = 1.85; 
-            filterDecay = 1.9;
-            hammerPitchOffset = 25; 
-            hammerVolMult = 0.35; 
-            hammerDecayTime = 0.008; 
-            attackSwell = 0.0012; 
+            baseDecay = 9.0;
+            B = 0.00022 * registerStiffnessMult; 
+            unisonDetune = 1.05 * (1.3 - registerRatio * 0.5); 
+            filterStartMult = 9.2 * this.hammerHardness; 
+            filterEndMult = 1.65; 
+            filterDecay = 1.8;
+            hammerPitchOffset = 26; 
+            hammerVolMult = 0.45; 
+            hammerDecayTime = 0.007; 
+            attackSwell = 0.0010; 
             
             partialsDef = [
-                { n: 1, gain: 0.85, type: 'sine' as const, detune: -unisonDetune },
-                { n: 1, gain: 0.80, type: 'triangle' as const, detune: +unisonDetune },
-                { n: 2, gain: 0.52, type: 'triangle' as const, detune: +0.4 }, 
-                { n: 3, gain: 0.35, type: 'sawtooth' as const, detune: -0.25 }, // bright crisp
-                { n: 4, gain: 0.20, type: 'triangle' as const, detune: +0.1 },
-                { n: 5, gain: 0.09, type: 'sine' as const, detune: 0 },
-                { n: 6, gain: 0.04, type: 'sine' as const, detune: 0 }
+                { n: 1, gain: 0.90, type: 'sine' as const, detune: -unisonDetune, decayMult: 1.0 },
+                { n: 1, gain: 0.90, type: 'triangle' as const, detune: +unisonDetune, decayMult: 0.95 },
+                { n: 2, gain: 0.58, type: 'triangle' as const, detune: +0.4, decayMult: 0.8 }, 
+                // Sparkly presence
+                { n: 3, gain: 0.42, type: 'sawtooth' as const, detune: -0.25, decayMult: 0.15 }, 
+                { n: 4, gain: 0.32, type: 'triangle' as const, detune: +0.1, decayMult: 0.12 },
+                { n: 5, gain: 0.22, type: 'sawtooth' as const, detune: 0, decayMult: 0.06 },
+                { n: 6, gain: 0.12, type: 'sine' as const, detune: 0, decayMult: 0.05 }
             ];
         }
         else if (this.timbre === 'bosendorfer') {
             // Setup for: Bösendorfer Solid Wood Double Bridge Imperial
-            baseDecay = 13.5; 
-            B = 0.00006 * registerStiffnessMult; 
-            unisonDetune = 1.45 * (1.1 - registerRatio * 0.3); 
-            filterStartMult = 3.8 * this.hammerHardness; 
-            filterEndMult = 1.10;
-            filterDecay = 4.0;
-            hammerPitchOffset = 10; 
-            hammerVolMult = 0.15; 
-            hammerDecayTime = 0.024;
-            attackSwell = 0.0028;
+            baseDecay = 14.5; 
+            B = 0.00005 * registerStiffnessMult; 
+            unisonDetune = 1.55 * (1.1 - registerRatio * 0.3); 
+            filterStartMult = 4.2 * this.hammerHardness; 
+            filterEndMult = 1.05;
+            filterDecay = 4.5;
+            hammerPitchOffset = 12; 
+            hammerVolMult = 0.25; 
+            hammerDecayTime = 0.020;
+            attackSwell = 0.0022;
             
             partialsDef = [
-                { n: 1, gain: 1.0, type: 'sine' as const, detune: -unisonDetune },
-                { n: 1, gain: 0.85, type: 'sine' as const, detune: +unisonDetune }, 
-                { n: 1, gain: 0.68, type: 'triangle' as const, detune: 0 },
-                { n: 2, gain: 0.24, type: 'triangle' as const, detune: +0.2 * unisonDetune },
-                { n: 3, gain: 0.11, type: 'sine' as const, detune: -0.2 * unisonDetune },
-                { n: 4, gain: 0.04, type: 'sine' as const, detune: 0 },
-                { n: 5, gain: 0.015, type: 'sine' as const, detune: 0 }
+                { n: 1, gain: 1.1, type: 'sine' as const, detune: -unisonDetune, decayMult: 1.0 },
+                { n: 1, gain: 0.95, type: 'sine' as const, detune: +unisonDetune, decayMult: 1.0 }, 
+                { n: 1, gain: 0.78, type: 'triangle' as const, detune: 0, decayMult: 0.95 },
+                { n: 2, gain: 0.32, type: 'triangle' as const, detune: +0.2 * unisonDetune, decayMult: 0.8 },
+                { n: 3, gain: 0.18, type: 'sine' as const, detune: -0.2 * unisonDetune, decayMult: 0.5 },
+                { n: 4, gain: 0.10, type: 'triangle' as const, detune: 0, decayMult: 0.08 },
+                { n: 5, gain: 0.03, type: 'sine' as const, detune: 0, decayMult: 0.05 }
             ];
         }
         else if (this.timbre === 'upright') {
             // Setup for: Premium Salon Wood Antique Upright piano
-            baseDecay = 6.2; 
-            B = 0.00038 * registerStiffnessMult; 
-            unisonDetune = 3.35; // classic detuned salon warmth
-            filterStartMult = 4.4 * this.hammerHardness;
-            filterEndMult = 1.35;
-            filterDecay = 1.5;
-            hammerPitchOffset = 14; 
-            hammerVolMult = 0.40; 
-            hammerDecayTime = 0.023; 
-            attackSwell = 0.0025;
+            baseDecay = 7.0; 
+            B = 0.00035 * registerStiffnessMult; 
+            unisonDetune = 3.45; // classic detuned salon warmth
+            filterStartMult = 5.2 * this.hammerHardness;
+            filterEndMult = 1.30;
+            filterDecay = 1.4;
+            hammerPitchOffset = 16; 
+            hammerVolMult = 0.50; 
+            hammerDecayTime = 0.018; 
+            attackSwell = 0.0020;
             
             partialsDef = [
-                { n: 1, gain: 0.90, type: 'triangle' as const, detune: -unisonDetune },
-                { n: 1, gain: 0.88, type: 'triangle' as const, detune: +unisonDetune }, 
-                { n: 2, gain: 0.40, type: 'sawtooth' as const, detune: +0.6 },
-                { n: 3, gain: 0.25, type: 'triangle' as const, detune: -0.5 },
-                { n: 4, gain: 0.12, type: 'sine' as const, detune: 0 }
+                { n: 1, gain: 0.95, type: 'triangle' as const, detune: -unisonDetune, decayMult: 1.0 },
+                { n: 1, gain: 0.95, type: 'triangle' as const, detune: +unisonDetune, decayMult: 0.95 }, 
+                { n: 2, gain: 0.48, type: 'sawtooth' as const, detune: +0.6, decayMult: 0.22 },
+                { n: 3, gain: 0.32, type: 'triangle' as const, detune: -0.5, decayMult: 0.18 },
+                { n: 4, gain: 0.18, type: 'sawtooth' as const, detune: 0, decayMult: 0.08 },
+                { n: 5, gain: 0.08, type: 'sine' as const, detune: 0, decayMult: 0.05 }
             ];
         } 
         else {
             // Setup for: Spatial Cinematic Cosmos Ambient Swell
-            baseDecay = 16.0; 
-            B = 0.000015; 
-            unisonDetune = 1.20;
-            filterStartMult = 2.5 * this.hammerHardness; 
-            filterEndMult = 0.90;
-            filterDecay = 5.0;
-            hammerPitchOffset = 8;
-            hammerVolMult = 0.02; 
-            hammerDecayTime = 0.040;
-            attackSwell = 0.038; // Soft cinematic bloom
+            baseDecay = 18.0; 
+            B = 0.000012; 
+            unisonDetune = 1.30;
+            filterStartMult = 2.8 * this.hammerHardness; 
+            filterEndMult = 0.85;
+            filterDecay = 5.5;
+            hammerPitchOffset = 6;
+            hammerVolMult = 0.05; 
+            hammerDecayTime = 0.035;
+            attackSwell = 0.045; // Soft cinematic bloom
             
             partialsDef = [
-                { n: 1, gain: 1.0, type: 'sine' as const, detune: -unisonDetune },
-                { n: 1, gain: 0.88, type: 'sine' as const, detune: +unisonDetune },
-                { n: 1, gain: 0.60, type: 'sine' as const, detune: 0 },
-                { n: 2, gain: 0.12, type: 'triangle' as const, detune: 0 }
+                { n: 1, gain: 1.1, type: 'sine' as const, detune: -unisonDetune, decayMult: 1.0 },
+                { n: 1, gain: 0.95, type: 'sine' as const, detune: +unisonDetune, decayMult: 1.0 },
+                { n: 1, gain: 0.70, type: 'sine' as const, detune: 0, decayMult: 1.0 },
+                { n: 2, gain: 0.25, type: 'triangle' as const, detune: 0, decayMult: 0.85 }
             ];
         }
 
@@ -667,7 +694,9 @@ class PianoSynthesizer {
             const stretch = Math.sqrt(1.0 + B * p.n * p.n);
             const partialFreq = frequency * p.n * stretch;
 
-            osc.type = p.type;
+            // Smooth out hard sawtooth waves in the bass register to prevent headphone current buzz
+            const finalType = (p.type === 'sawtooth' && keyIndex < 40) ? 'triangle' : p.type;
+            osc.type = finalType;
             osc.frequency.setValueAtTime(partialFreq, now);
             osc.detune.setValueAtTime(p.detune, now);
 
@@ -681,7 +710,10 @@ class PianoSynthesizer {
             g.gain.setValueAtTime(amplitude, now);
             
             // Decays of partials is frequency-dependent
-            const partialDecay = Math.max(0.10, noteDecay / (1.0 + (p.n - 1) * (1.9 - vel * 0.4)));
+            let partialDecay = Math.max(0.10, noteDecay / (1.0 + (p.n - 1) * (1.9 - vel * 0.4)));
+            if (p.decayMult !== undefined) {
+                partialDecay *= p.decayMult;
+            }
             g.gain.exponentialRampToValueAtTime(0.0001, now + partialDecay);
 
             osc.connect(g);
@@ -1239,12 +1271,19 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
 
     // Configuration / UI state
     const [selectedSongId, setSelectedSongId] = useState<string>('free');
+    const [isExiting, setIsExiting] = useState<boolean>(false);
+    const [isIntroActive, setIsIntroActive] = useState<boolean>(true);
+    const sessionStartTimeRef = useRef<number>(Date.now());
+    const [notesPlayed, setNotesPlayed] = useState<number>(0);
     const [customSongs, setCustomSongs] = useState<{ id: string; title: string; subtitle: string; composer: string; speed: number; notes: any[] }[]>([]);
     const [activeTimbre, setActiveTimbre] = useState<'grand' | 'yamaha' | 'bosendorfer' | 'upright' | 'ambient'>('grand');
     const [midiToast, setMidiToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
     const [isPracticeMode, setIsPracticeMode] = useState<boolean>(false); // 跟弹模式: Wait for correct key strike!
     const [songTimer, setSongTimer] = useState<number>(0);
+    const [loopEnabled, setLoopEnabled] = useState<boolean>(false);
+    const [loopStart, setLoopStart] = useState<number>(0);
+    const [loopEnd, setLoopEnd] = useState<number>(0);
     const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
     const [volume, setVolume] = useState<number>(0.6);
     const [sustain, setSustain] = useState<boolean>(false);
@@ -1436,6 +1475,120 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
         return allAvailableSongs.find(s => s.id === selectedSongId) || PRESET_SONGS[0];
     }, [selectedSongId, allAvailableSongs]);
 
+    const activeSongDuration = useMemo(() => {
+        const notes = activeSong.notes;
+        if (!notes || notes.length === 0) return 0;
+        const last = notes[notes.length - 1];
+        return last.time + last.duration;
+    }, [activeSong]);
+
+    const vfxTheme = useMemo(() => {
+        switch (waterfallStyle) {
+            case 'macaron':
+                return {
+                    primary: 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/10',
+                    text: 'text-rose-500',
+                    border: 'border-rose-100',
+                    track: '#f43f5e',
+                    trackBg: '#ffe4e6',
+                    trackDark: '#f43f5e',
+                    trackBgDark: '#881337',
+                    ring: 'shadow-rose-500/20',
+                    textMuted: 'text-rose-400',
+                    accentHex: '#f43f5e',
+                    accentLightHex: '#ffe4e6',
+                    accentText: 'text-rose-500 dark:text-rose-400',
+                    themeTag: 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                };
+            case 'starry':
+                return {
+                    primary: 'bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-amber-500/10',
+                    text: 'text-amber-500',
+                    border: 'border-amber-100',
+                    track: '#fbbf24',
+                    trackBg: '#fef3c7',
+                    trackDark: '#d97706',
+                    trackBgDark: '#78350f',
+                    ring: 'shadow-amber-500/20',
+                    textMuted: 'text-amber-400',
+                    accentHex: '#fbbf24',
+                    accentLightHex: '#fef3c7',
+                    accentText: 'text-amber-500 dark:text-amber-400',
+                    themeTag: 'bg-amber-500/15 text-amber-500/20 border border-amber-500/20'
+                };
+            case 'ocean':
+                return {
+                    primary: 'bg-cyan-500 hover:bg-cyan-600 text-white shadow-cyan-500/10',
+                    text: 'text-cyan-500',
+                    border: 'border-cyan-100',
+                    track: '#06b6d4',
+                    trackBg: '#ecfeff',
+                    trackDark: '#0891b2',
+                    trackBgDark: '#164e63',
+                    ring: 'shadow-cyan-500/20',
+                    textMuted: 'text-cyan-400',
+                    accentHex: '#06b6d4',
+                    accentLightHex: '#ecfeff',
+                    accentText: 'text-cyan-600 dark:text-cyan-400',
+                    themeTag: 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20'
+                };
+            case 'forest':
+                return {
+                    primary: 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/10',
+                    text: 'text-emerald-500',
+                    border: 'border-emerald-100',
+                    track: '#10b981',
+                    trackBg: '#f0fdf4',
+                    trackDark: '#059669',
+                    trackBgDark: '#064e3b',
+                    ring: 'shadow-emerald-500/20',
+                    textMuted: 'text-emerald-400',
+                    accentHex: '#10b981',
+                    accentLightHex: '#f0fdf4',
+                    accentText: 'text-emerald-600 dark:text-emerald-400',
+                    themeTag: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                };
+            case 'sakura':
+                return {
+                    primary: 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-600/10',
+                    text: 'text-rose-500',
+                    border: 'border-rose-100',
+                    track: '#e11d48',
+                    trackBg: '#fff1f2',
+                    trackDark: '#be123c',
+                    trackBgDark: '#4c0519',
+                    ring: 'shadow-rose-600/20',
+                    textMuted: 'text-rose-400',
+                    accentHex: '#e11d48',
+                    accentLightHex: '#fff1f2',
+                    accentText: 'text-rose-600 dark:text-rose-400',
+                    themeTag: 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                };
+            default:
+                return {
+                    primary: 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/10',
+                    text: 'text-indigo-600',
+                    border: 'border-indigo-100',
+                    track: '#4f46e5',
+                    trackBg: '#e0e7ff',
+                    trackDark: '#6366f1',
+                    trackBgDark: '#312e81',
+                    ring: 'shadow-indigo-600/20',
+                    textMuted: 'text-indigo-400',
+                    accentHex: '#4f46e5',
+                    accentLightHex: '#e0e7ff',
+                    accentText: 'text-indigo-600 dark:text-indigo-400',
+                    themeTag: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20'
+                };
+        }
+    }, [waterfallStyle]);
+
+    useEffect(() => {
+        setLoopStart(0);
+        setLoopEnd(activeSongDuration);
+        setLoopEnabled(false);
+    }, [activeSong.id, activeSongDuration]);
+
     const [songTransition, setSongTransition] = useState<{ id: string; title: string } | null>(null);
 
     // Track whether the full-screen entrance show/opening animation is currently active
@@ -1444,6 +1597,7 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
     useEffect(() => {
         const timer = setTimeout(() => {
             isIntroActiveRef.current = false;
+            setIsIntroActive(false);
         }, 1800); // Curtains/Steinway badge intro finishes in 1.8 seconds
         return () => clearTimeout(timer);
     }, []);
@@ -1532,7 +1686,7 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
     const isFirstRenderRef = useRef(true);
 
     useEffect(() => {
-        if (!selectedSongId) return;
+        if (!selectedSongId || selectedSongId === 'free') return;
         if (isFirstRenderRef.current || isIntroActiveRef.current) {
             isFirstRenderRef.current = false;
             return;
@@ -1568,6 +1722,9 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
     const showReflectionRef = useRef(showReflection);
     const particlesEnabledRef = useRef(particlesEnabled);
     const glowIntensityRef = useRef(glowIntensity);
+    const loopEnabledRef = useRef(loopEnabled);
+    const loopStartRef = useRef(loopStart);
+    const loopEndRef = useRef(loopEnd);
 
     useEffect(() => { activeSongRef.current = activeSong; }, [activeSong]);
     useEffect(() => { whiteKeyWidthRef.current = whiteKeyWidth; }, [whiteKeyWidth]);
@@ -1582,6 +1739,9 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
     useEffect(() => { showReflectionRef.current = showReflection; }, [showReflection]);
     useEffect(() => { particlesEnabledRef.current = particlesEnabled; }, [particlesEnabled]);
     useEffect(() => { glowIntensityRef.current = glowIntensity; }, [glowIntensity]);
+    useEffect(() => { loopEnabledRef.current = loopEnabled; }, [loopEnabled]);
+    useEffect(() => { loopStartRef.current = loopStart; }, [loopStart]);
+    useEffect(() => { loopEndRef.current = loopEnd; }, [loopEnd]);
 
     // Handle user binary MIDI file upload import
     const handleMidiImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1698,6 +1858,7 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
         if (!key) return;
         
         synth.triggerAttack(keyIndex, key.frequency, velocity);
+        setNotesPlayed(p => p + 1);
         setActiveKeys(prev => {
             const next = new Set(prev);
             next.add(keyIndex);
@@ -2306,7 +2467,25 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                 // Smooth timer ticking when NOT paused for practice
                 if (isPlaying) {
                     if (!shouldPauseForPractice) {
-                        songTimerRef.current += delta * playbackSpeed;
+                        if (loopEnabledRef.current && (songTimerRef.current < loopStartRef.current || songTimerRef.current >= loopEndRef.current)) {
+                            // Release active frequencies to prevent sticking notes
+                            keys.forEach(k => {
+                                try { synth.triggerRelease(k.index, true); } catch (_) {}
+                            });
+                            songTimerRef.current = loopStartRef.current;
+                            songTriggeredKeysRef.current.clear();
+                            setActiveKeys(new Set());
+                        } else {
+                            songTimerRef.current += delta * playbackSpeed;
+                            if (loopEnabledRef.current && songTimerRef.current >= loopEndRef.current) {
+                                keys.forEach(k => {
+                                    try { synth.triggerRelease(k.index, true); } catch (_) {}
+                                });
+                                songTimerRef.current = loopStartRef.current;
+                                songTriggeredKeysRef.current.clear();
+                                setActiveKeys(new Set());
+                            }
+                        }
                         setSongTimer(songTimerRef.current);
                     }
                 }
@@ -2340,6 +2519,7 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                             if (!isPracticeMode) {
                                 const finalVel = note.velocity !== undefined ? note.velocity / 127.0 : 0.8;
                                 synth.triggerAttack(note.keyIndex, keys.find(k => k.index === note.keyIndex)!.frequency, finalVel);
+                                setNotesPlayed(p => p + 1);
                                 setActiveKeys(prev => {
                                     const next = new Set(prev);
                                     next.add(note.keyIndex);
@@ -2826,6 +3006,23 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
         setActiveKeys(new Set());
     };
 
+    // Jump playback time smoothly (scrubbing)
+    const jumpToTime = (targetTime: number) => {
+        const clamped = Math.max(0, Math.min(targetTime, activeSongDuration));
+        
+        // Quietly release all ringing frequencies
+        keys.forEach(k => {
+            try {
+                synth.triggerRelease(k.index, true);
+            } catch (_) {}
+        });
+
+        songTimerRef.current = clamped;
+        songTriggeredKeysRef.current.clear();
+        setSongTimer(clamped);
+        setActiveKeys(new Set());
+    };
+
     // Quick jump octaves scroll assistant
     const jumpToOctave = (oct: number) => {
         const keyboard = keyboardScrollRef.current;
@@ -2850,9 +3047,16 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
 
     // Exit and cleanup logic
     const handleExit = () => {
+        if (isExiting) return;
         // Damping any playing oscillators
         keys.forEach(k => synth.triggerRelease(k.index, true));
-        onClose();
+        setIsPlaying(false);
+        setIsExiting(true);
+
+        // Defer actual onClose callback until the gorgeous curtain exit has fully finished
+        setTimeout(() => {
+            onClose();
+        }, 2200); // Gives 2.2s for the curtain closing and the statistics badge display before parent unmounts
     };
 
     return (
@@ -2873,26 +3077,28 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                     }
                 }}
                 className={`fixed inset-0 z-[160] flex flex-col transition-colors duration-500 overflow-hidden select-none ${
-                    isNightMode ? 'bg-stone-955 text-stone-100' : 'bg-[#FAF7F2] text-stone-800'
+                    isNightMode ? 'bg-[#0B0A09] text-stone-100' : 'bg-[#FAF7F2] text-stone-800'
                 }`}
             >
                 {/* --- CINEMATIC THEATRE CURTAINS --- */}
-                <div className="absolute inset-0 z-[200] pointer-events-none flex overflow-hidden">
+                <div className={`absolute inset-0 z-[200] flex overflow-hidden transition-all ${
+                    (isIntroActive || isExiting) ? 'pointer-events-auto' : 'pointer-events-none'
+                }`}>
                     {/* Left Curtain */}
                     <motion.div 
                         initial={{ x: "0%" }}
-                        animate={{ x: "-102%" }}
+                        animate={{ x: isExiting ? "0%" : "-102%" }}
                         exit={{ x: "0%" }}
                         transition={{ duration: 1.6, ease: [0.76, 0, 0.24, 1] }}
                         className={`w-1/2 h-full relative border-r-2 flex items-center justify-end pr-8 transition-colors duration-500 shadow-[20px_0_40px_rgba(0,0,0,0.65)] ${
                             isNightMode 
-                                ? 'bg-[#0f0e0c] border-[#e0a96d]/40' 
+                                ? 'bg-[#0F0E0D] border-amber-500/25' 
                                 : 'bg-[#eae3d5] border-[#8b5a2b]/25 shadow-[20px_0_40px_rgba(139,90,43,0.15)]'
                         }`}
                     >
                         {/* Elegant textures or golden design details on left curtain */}
                         <div className="flex flex-col items-center select-none origin-right rotate-90 translate-x-12 opacity-35">
-                            <span className={`text-[10px] tracking-[0.3em] font-mono font-black uppercase ${isNightMode ? 'text-[#e0a96d]' : 'text-[#8b5a2b]'}`}>
+                            <span className={`text-[10px] tracking-[0.3em] font-mono font-black uppercase ${isNightMode ? 'text-amber-400' : 'text-[#8b5a2b]'}`}>
                                 PIANO CONCERT
                             </span>
                         </div>
@@ -2901,18 +3107,18 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                     {/* Right Curtain */}
                     <motion.div 
                         initial={{ x: "0%" }}
-                        animate={{ x: "102%" }}
+                        animate={{ x: isExiting ? "0%" : "102%" }}
                         exit={{ x: "0%" }}
                         transition={{ duration: 1.6, ease: [0.76, 0, 0.24, 1] }}
                         className={`w-1/2 h-full relative border-l-2 flex items-center justify-start pl-8 transition-colors duration-500 shadow-[-20px_0_40px_rgba(0,0,0,0.65)] ${
                             isNightMode 
-                                ? 'bg-[#0f0e0c] border-[#e0a96d]/40' 
+                                ? 'bg-[#0F0E0D] border-amber-500/25' 
                                 : 'bg-[#eae3d5] border-[#8b5a2b]/25 shadow-[-20px_0_40px_rgba(139,90,43,0.15)]'
                         }`}
                     >
                         {/* Elegant textures or golden design details on right curtain */}
                         <div className="flex flex-col items-center select-none origin-left -rotate-90 -translate-x-12 opacity-35">
-                            <span className={`text-[10px] tracking-[0.3em] font-mono font-black uppercase ${isNightMode ? 'text-[#e0a96d]' : 'text-[#8b5a2b]'}`}>
+                            <span className={`text-[10px] tracking-[0.3em] font-mono font-black uppercase ${isNightMode ? 'text-amber-400' : 'text-[#8b5a2b]'}`}>
                                 STEINWAY & SONS
                             </span>
                         </div>
@@ -2927,10 +3133,125 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                         className="absolute inset-0 m-auto w-[600px] h-[600px] rounded-full pointer-events-none blur-[150px] mix-blend-screen"
                         style={{
                             background: isNightMode 
-                                ? 'radial-gradient(circle, rgba(224,169,109,0.3) 0%, rgba(224,169,109,0.05) 50%, transparent 100%)'
+                                ? 'radial-gradient(circle, rgba(245,158,11,0.25) 0%, rgba(245,158,11,0.04) 50%, transparent 100%)'
                                 : 'radial-gradient(circle, rgba(239,184,136,0.5) 0%, rgba(239,184,136,0.1) 50%, transparent 100%)'
                         }}
                     />
+
+                    {/* Exquisite statistics popup shown on Closing Curtain */}
+                    <AnimatePresence>
+                        {isExiting && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.88, y: 30 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.92, y: -30 }}
+                                transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                                className="absolute inset-0 m-auto w-[420px] max-w-[90vw] h-auto flex flex-col items-center justify-center pointer-events-auto z-[215]"
+                            >
+                                <div className={`relative w-full px-8 py-8 rounded-3xl border text-center backdrop-blur-3xl flex flex-col items-center gap-5.5 select-none transition-all duration-500 overflow-hidden ${
+                                    isNightMode 
+                                        ? 'bg-[#0A0908]/96 border-amber-500/35 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.95)] shadow-amber-500/5' 
+                                        : 'bg-white/98 border-[#8b5a2b]/30 shadow-[0_20px_50px_rgba(139,90,43,0.18)]'
+                                }`}>
+                                    
+                                    {/* Gold Classical Corner Brackets Ornament Styling */}
+                                    <div className={`absolute top-3 left-3 w-4.5 h-4.5 border-t-2 border-l-2 rounded-tl-[3px] pointer-events-none transition-all duration-500 ${isNightMode ? 'border-amber-500/40' : 'border-[#8b5a2b]/30'}`} />
+                                    <div className={`absolute top-3 right-3 w-4.5 h-4.5 border-t-2 border-r-2 rounded-tr-[3px] pointer-events-none transition-all duration-500 ${isNightMode ? 'border-amber-500/40' : 'border-[#8b5a2b]/30'}`} />
+                                    <div className={`absolute bottom-3 left-3 w-4.5 h-4.5 border-b-2 border-l-2 rounded-bl-[3px] pointer-events-none transition-all duration-500 ${isNightMode ? 'border-amber-500/40' : 'border-[#8b5a2b]/30'}`} />
+                                    <div className={`absolute bottom-3 right-3 w-4.5 h-4.5 border-b-2 border-r-2 rounded-br-[3px] pointer-events-none transition-all duration-500 ${isNightMode ? 'border-amber-500/40' : 'border-[#8b5a2b]/30'}`} />
+
+                                    {/* Rotating Golden Music Badge icon */}
+                                    <div className="relative w-14 h-14 flex items-center justify-center rounded-full bg-gradient-to-tr from-amber-600 via-amber-500 to-yellow-400 text-white shadow-xl shadow-amber-500/10">
+                                        <motion.div 
+                                            animate={{ rotate: -360 }}
+                                            transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+                                            className="absolute inset-[-4px] rounded-full border border-dashed border-amber-500/40 pointer-events-none"
+                                        />
+                                        <Award size={24} className="animate-pulse" style={{ animationDuration: '2s' }} />
+                                    </div>
+
+                                    <div className="space-y-1.5 w-full">
+                                        <span className={`text-[9.5px] font-sans font-black tracking-[0.3em] uppercase block ${
+                                            isNightMode ? 'text-amber-400' : 'text-[#8b5a2b]'
+                                        }`}>
+                                            CONCERT RECITAL CLOSED • 音乐档案
+                                        </span>
+                                        <h4 className={`text-lg font-bold font-serif tracking-widest ${
+                                            isNightMode ? 'text-stone-100' : 'text-stone-900'
+                                        }`}>
+                                            『 琴声渐息 • 韶华绕梁 』
+                                        </h4>
+                                        <p className={`text-[10.5px] max-w-xs mx-auto leading-relaxed ${
+                                            isNightMode ? 'text-stone-400' : 'text-stone-600'
+                                        }`}>
+                                            键盘静息，音乐场馆正逐步平稳释放。感谢您的精彩演奏，每一个音符都已被音乐厅永久收录。
+                                        </p>
+                                    </div>
+
+                                    {/* 3-Column Elite Real-time stats container */}
+                                    <div className={`grid grid-cols-3 gap-1 w-full px-2 py-3.5 rounded-2xl border transition-colors duration-500 ${
+                                        isNightMode ? 'bg-black/60 border-stone-850' : 'bg-[#FAF8F5] border-[#8b5a2b]/15'
+                                    }`}>
+                                        {/* Stat 1 */}
+                                        <div className="text-center space-y-1 border-r border-stone-800/60 flex flex-col justify-center items-center px-1">
+                                            <span className={`text-[9.5px] font-medium ${isNightMode ? 'text-stone-500' : 'text-stone-450'}`}>本次击键</span>
+                                            <span className={`text-base font-extrabold font-mono tracking-tight flex items-baseline gap-0.5 ${
+                                                isNightMode ? 'text-amber-400' : 'text-amber-800'
+                                            }`}>
+                                                {notesPlayed} <span className="text-[9px] font-sans font-normal text-stone-550">次</span>
+                                            </span>
+                                        </div>
+
+                                        {/* Stat 2 */}
+                                        <div className="text-center space-y-1 border-r border-stone-800/60 flex flex-col justify-center items-center px-1">
+                                            <span className={`text-[9.5px] font-medium ${isNightMode ? 'text-stone-500' : 'text-stone-450'}`}>聆听历时</span>
+                                            <span className={`text-base font-extrabold font-mono tracking-tight ${
+                                                isNightMode ? 'text-amber-400' : 'text-amber-800'
+                                            }`}>
+                                                {(() => {
+                                                    const elapsed = Math.max(0, Math.floor((Date.now() - sessionStartTimeRef.current) / 1000));
+                                                    const min = Math.floor(elapsed / 60);
+                                                    const sec = elapsed % 60;
+                                                    return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+                                                })()}
+                                            </span>
+                                        </div>
+
+                                        {/* Stat 3 */}
+                                        <div className="text-center space-y-1 flex flex-col justify-center items-center px-1">
+                                            <span className={`text-[9.5px] font-medium ${isNightMode ? 'text-stone-500' : 'text-stone-450'}`}>演奏境界</span>
+                                            <span className={`text-[10px] font-serif font-black tracking-wider ${
+                                                isNightMode ? 'text-amber-450' : 'text-[#8b5a2b]'
+                                            }`}>
+                                                {(() => {
+                                                    if (notesPlayed === 0) return "意境深远";
+                                                    if (notesPlayed < 20) return "初露锋芒";
+                                                    if (notesPlayed < 80) return "行云流水";
+                                                    if (notesPlayed < 250) return "妙笔生花";
+                                                    return "超凡入圣";
+                                                })()}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Status Bar */}
+                                    <div className="w-full space-y-2.5 mt-1">
+                                        <div className="w-full h-[3px] bg-stone-900 rounded-full overflow-hidden relative border border-stone-800/40">
+                                            <motion.div 
+                                                initial={{ left: "-40%" }}
+                                                animate={{ left: "100%" }}
+                                                transition={{ duration: 1.8, ease: "easeInOut", repeat: Infinity }}
+                                                className="absolute top-0 bottom-0 w-2/5 bg-gradient-to-r from-transparent via-amber-400 to-transparent"
+                                            />
+                                        </div>
+                                        <span className={`text-[9.5px] font-mono tracking-wide block ${isNightMode ? 'text-amber-500/60' : 'text-amber-800/70'}`}>
+                                            正在卸载声学物理管弦模块与混响空间...
+                                        </span>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* The Center Emblem Badge that splits or fades out */}
                     <motion.div
@@ -2940,19 +3261,19 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                             scale: [0.85, 1, 1, 0.95],
                             y: [15, 0, 0, -25]
                         }}
-                        exit={{ opacity: [0, 1, 0], scale: [0.95, 1, 0.9], y: [-25, 0, 15] }}
+                        exit={{ opacity: 0 }}
                         transition={{ duration: 1.6, ease: "easeInOut", times: [0, 0.25, 0.7, 1] }}
                         className="absolute inset-0 m-auto w-80 h-32 flex flex-col items-center justify-center pointer-events-none z-[210] rounded-2xl"
                     >
                         <div className={`px-6 py-4 rounded-2xl border text-center backdrop-blur-xl flex flex-col items-center gap-1 shadow-2xl ${
                             isNightMode 
-                                ? 'bg-[#0f0e0c]/90 border-[#e0a96d]/30 shadow-black' 
-                                : 'bg-white/95 border-[#8b5a2b]/20 shadow-[#8b5a2b]/15'
+                                ? 'bg-[#0f0e0c]/90 border-amber-500/20 shadow-black' 
+                                : 'bg-white/95 border-[#8b5a2b]/25 shadow-[#8b5a2b]/15'
                         }`}>
-                            <div className={`text-[11px] font-black tracking-[0.5em] uppercase font-sans ${isNightMode ? 'text-[#e0a96d]' : 'text-[#8b5a2b]'}`}>
+                            <div className={`text-[11px] font-black tracking-[0.5em] uppercase font-sans ${isNightMode ? 'text-amber-400' : 'text-[#8b5a2b]'}`}>
                                 STEINWAY HALL
                             </div>
-                            <div className="w-12 h-[1px] bg-gradient-to-r from-transparent via-[#e0a96d] to-transparent my-1.5" />
+                            <div className="w-12 h-[1px] bg-gradient-to-r from-transparent via-amber-450 to-transparent my-1.5" />
                             <div className={`text-xs font-semibold font-sans tracking-widest ${isNightMode ? 'text-stone-300' : 'text-stone-750'}`}>
                                 正在进入全屏演奏厅...
                             </div>
@@ -3056,10 +3377,10 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                                         restartSong();
                                     });
                                 }}
-                                className={`border text-xs font-semibold outline-none pl-2.5 pr-8 py-1 rounded-full cursor-pointer appearance-none transition-colors ${
+                                className={`max-w-[150px] sm:max-w-[180px] border text-xs font-semibold outline-none pl-2.5 pr-8 py-1 rounded-full cursor-pointer appearance-none transition-colors truncate ${
                                     isNightMode 
-                                        ? 'bg-stone-900/80 border-stone-805 text-stone-200 hover:text-white hover:border-stone-700' 
-                                        : 'bg-white border-stone-200 text-stone-750 hover:text-stone-950 hover:border-stone-350'
+                                        ? 'bg-stone-900/80 border-stone-800 text-stone-200 hover:text-white hover:border-stone-700' 
+                                        : 'bg-white border-stone-200 text-stone-700 hover:text-stone-950 hover:border-stone-300'
                                 }`}
                             >
                                 {allAvailableSongs.map(song => (
@@ -3074,7 +3395,7 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                         {/* Top quick MIDI Import shortcut */}
                         <label 
                             htmlFor="header-midi-file-input"
-                            className="bg-indigo-650 hover:bg-indigo-550 text-white font-black text-[10px] px-2.5 py-1 rounded-full flex items-center gap-1 cursor-pointer transition-colors shrink-0"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] px-2.5 py-1 rounded-full flex items-center gap-1 cursor-pointer transition-colors shrink-0 shadow-sm"
                             title="导入本地 MIDI (.mid) 乐谱"
                         >
                             <Upload size={11} />
@@ -3928,27 +4249,231 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
 
 
                                     
-                                    {/* Ultra-sleek HUD center bar */}
+                                    {/* Ultra-sleek HUD center bar (Concert Master Control Panel) */}
                                     {activeSong.id !== 'free' && (
-                                        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-10 px-4.5 py-2 rounded-full backdrop-blur-xl border flex items-center gap-4 text-xs font-mono select-none pointer-events-none shadow-xl transition-all duration-500 ${
+                                        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-30 px-5 py-3.5 rounded-2xl backdrop-blur-2xl border flex flex-col gap-3 w-[440px] max-w-[90vw] shadow-2xl transition-all duration-500 pointer-events-auto ${
                                             isNightMode 
-                                                ? 'bg-stone-900/80 border-stone-800/80 shadow-black/50 text-white' 
-                                                : 'bg-white/85 border-rose-100/70 shadow-rose-950/5 text-stone-800'
+                                                ? 'bg-stone-950/80 border-stone-800/80 shadow-black/80 text-white' 
+                                                : `bg-white/94 border-stone-200/60 ${vfxTheme.ring} text-stone-800`
                                         } animate-fadeIn`}>
-                                            <div className="w-2 h-2 rounded-full bg-rose-450 animate-pulse shrink-0" />
-                                            <div className="text-left">
-                                                <span className={`text-[8.5px] font-sans font-extrabold block tracking-widest uppercase leading-none ${isNightMode ? 'text-stone-400' : 'text-stone-500'}`}>NOW PLAYING</span>
-                                                <span className={`font-extrabold text-[11px] font-sans block mt-1 tracking-tight leading-none ${isNightMode ? 'text-white' : 'text-stone-800'}`}>
-                                                    {activeSong.title}
-                                                </span>
+                                            
+                                            {/* Header Row: Title and Main Action Controls */}
+                                            <div className="flex items-center justify-between w-full">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    {/* Pulse Indicator */}
+                                                    <div className={`w-2 h-2 rounded-full shrink-0 ${isPlaying ? 'bg-emerald-450 animate-pulse' : 'bg-stone-500'}`} />
+                                                    <div className="text-left min-w-0">
+                                                        <span className={`text-[8px] font-sans font-black block tracking-widest uppercase leading-none ${isNightMode ? 'text-stone-400' : 'text-stone-500'}`}>NOW PLAYING</span>
+                                                        <span className={`font-black text-[11.5px] font-sans block mt-1 tracking-tight leading-none truncate ${isNightMode ? 'text-white' : 'text-stone-900'}`} title={activeSong.title}>
+                                                            {activeSong.title}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Audio Control Action row */}
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    {/* Play / Pause button */}
+                                                    <button
+                                                        onClick={() => setIsPlaying(!isPlaying)}
+                                                        className={`p-1.5 rounded-lg transition-all scale-100 hover:scale-105 active:scale-95 cursor-pointer ${
+                                                            isPlaying 
+                                                                ? 'bg-amber-400 text-stone-900 shadow-md shadow-amber-400/20' 
+                                                                : `${vfxTheme.primary} shadow-md`
+                                                        }`}
+                                                        title={isPlaying ? '暂停 (Pause)' : '播放 (Play)'}
+                                                    >
+                                                        {isPlaying ? <Pause size={11} fill="currentColor" /> : <Play size={11} fill="currentColor" />}
+                                                    </button>
+
+                                                    {/* Loop practicing activation */}
+                                                    <button
+                                                        onClick={() => {
+                                                            setLoopEnabled(!loopEnabled);
+                                                            if (!loopEnabled && (songTimer < loopStart || songTimer > loopEnd)) {
+                                                                jumpToTime(loopStart);
+                                                            }
+                                                        }}
+                                                        className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                                            loopEnabled 
+                                                                ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/10' 
+                                                                : isNightMode ? 'hover:bg-stone-850 text-stone-400' : 'hover:bg-stone-200 text-stone-600'
+                                                        }`}
+                                                        title={loopEnabled ? '关闭循环区间' : '开启自定义时段循环练习'}
+                                                    >
+                                                        <Repeat size={11} className={loopEnabled ? "animate-pulse" : ""} />
+                                                    </button>
+
+                                                    {/* Restart button */}
+                                                    <button
+                                                        onClick={restartSong}
+                                                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                                            isNightMode ? 'hover:bg-stone-850 text-stone-400 hover:text-white' : 'hover:bg-stone-200 text-stone-600 hover:text-stone-900'
+                                                        }`}
+                                                        title="重新开始"
+                                                    >
+                                                        <RotateCcw size={11} />
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className={`h-5 w-px ${isNightMode ? 'bg-stone-800' : 'bg-rose-100'}`} />
-                                            <div className={`text-left text-[10.5px] font-sans font-medium flex items-center gap-1.5 leading-none ${isNightMode ? 'text-stone-300' : 'text-stone-600'}`}>
-                                                <span className={`text-[9.5px] font-mono ${isNightMode ? 'text-stone-400' : 'text-stone-500'}`}>PROG:</span>
-                                                <span className="text-rose-500 font-bold font-mono">
-                                                    {Math.min(100, Math.floor((songTimer / (activeSong.notes[activeSong.notes.length - 1]?.time || 1)) * 100))}%
-                                                </span>
+
+                                            {/* Progress slider bar with interactive scrubbing */}
+                                            <div className="space-y-1.5 w-full">
+                                                <div className="relative flex items-center group w-full">
+                                                    <input 
+                                                        type="range" 
+                                                        min="0" 
+                                                        max={activeSongDuration || 1} 
+                                                        step="0.05"
+                                                        value={songTimer} 
+                                                        onChange={e => jumpToTime(parseFloat(e.target.value))}
+                                                        className={`w-full h-1.5 rounded-full appearance-none cursor-pointer outline-none transition-all [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--thumb-color)] [&::-webkit-slider-thumb]:shadow-md ${
+                                                            isNightMode ? 'bg-stone-800' : 'bg-stone-200'
+                                                        }`}
+                                                        style={{
+                                                            '--thumb-color': isNightMode ? '#fbbf24' : vfxTheme.track,
+                                                            background: (() => {
+                                                                const pct = (songTimer / (activeSongDuration || 1)) * 100;
+                                                                const accentColor = isNightMode ? '#fbbf24' : vfxTheme.track;
+                                                                const trackBg = isNightMode ? '#27272a' : '#e4e4e7';
+                                                                
+                                                                // If loop is active, paint the loop interval track using dynamic theme colors
+                                                                if (loopEnabled) {
+                                                                    const startPct = (loopStart / (activeSongDuration || 1)) * 100;
+                                                                    const endPct = (loopEnd / (activeSongDuration || 1)) * 100;
+                                                                    const midColor = vfxTheme.track;
+                                                                    const spanColor = isNightMode ? vfxTheme.trackBgDark : vfxTheme.trackBg;
+                                                                    return `linear-gradient(to right, ${trackBg} 0%, ${trackBg} ${startPct}%, ${spanColor} ${startPct}%, ${midColor} ${startPct}%, ${midColor} ${pct}%, ${spanColor} ${pct}%, ${spanColor} ${endPct}%, ${trackBg} ${endPct}%, ${trackBg} 100%)`;
+                                                                }
+                                                                return `linear-gradient(to right, ${accentColor} 0%, ${accentColor} ${pct}%, ${trackBg} ${pct}%, ${trackBg} 100%)`;
+                                                            })()
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                {/* Timer Displays */}
+                                                <div className="flex justify-between items-center text-[9px] font-mono text-stone-500 tracking-tight">
+                                                    <div className="flex items-center gap-1">
+                                                        <span>{(() => {
+                                                            const mins = Math.floor(songTimer / 60);
+                                                            const secs = Math.floor(songTimer % 60);
+                                                            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                                                        })()}</span>
+                                                        <span className="opacity-40">/</span>
+                                                        <span>{(() => {
+                                                            const mins = Math.floor(activeSongDuration / 60);
+                                                            const secs = Math.floor(activeSongDuration % 60);
+                                                            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                                                        })()}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                                        {loopEnabled && (
+                                                            <span className={`text-[8px] font-sans tracking-widest uppercase px-1 rounded-sm scale-90 ${vfxTheme.themeTag}`}>
+                                                                LOOP ACTIVE
+                                                            </span>
+                                                        )}
+                                                        <span className={isNightMode ? 'text-amber-400' : vfxTheme.text}>
+                                                            {isPracticeMode ? '跟弹互动模式' : '自动演奏模式'}进度:{' '}
+                                                            <strong className="font-bold">
+                                                                {Math.min(100, Math.floor((songTimer / (activeSongDuration || 1)) * 100))}%
+                                                            </strong>
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
+
+                                            {/* Sub-panel layout: Custom practice timeframe controller (appears if loopEnabled active) */}
+                                            {loopEnabled && (
+                                                <div className={`p-2 rounded-xl flex flex-col gap-2 transition-all ${
+                                                    isNightMode ? 'bg-black/40 border border-stone-850' : 'bg-[#FAF8F5] border border-[#8b5a2b]/10'
+                                                }`}>
+                                                    <div className="flex items-center justify-between text-[9px] font-medium">
+                                                        <span className={isNightMode ? 'text-stone-400' : 'text-stone-600'}>🎯 自定义时段循环练习</span>
+                                                        <span className="text-amber-500 font-mono scale-95">区间长度: {Math.max(0, Math.floor(loopEnd - loopStart))} 秒</span>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between gap-2 text-[9.5px]">
+                                                        {/* Loop Start dial input */}
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-stone-500 text-[8px] uppercase">START:</span>
+                                                            <input 
+                                                                type="range"
+                                                                min="0"
+                                                                max={activeSongDuration ? Math.max(0, activeSongDuration - 1) : 0}
+                                                                step="1"
+                                                                value={loopStart}
+                                                                onChange={e => {
+                                                                    const val = Math.min(parseFloat(e.target.value), loopEnd - 1);
+                                                                    setLoopStart(val);
+                                                                    if (songTimerRef.current < val) {
+                                                                        jumpToTime(val);
+                                                                    }
+                                                                }}
+                                                                style={{ accentColor: vfxTheme.track }}
+                                                                className="w-16 h-1 bg-stone-800 rounded"
+                                                            />
+                                                            <span className={`font-mono font-bold ${isNightMode ? 'text-stone-300' : 'text-stone-705'}`}>{(() => {
+                                                                const mins = Math.floor(loopStart / 60);
+                                                                const secs = Math.floor(loopStart % 60);
+                                                                return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                                                            })()}</span>
+                                                        </div>
+
+                                                        {/* Quick segment presets */}
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setLoopStart(0);
+                                                                    setLoopEnd(activeSongDuration / 2);
+                                                                    jumpToTime(0);
+                                                                }}
+                                                                className={`px-1.5 py-0.5 text-[8.5px] rounded border ${
+                                                                    isNightMode ? 'bg-stone-900 border-stone-800 text-stone-300 hover:text-white' : 'bg-white border-stone-250 text-stone-600 hover:text-stone-900'
+                                                                } cursor-pointer scale-90`}
+                                                            >
+                                                                前段
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setLoopStart(activeSongDuration / 2);
+                                                                    setLoopEnd(activeSongDuration);
+                                                                    jumpToTime(activeSongDuration / 2);
+                                                                }}
+                                                                className={`px-1.5 py-0.5 text-[8.5px] rounded border ${
+                                                                    isNightMode ? 'bg-stone-900 border-stone-800 text-stone-300 hover:text-white' : 'bg-white border-stone-250 text-stone-600 hover:text-stone-900'
+                                                                } cursor-pointer scale-90`}
+                                                            >
+                                                                后段
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Loop End dial input */}
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-stone-500 text-[8px] uppercase">END:</span>
+                                                            <input 
+                                                                type="range"
+                                                                min="1"
+                                                                max={activeSongDuration || 1}
+                                                                step="1"
+                                                                value={loopEnd}
+                                                                onChange={e => {
+                                                                    const val = Math.max(parseFloat(e.target.value), loopStart + 1);
+                                                                    setLoopEnd(val);
+                                                                    if (songTimerRef.current > val) {
+                                                                        jumpToTime(loopStart);
+                                                                    }
+                                                                }}
+                                                                style={{ accentColor: vfxTheme.track }}
+                                                                className="w-16 h-1 bg-stone-800 rounded"
+                                                            />
+                                                            <span className={`font-mono font-bold ${isNightMode ? 'text-stone-300' : 'text-stone-705'}`}>{(() => {
+                                                                const mins = Math.floor(loopEnd / 60);
+                                                                const secs = Math.floor(loopEnd % 60);
+                                                                return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                                                            })()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -3956,9 +4481,9 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                                     <div className={`absolute top-4 right-4 z-10 px-3 py-1.5 rounded-full backdrop-blur-xl border text-[10px] font-medium font-sans flex items-center gap-2 shadow-lg transition-all duration-500 ${
                                         isNightMode 
                                             ? 'bg-stone-900/70 border-stone-800/80 text-stone-300 shadow-black/20' 
-                                            : 'bg-white/80 border-rose-100/60 text-stone-600 shadow-rose-950/5'
+                                            : `bg-white/80 ${vfxTheme.border} text-stone-600 shadow-rose-950/5`
                                     } pointer-events-none`}>
-                                        <Keyboard size={11} className={isNightMode ? 'text-indigo-400' : 'text-rose-450'} />
+                                        <Keyboard size={11} className={isNightMode ? 'text-amber-400' : vfxTheme.text} />
                                         <span>键盘 [A-S-D-F-G-H-J] 映射中音区 C4 | 支持 MIDI 外设即插即弹</span>
                                     </div>
                                 </div>

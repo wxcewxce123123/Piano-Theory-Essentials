@@ -245,6 +245,15 @@
         white-space: nowrap;
         border-width: 0;
       }
+
+      /* Custom Range Slider Thumb Dynamic Adaptive Styling */
+      input[type="range"]::-webkit-slider-thumb {
+        background-color: var(--thumb-color, #6366f1) !important;
+      }
+      input[type="range"]::-moz-range-thumb {
+        background-color: var(--thumb-color, #6366f1) !important;
+        border: none;
+      }
     </style>
   <script type="importmap">
 {
