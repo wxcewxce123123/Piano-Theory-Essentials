@@ -1288,7 +1288,7 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
     const [volume, setVolume] = useState<number>(0.6);
     const [sustain, setSustain] = useState<boolean>(false);
     const [fontSizeMode, setFontSizeMode] = useState<'all' | 'c-only' | 'none'>('all');
-    const [waterfallStyle, setWaterfallStyle] = useState<'macaron' | 'starry' | 'ocean' | 'forest' | 'sakura'>(() => {
+    const [waterfallStyle, setWaterfallStyle] = useState<'macaron' | 'starry' | 'ocean' | 'forest' | 'sakura' | 'custom'>(() => {
         try {
             const saved = localStorage.getItem('waterfallStyle');
             return (saved as any) || 'macaron';
@@ -1297,11 +1297,61 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
         }
     });
 
+    const [customThemeConfig, setCustomThemeConfig] = useState<{
+        baseColor: string;
+        noteColor: string;
+        bgColor: string;
+        primaryColor: string;
+        char: string;
+    }>(() => {
+        try {
+            const saved = localStorage.getItem('customThemeConfig');
+            return saved ? JSON.parse(saved) : {
+                baseColor: '#8b5cf6',
+                noteColor: '#a78bfa',
+                bgColor: '#ede9fe',
+                primaryColor: 'bg-violet-500 hover:bg-violet-600',
+                char: '🎵'
+            };
+        } catch (_) {
+            return {
+                baseColor: '#8b5cf6',
+                noteColor: '#a78bfa',
+                bgColor: '#ede9fe',
+                primaryColor: 'bg-violet-500 hover:bg-violet-600',
+                char: '🎵'
+            };
+        }
+    });
+
     useEffect(() => {
         try {
             localStorage.setItem('waterfallStyle', waterfallStyle);
         } catch (_) {}
     }, [waterfallStyle]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('customThemeConfig', JSON.stringify(customThemeConfig));
+        } catch (_) {}
+    }, [customThemeConfig]);
+
+    const [isHudVisible, setIsHudVisible] = useState<boolean>(true);
+    const hudTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleMouseMove = React.useCallback(() => {
+        setIsHudVisible(true);
+        if (hudTimeoutRef.current) clearTimeout(hudTimeoutRef.current);
+        hudTimeoutRef.current = setTimeout(() => {
+            setIsHudVisible(false);
+        }, 2500);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (hudTimeoutRef.current) clearTimeout(hudTimeoutRef.current);
+        };
+    }, []);
 
     const [isNightMode, setIsNightMode] = useState<boolean>(() => {
         try {
@@ -1564,6 +1614,22 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                     accentText: 'text-rose-600 dark:text-rose-400',
                     themeTag: 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
                 };
+            case 'custom':
+                return {
+                    primary: `bg-stone-500 hover:bg-stone-600 text-white shadow-stone-500/10`,
+                    text: `text-stone-500`,
+                    border: 'border-stone-200',
+                    track: customThemeConfig.baseColor,
+                    trackBg: customThemeConfig.bgColor,
+                    trackDark: customThemeConfig.baseColor,
+                    trackBgDark: '#292524',
+                    ring: 'shadow-stone-500/20',
+                    textMuted: 'text-stone-400',
+                    accentHex: customThemeConfig.baseColor,
+                    accentLightHex: customThemeConfig.bgColor,
+                    accentText: 'text-stone-600 dark:text-stone-400',
+                    themeTag: 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                };
             default:
                 return {
                     primary: 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/10',
@@ -1598,7 +1664,7 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
         const timer = setTimeout(() => {
             isIntroActiveRef.current = false;
             setIsIntroActive(false);
-        }, 1800); // Curtains/Steinway badge intro finishes in 1.8 seconds
+        }, 800); // Sleek Apple-style intro settles in 800ms
         return () => clearTimeout(timer);
     }, []);
 
@@ -1628,18 +1694,20 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
         const width = canvas.width;
         const height = canvas.height;
 
-        let baseColor = '#fda4af';
+        let baseColor = customThemeConfig.baseColor || '#fda4af';
         if (!isNightMode) {
             if (waterfallStyle === 'starry') baseColor = '#c7d2fe';
             else if (waterfallStyle === 'ocean') baseColor = '#a5f3fc';
             else if (waterfallStyle === 'forest') baseColor = '#a7f3d0';
             else if (waterfallStyle === 'sakura') baseColor = '#fecdd3';
+            else if (waterfallStyle === 'custom') baseColor = customThemeConfig.bgColor; // lighter for day
             else baseColor = '#fda4af';
         } else {
             if (waterfallStyle === 'starry') baseColor = '#818cf8';
             else if (waterfallStyle === 'ocean') baseColor = '#22d3ee';
             else if (waterfallStyle === 'forest') baseColor = '#34d399';
             else if (waterfallStyle === 'sakura') baseColor = '#ff758f';
+            else if (waterfallStyle === 'custom') baseColor = customThemeConfig.baseColor;
             else baseColor = '#fda4af';
         }
 
@@ -1655,7 +1723,8 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
             const shapeSelect = Math.random();
             let char: string | undefined = undefined;
             if (shapeSelect < 0.45) {
-                if (waterfallStyle === 'sakura') char = '🌸';
+                if (waterfallStyle === 'custom') char = customThemeConfig.char || '🎵';
+                else if (waterfallStyle === 'sakura') char = '🌸';
                 else if (waterfallStyle === 'forest') char = Math.random() < 0.5 ? '🍃' : '✨';
                 else if (waterfallStyle === 'starry') char = Math.random() < 0.5 ? '⭐' : '✨';
                 else if (waterfallStyle === 'macaron') char = Math.random() < 0.5 ? '🍬' : '❤️';
@@ -3053,10 +3122,10 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
         setIsPlaying(false);
         setIsExiting(true);
 
-        // Defer actual onClose callback until the gorgeous curtain exit has fully finished
+        // Defer actual onClose callback for smooth elegant transition completes
         setTimeout(() => {
             onClose();
-        }, 2200); // Gives 2.2s for the curtain closing and the statistics badge display before parent unmounts
+        }, 750); // Gives 750ms for the micro-animations to run cleanly
     };
 
     return (
@@ -3066,220 +3135,39 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                 animate="animate"
                 exit="exit"
                 variants={{
-                    initial: { opacity: 0 },
+                    initial: { 
+                        opacity: 0,
+                        scale: 1.05,
+                        filter: "blur(20px)"
+                    },
                     animate: { 
                         opacity: 1,
-                        transition: { duration: 0.4 }
+                        scale: 1,
+                        filter: "blur(0px)",
+                        transition: { 
+                            type: "spring",
+                            stiffness: 140,
+                            damping: 24,
+                            mass: 1
+                        }
                     },
                     exit: { 
                         opacity: 0,
-                        transition: { delay: 1.6, duration: 0.4, ease: 'easeInOut' }
+                        scale: 0.95,
+                        filter: "blur(20px)",
+                        transition: { 
+                            type: "spring",
+                            stiffness: 155,
+                            damping: 26,
+                            mass: 1
+                        }
                     }
                 }}
                 className={`fixed inset-0 z-[160] flex flex-col transition-colors duration-500 overflow-hidden select-none ${
                     isNightMode ? 'bg-[#0B0A09] text-stone-100' : 'bg-[#FAF7F2] text-stone-800'
                 }`}
+                onMouseMove={handleMouseMove}
             >
-                {/* --- CINEMATIC THEATRE CURTAINS --- */}
-                <div className={`absolute inset-0 z-[200] flex overflow-hidden transition-all ${
-                    (isIntroActive || isExiting) ? 'pointer-events-auto' : 'pointer-events-none'
-                }`}>
-                    {/* Left Curtain */}
-                    <motion.div 
-                        initial={{ x: "0%" }}
-                        animate={{ x: isExiting ? "0%" : "-102%" }}
-                        exit={{ x: "0%" }}
-                        transition={{ duration: 1.6, ease: [0.76, 0, 0.24, 1] }}
-                        className={`w-1/2 h-full relative border-r-2 flex items-center justify-end pr-8 transition-colors duration-500 shadow-[20px_0_40px_rgba(0,0,0,0.65)] ${
-                            isNightMode 
-                                ? 'bg-[#0F0E0D] border-amber-500/25' 
-                                : 'bg-[#eae3d5] border-[#8b5a2b]/25 shadow-[20px_0_40px_rgba(139,90,43,0.15)]'
-                        }`}
-                    >
-                        {/* Elegant textures or golden design details on left curtain */}
-                        <div className="flex flex-col items-center select-none origin-right rotate-90 translate-x-12 opacity-35">
-                            <span className={`text-[10px] tracking-[0.3em] font-mono font-black uppercase ${isNightMode ? 'text-amber-400' : 'text-[#8b5a2b]'}`}>
-                                PIANO CONCERT
-                            </span>
-                        </div>
-                    </motion.div>
-
-                    {/* Right Curtain */}
-                    <motion.div 
-                        initial={{ x: "0%" }}
-                        animate={{ x: isExiting ? "0%" : "102%" }}
-                        exit={{ x: "0%" }}
-                        transition={{ duration: 1.6, ease: [0.76, 0, 0.24, 1] }}
-                        className={`w-1/2 h-full relative border-l-2 flex items-center justify-start pl-8 transition-colors duration-500 shadow-[-20px_0_40px_rgba(0,0,0,0.65)] ${
-                            isNightMode 
-                                ? 'bg-[#0F0E0D] border-amber-500/25' 
-                                : 'bg-[#eae3d5] border-[#8b5a2b]/25 shadow-[-20px_0_40px_rgba(139,90,43,0.15)]'
-                        }`}
-                    >
-                        {/* Elegant textures or golden design details on right curtain */}
-                        <div className="flex flex-col items-center select-none origin-left -rotate-90 -translate-x-12 opacity-35">
-                            <span className={`text-[10px] tracking-[0.3em] font-mono font-black uppercase ${isNightMode ? 'text-amber-400' : 'text-[#8b5a2b]'}`}>
-                                STEINWAY & SONS
-                            </span>
-                        </div>
-                    </motion.div>
-
-                    {/* Spotlight Hub (Expanding golden radial beam behind curtains, fading as they part) */}
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.4 }}
-                        animate={{ opacity: [0, 1, 0.8, 0], scale: [0.4, 2.2, 1.6, 1] }}
-                        exit={{ opacity: [0, 0.8, 0], scale: [1, 1.6, 2] }}
-                        transition={{ duration: 1.8, ease: "easeOut" }}
-                        className="absolute inset-0 m-auto w-[600px] h-[600px] rounded-full pointer-events-none blur-[150px] mix-blend-screen"
-                        style={{
-                            background: isNightMode 
-                                ? 'radial-gradient(circle, rgba(245,158,11,0.25) 0%, rgba(245,158,11,0.04) 50%, transparent 100%)'
-                                : 'radial-gradient(circle, rgba(239,184,136,0.5) 0%, rgba(239,184,136,0.1) 50%, transparent 100%)'
-                        }}
-                    />
-
-                    {/* Exquisite statistics popup shown on Closing Curtain */}
-                    <AnimatePresence>
-                        {isExiting && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.88, y: 30 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.92, y: -30 }}
-                                transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                                className="absolute inset-0 m-auto w-[420px] max-w-[90vw] h-auto flex flex-col items-center justify-center pointer-events-auto z-[215]"
-                            >
-                                <div className={`relative w-full px-8 py-8 rounded-3xl border text-center backdrop-blur-3xl flex flex-col items-center gap-5.5 select-none transition-all duration-500 overflow-hidden ${
-                                    isNightMode 
-                                        ? 'bg-[#0A0908]/96 border-amber-500/35 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.95)] shadow-amber-500/5' 
-                                        : 'bg-white/98 border-[#8b5a2b]/30 shadow-[0_20px_50px_rgba(139,90,43,0.18)]'
-                                }`}>
-                                    
-                                    {/* Gold Classical Corner Brackets Ornament Styling */}
-                                    <div className={`absolute top-3 left-3 w-4.5 h-4.5 border-t-2 border-l-2 rounded-tl-[3px] pointer-events-none transition-all duration-500 ${isNightMode ? 'border-amber-500/40' : 'border-[#8b5a2b]/30'}`} />
-                                    <div className={`absolute top-3 right-3 w-4.5 h-4.5 border-t-2 border-r-2 rounded-tr-[3px] pointer-events-none transition-all duration-500 ${isNightMode ? 'border-amber-500/40' : 'border-[#8b5a2b]/30'}`} />
-                                    <div className={`absolute bottom-3 left-3 w-4.5 h-4.5 border-b-2 border-l-2 rounded-bl-[3px] pointer-events-none transition-all duration-500 ${isNightMode ? 'border-amber-500/40' : 'border-[#8b5a2b]/30'}`} />
-                                    <div className={`absolute bottom-3 right-3 w-4.5 h-4.5 border-b-2 border-r-2 rounded-br-[3px] pointer-events-none transition-all duration-500 ${isNightMode ? 'border-amber-500/40' : 'border-[#8b5a2b]/30'}`} />
-
-                                    {/* Rotating Golden Music Badge icon */}
-                                    <div className="relative w-14 h-14 flex items-center justify-center rounded-full bg-gradient-to-tr from-amber-600 via-amber-500 to-yellow-400 text-white shadow-xl shadow-amber-500/10">
-                                        <motion.div 
-                                            animate={{ rotate: -360 }}
-                                            transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
-                                            className="absolute inset-[-4px] rounded-full border border-dashed border-amber-500/40 pointer-events-none"
-                                        />
-                                        <Award size={24} className="animate-pulse" style={{ animationDuration: '2s' }} />
-                                    </div>
-
-                                    <div className="space-y-1.5 w-full">
-                                        <span className={`text-[9.5px] font-sans font-black tracking-[0.3em] uppercase block ${
-                                            isNightMode ? 'text-amber-400' : 'text-[#8b5a2b]'
-                                        }`}>
-                                            CONCERT RECITAL CLOSED • 音乐档案
-                                        </span>
-                                        <h4 className={`text-lg font-bold font-serif tracking-widest ${
-                                            isNightMode ? 'text-stone-100' : 'text-stone-900'
-                                        }`}>
-                                            『 琴声渐息 • 韶华绕梁 』
-                                        </h4>
-                                        <p className={`text-[10.5px] max-w-xs mx-auto leading-relaxed ${
-                                            isNightMode ? 'text-stone-400' : 'text-stone-600'
-                                        }`}>
-                                            键盘静息，音乐场馆正逐步平稳释放。感谢您的精彩演奏，每一个音符都已被音乐厅永久收录。
-                                        </p>
-                                    </div>
-
-                                    {/* 3-Column Elite Real-time stats container */}
-                                    <div className={`grid grid-cols-3 gap-1 w-full px-2 py-3.5 rounded-2xl border transition-colors duration-500 ${
-                                        isNightMode ? 'bg-black/60 border-stone-850' : 'bg-[#FAF8F5] border-[#8b5a2b]/15'
-                                    }`}>
-                                        {/* Stat 1 */}
-                                        <div className="text-center space-y-1 border-r border-stone-800/60 flex flex-col justify-center items-center px-1">
-                                            <span className={`text-[9.5px] font-medium ${isNightMode ? 'text-stone-500' : 'text-stone-450'}`}>本次击键</span>
-                                            <span className={`text-base font-extrabold font-mono tracking-tight flex items-baseline gap-0.5 ${
-                                                isNightMode ? 'text-amber-400' : 'text-amber-800'
-                                            }`}>
-                                                {notesPlayed} <span className="text-[9px] font-sans font-normal text-stone-550">次</span>
-                                            </span>
-                                        </div>
-
-                                        {/* Stat 2 */}
-                                        <div className="text-center space-y-1 border-r border-stone-800/60 flex flex-col justify-center items-center px-1">
-                                            <span className={`text-[9.5px] font-medium ${isNightMode ? 'text-stone-500' : 'text-stone-450'}`}>聆听历时</span>
-                                            <span className={`text-base font-extrabold font-mono tracking-tight ${
-                                                isNightMode ? 'text-amber-400' : 'text-amber-800'
-                                            }`}>
-                                                {(() => {
-                                                    const elapsed = Math.max(0, Math.floor((Date.now() - sessionStartTimeRef.current) / 1000));
-                                                    const min = Math.floor(elapsed / 60);
-                                                    const sec = elapsed % 60;
-                                                    return `${min}:${sec < 10 ? '0' : ''}${sec}`;
-                                                })()}
-                                            </span>
-                                        </div>
-
-                                        {/* Stat 3 */}
-                                        <div className="text-center space-y-1 flex flex-col justify-center items-center px-1">
-                                            <span className={`text-[9.5px] font-medium ${isNightMode ? 'text-stone-500' : 'text-stone-450'}`}>演奏境界</span>
-                                            <span className={`text-[10px] font-serif font-black tracking-wider ${
-                                                isNightMode ? 'text-amber-450' : 'text-[#8b5a2b]'
-                                            }`}>
-                                                {(() => {
-                                                    if (notesPlayed === 0) return "意境深远";
-                                                    if (notesPlayed < 20) return "初露锋芒";
-                                                    if (notesPlayed < 80) return "行云流水";
-                                                    if (notesPlayed < 250) return "妙笔生花";
-                                                    return "超凡入圣";
-                                                })()}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Status Bar */}
-                                    <div className="w-full space-y-2.5 mt-1">
-                                        <div className="w-full h-[3px] bg-stone-900 rounded-full overflow-hidden relative border border-stone-800/40">
-                                            <motion.div 
-                                                initial={{ left: "-40%" }}
-                                                animate={{ left: "100%" }}
-                                                transition={{ duration: 1.8, ease: "easeInOut", repeat: Infinity }}
-                                                className="absolute top-0 bottom-0 w-2/5 bg-gradient-to-r from-transparent via-amber-400 to-transparent"
-                                            />
-                                        </div>
-                                        <span className={`text-[9.5px] font-mono tracking-wide block ${isNightMode ? 'text-amber-500/60' : 'text-amber-800/70'}`}>
-                                            正在卸载声学物理管弦模块与混响空间...
-                                        </span>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* The Center Emblem Badge that splits or fades out */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.85, y: 15 }}
-                        animate={{ 
-                            opacity: [0, 1, 1, 0], 
-                            scale: [0.85, 1, 1, 0.95],
-                            y: [15, 0, 0, -25]
-                        }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 1.6, ease: "easeInOut", times: [0, 0.25, 0.7, 1] }}
-                        className="absolute inset-0 m-auto w-80 h-32 flex flex-col items-center justify-center pointer-events-none z-[210] rounded-2xl"
-                    >
-                        <div className={`px-6 py-4 rounded-2xl border text-center backdrop-blur-xl flex flex-col items-center gap-1 shadow-2xl ${
-                            isNightMode 
-                                ? 'bg-[#0f0e0c]/90 border-amber-500/20 shadow-black' 
-                                : 'bg-white/95 border-[#8b5a2b]/25 shadow-[#8b5a2b]/15'
-                        }`}>
-                            <div className={`text-[11px] font-black tracking-[0.5em] uppercase font-sans ${isNightMode ? 'text-amber-400' : 'text-[#8b5a2b]'}`}>
-                                STEINWAY HALL
-                            </div>
-                            <div className="w-12 h-[1px] bg-gradient-to-r from-transparent via-amber-450 to-transparent my-1.5" />
-                            <div className={`text-xs font-semibold font-sans tracking-widest ${isNightMode ? 'text-stone-300' : 'text-stone-750'}`}>
-                                正在进入全屏演奏厅...
-                            </div>
-                        </div>
-                    </motion.div>
-                </div>
                 {/* Immersive Concert Glow Elements */}
                 {isNightMode ? (
                     <>
@@ -3315,10 +3203,18 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
 
                  {/* --- 1. SLEEK, COMPACT TOP HEADER BAR --- */}
                 <motion.header 
-                    initial={{ y: -80, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -80, opacity: 0 }}
-                    transition={{ duration: 1.1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                    initial={{ y: -70, opacity: 0 }}
+                    animate={{ 
+                        y: isExiting ? -75 : 0, 
+                        opacity: isExiting ? 0 : 1 
+                    }}
+                    transition={{ 
+                        type: "spring",
+                        stiffness: 150,
+                        damping: 22,
+                        mass: 1,
+                        delay: isExiting ? 0 : 0.12
+                    }}
                     className={`px-5 py-3 flex items-center justify-between gap-4 z-20 shadow-md transition-colors duration-500 border-b ${
                         isNightMode 
                             ? 'bg-stone-900/80 backdrop-blur-lg border-stone-850' 
@@ -3694,13 +3590,14 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                                          {/* Waterfall Special Effect Styles */}
                                          <div className="space-y-1">
                                              <span className={`text-[10px] block font-semibold ${isNightMode ? 'text-stone-400' : 'text-stone-600'}`}>暖心瀑布粒子特效 (Waterfall VFX Themes)</span>
-                                             <div className="grid grid-cols-5 gap-1">
+                                             <div className="grid grid-cols-6 gap-1">
                                                  {[
                                                      { id: 'macaron', emoji: '🍬', name: '马卡龙' },
                                                      { id: 'starry', emoji: '🌟', name: '治愈星空' },
                                                      { id: 'ocean', emoji: '🫧', name: '梦幻海洋' },
                                                      { id: 'forest', emoji: '🍃', name: '晨曦森林' },
                                                      { id: 'sakura', emoji: '🌸', name: '落樱心语' },
+                                                     { id: 'custom', emoji: '🎨', name: '自定义' }
                                                  ].map(style => {
                                                      const isSelected = waterfallStyle === style.id;
                                                      return (
@@ -3721,6 +3618,23 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                                                      );
                                                  })}
                                              </div>
+                                             
+                                             {waterfallStyle === 'custom' && (
+                                                <div className={`mt-2 p-2.5 rounded-xl border space-y-2 ${isNightMode ? 'bg-stone-900 border-stone-800' : 'bg-white border-stone-200'}`}>
+                                                    <div className="flex items-center justify-between text-[10px]">
+                                                        <span className={isNightMode ? 'text-stone-400' : 'text-stone-600'}>主背景色 (Base Color)</span>
+                                                        <input type="color" value={customThemeConfig.baseColor} onChange={(e) => setCustomThemeConfig(prev => ({...prev, baseColor: e.target.value}))} className="w-6 h-6 rounded cursor-pointer" />
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[10px]">
+                                                        <span className={isNightMode ? 'text-stone-400' : 'text-stone-600'}>浅亮色 (Light Bg/Day)</span>
+                                                        <input type="color" value={customThemeConfig.bgColor} onChange={(e) => setCustomThemeConfig(prev => ({...prev, bgColor: e.target.value}))} className="w-6 h-6 rounded cursor-pointer" />
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[10px]">
+                                                        <span className={isNightMode ? 'text-stone-400' : 'text-stone-600'}>下落物品字符 (Char)</span>
+                                                        <input type="text" maxLength={2} value={customThemeConfig.char} onChange={(e) => setCustomThemeConfig(prev => ({...prev, char: e.target.value}))} className={`w-12 text-center rounded border text-[11px] py-0.5 ${isNightMode ? 'bg-stone-950 border-stone-800 text-white' : 'bg-stone-50 border-stone-300'}`} placeholder="🎵" />
+                                                    </div>
+                                                </div>
+                                             )}
                                          </div>
 
                                         {/* Key Width Zoom & Auto-Fit */}
@@ -4182,10 +4096,18 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
 
                 {/* --- 2. INTERACTIVE STAGE & WATERFALL CANVAS --- */}
                 <motion.div 
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 1.1, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                    initial={{ opacity: 0, scale: 0.97, filter: "blur(10px)" }}
+                    animate={{ 
+                        opacity: isExiting ? 0 : 1, 
+                        scale: isExiting ? 0.94 : 1,
+                        filter: isExiting ? "blur(16px)" : "blur(0px)"
+                    }}
+                    transition={{ 
+                        type: "spring",
+                        stiffness: 140,
+                        damping: 24,
+                        delay: isExiting ? 0 : 0.05
+                    }}
                     className={`flex-1 min-h-0 flex flex-col relative w-full overflow-hidden transition-colors duration-500 ${
                         isNightMode ? 'bg-stone-950' : 'bg-[#FAF6F0]'
                     }`}
@@ -4251,11 +4173,13 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
                                     
                                     {/* Ultra-sleek HUD center bar (Concert Master Control Panel) */}
                                     {activeSong.id !== 'free' && (
-                                        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-30 px-5 py-3.5 rounded-2xl backdrop-blur-2xl border flex flex-col gap-3 w-[440px] max-w-[90vw] shadow-2xl transition-all duration-500 pointer-events-auto ${
+                                        <div 
+                                             onMouseEnter={() => setIsHudVisible(true)}
+                                             className={`absolute top-4 left-1/2 -translate-x-1/2 z-30 px-5 py-3.5 rounded-2xl backdrop-blur-2xl border flex flex-col gap-3 w-[440px] max-w-[90vw] shadow-2xl transition-all duration-700 pointer-events-auto ${
                                             isNightMode 
                                                 ? 'bg-stone-950/80 border-stone-800/80 shadow-black/80 text-white' 
                                                 : `bg-white/94 border-stone-200/60 ${vfxTheme.ring} text-stone-800`
-                                        } animate-fadeIn`}>
+                                        } ${isHudVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}>
                                             
                                             {/* Header Row: Title and Main Action Controls */}
                                             <div className="flex items-center justify-between w-full">
@@ -4490,10 +4414,18 @@ export const Piano88Page: React.FC<Piano88PageProps> = ({ onClose, user }) => {
 
                                 {/* --- 3. 88-KEY PHYSICAL MODEL KEYBOARD --- */}
                                 <motion.div 
-                                    initial={{ y: 240, opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    exit={{ y: 240, opacity: 0 }}
-                                    transition={{ duration: 1.3, delay: 0.55, ease: [0.34, 1.35, 0.64, 1] }}
+                                    initial={{ y: 180, opacity: 0 }}
+                                    animate={{ 
+                                        y: isExiting ? 180 : 0, 
+                                        opacity: isExiting ? 0 : 1 
+                                    }}
+                                    transition={{ 
+                                        type: "spring",
+                                        stiffness: 130,
+                                        damping: 22,
+                                        mass: 1,
+                                        delay: isExiting ? 0 : 0.25
+                                    }}
                                     className={`h-[210px] relative w-full select-none z-10 shrink-0 border-t transition-colors duration-500 ${
                                         isNightMode ? 'border-stone-850 bg-stone-950' : 'border-rose-100/50 bg-[#FAF6F0]'
                                     }`}
